@@ -1,0 +1,131 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+
+jobs:
+  build-images:
+    name: Build ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [web, api, mta]
+        include:
+          - image: web
+            context: ./apps/web
+            dockerfile: ./infrastructure/docker/web.Dockerfile
+          - image: api
+            context: ./apps/api
+            dockerfile: ./infrastructure/docker/api.Dockerfile
+          - image: mta
+            context: ./services/mta
+            dockerfile: ./infrastructure/docker/mta.Dockerfile
+    outputs:
+      web-tag: ${{ steps.meta.outputs.tags }}
+      api-tag: ${{ steps.meta.outputs.tags }}
+      mta-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ECR_REGISTRY }}/emailed-${{ matrix.image }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build-images
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging with image tag: ${{ github.sha }}"
+          # Replace with actual deployment command, e.g.:
+          # kubectl set image deployment/web web=$ECR_REGISTRY/emailed-web:${{ github.sha }} --namespace=staging
+          # kubectl set image deployment/api api=$ECR_REGISTRY/emailed-api:${{ github.sha }} --namespace=staging
+          # kubectl set image deployment/mta mta=$ECR_REGISTRY/emailed-mta:${{ github.sha }} --namespace=staging
+
+      - name: Verify staging deployment
+        run: |
+          echo "Running staging health checks..."
+          # Replace with actual health check commands
+
+  deploy-production:
+    name: Deploy to Production
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production with image tag: ${{ github.sha }}"
+          # Replace with actual deployment command, e.g.:
+          # kubectl set image deployment/web web=$ECR_REGISTRY/emailed-web:${{ github.sha }} --namespace=production
+          # kubectl set image deployment/api api=$ECR_REGISTRY/emailed-api:${{ github.sha }} --namespace=production
+          # kubectl set image deployment/mta mta=$ECR_REGISTRY/emailed-mta:${{ github.sha }} --namespace=production
+
+      - name: Verify production deployment
+        run: |
+          echo "Running production health checks..."
+          # Replace with actual health check commands
