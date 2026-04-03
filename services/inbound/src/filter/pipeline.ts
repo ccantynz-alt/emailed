@@ -1,409 +1,321 @@
-import type { ParsedEmail, SmtpSession, SmtpEnvelope, AuthenticationResult, FilterVerdict } from "../types.js";
+import type { ParsedEmail, AuthenticationResult, FilterVerdict, SmtpEnvelope } from "../types.js";
 
-/**
- * A single filter stage in the processing pipeline.
- */
-interface FilterStage {
-  name: string;
-  process(ctx: FilterContext): Promise<FilterAction>;
-}
-
-type FilterAction =
-  | { type: "continue" }
-  | { type: "reject"; reason: string }
-  | { type: "quarantine"; reason: string }
-  | { type: "defer"; reason: string };
+// --- Filter Stage Interface ---
 
 interface FilterContext {
-  session: SmtpSession;
   envelope: SmtpEnvelope;
   email: ParsedEmail;
   verdict: FilterVerdict;
+  metadata: Map<string, unknown>;
 }
+
+type FilterStage = (ctx: FilterContext) => Promise<FilterContext>;
 
 // --- Authentication Check Stage ---
 
-class AuthenticationCheckStage implements FilterStage {
-  name = "authentication";
+async function authenticationCheck(ctx: FilterContext): Promise<FilterContext> {
+  const { email, envelope } = ctx;
 
-  async process(ctx: FilterContext): Promise<FilterAction> {
-    const results: AuthenticationResult[] = [];
-
-    // SPF check: verify the sending IP is authorized for the envelope sender domain
-    const spfResult = await this.checkSpf(ctx);
-    results.push(spfResult);
-
-    // DKIM check: verify the signature in the email headers
-    const dkimResult = await this.checkDkim(ctx);
-    results.push(dkimResult);
-
-    // DMARC check: verify alignment between SPF/DKIM and the From domain
-    const dmarcResult = await this.checkDmarc(ctx, spfResult, dkimResult);
-    results.push(dmarcResult);
-
-    ctx.verdict.authResults.push(...results);
-
-    // Hard fail on DMARC reject policy
-    if (dmarcResult.result === "fail" && dmarcResult.details?.includes("p=reject")) {
-      return { type: "reject", reason: `DMARC policy rejection for domain ${dmarcResult.domain}` };
-    }
-
-    // Flag for further inspection on SPF/DKIM failures
-    if (spfResult.result === "fail") {
-      ctx.verdict.flags.add("spf_fail");
-      ctx.verdict.score = (ctx.verdict.score ?? 0) + 3;
-    }
-    if (dkimResult.result === "fail") {
-      ctx.verdict.flags.add("dkim_fail");
-      ctx.verdict.score = (ctx.verdict.score ?? 0) + 2;
-    }
-
-    return { type: "continue" };
-  }
-
-  private async checkSpf(ctx: FilterContext): Promise<AuthenticationResult> {
-    const senderDomain = ctx.envelope.mailFrom.split("@")[1];
-    // In production: perform DNS TXT lookup for SPF record and validate
-    // the connecting IP against the policy.
-    return {
+  // SPF check: verify the sending server is authorized for the sender domain
+  const senderDomain = envelope.mailFrom.split("@")[1];
+  if (senderDomain) {
+    const spfResult: AuthenticationResult = {
       method: "spf",
-      result: "neutral",
+      result: "neutral", // In production: perform actual DNS lookup for SPF record
       domain: senderDomain,
-      details: `SPF check for ${senderDomain} from ${ctx.session.remoteAddress}`,
+      details: `Checked SPF for ${senderDomain}`,
     };
+    ctx.verdict.authResults.push(spfResult);
   }
 
-  private async checkDkim(ctx: FilterContext): Promise<AuthenticationResult> {
-    const dkimHeader = ctx.email.headers.find((h) => h.key === "dkim-signature");
-    if (!dkimHeader) {
-      return { method: "dkim", result: "none", details: "No DKIM signature found" };
-    }
+  // DKIM check: verify signature in headers
+  const dkimSignature = email.headers.find((h) => h.key === "dkim-signature");
+  if (dkimSignature) {
+    const domainMatch = dkimSignature.value.match(/d=([^\s;]+)/);
+    const selectorMatch = dkimSignature.value.match(/s=([^\s;]+)/);
 
-    // In production: parse the DKIM-Signature header, fetch the public key
-    // from DNS, and verify the cryptographic signature.
-    const domainMatch = dkimHeader.value.match(/d=([^;\s]+)/);
-    const selectorMatch = dkimHeader.value.match(/s=([^;\s]+)/);
-
-    return {
+    const dkimResult: AuthenticationResult = {
       method: "dkim",
-      result: "neutral",
+      result: "neutral", // In production: verify cryptographic signature
       domain: domainMatch?.[1],
       selector: selectorMatch?.[1],
-      details: "DKIM signature present but verification deferred to production",
+      details: "DKIM signature present",
     };
+    ctx.verdict.authResults.push(dkimResult);
+  } else {
+    ctx.verdict.authResults.push({
+      method: "dkim",
+      result: "none",
+      details: "No DKIM signature found",
+    });
   }
 
-  private async checkDmarc(
-    ctx: FilterContext,
-    spf: AuthenticationResult,
-    dkim: AuthenticationResult,
-  ): Promise<AuthenticationResult> {
-    const fromDomain = ctx.email.from[0]?.address.split("@")[1];
-    if (!fromDomain) {
-      return { method: "dmarc", result: "none", details: "No From domain" };
-    }
+  // DMARC check: verify alignment between SPF/DKIM domains and From header
+  const fromDomain = email.from[0]?.address.split("@")[1];
+  if (fromDomain) {
+    const spfAligned = senderDomain === fromDomain;
+    const dkimDomain = ctx.verdict.authResults.find((r) => r.method === "dkim")?.domain;
+    const dkimAligned = dkimDomain === fromDomain;
 
-    // In production: fetch _dmarc.{domain} TXT record and evaluate alignment
-    const spfAligned = spf.result === "pass" && spf.domain === fromDomain;
-    const dkimAligned = dkim.result === "pass" && dkim.domain === fromDomain;
-
-    if (spfAligned || dkimAligned) {
-      return { method: "dmarc", result: "pass", domain: fromDomain };
-    }
-
-    return {
+    const dmarcResult: AuthenticationResult = {
       method: "dmarc",
-      result: "neutral",
+      result: spfAligned || dkimAligned ? "pass" : "fail",
       domain: fromDomain,
-      details: "DMARC evaluation deferred to production DNS lookups",
+      details: `SPF aligned: ${spfAligned}, DKIM aligned: ${dkimAligned}`,
     };
+    ctx.verdict.authResults.push(dmarcResult);
+
+    if (dmarcResult.result === "fail") {
+      ctx.verdict.score = (ctx.verdict.score ?? 0) + 3;
+      ctx.verdict.flags.add("dmarc_fail");
+    }
   }
+
+  return ctx;
 }
 
 // --- Spam Filter Stage ---
 
-class SpamFilterStage implements FilterStage {
-  name = "spam";
+const SPAM_HEADER_INDICATORS = [
+  { pattern: /x-mailer:.*bulk/i, score: 2, flag: "bulk_mailer" },
+  { pattern: /precedence:\s*bulk/i, score: 1, flag: "precedence_bulk" },
+  { pattern: /list-unsubscribe/i, score: -1, flag: "has_unsubscribe" },
+];
 
-  private static readonly SPAM_PHRASES = [
-    "buy now", "act now", "limited time", "click here immediately",
-    "you have been selected", "congratulations you won",
-    "nigerian prince", "wire transfer", "million dollars",
-  ];
+const SPAM_BODY_PATTERNS = [
+  { pattern: /\bcialis\b|\bviagra\b|\brolex\b/i, score: 5, flag: "pharma_spam" },
+  { pattern: /\bclick here\b.*\bfree\b/i, score: 2, flag: "clickbait" },
+  { pattern: /\bunsubscribe\b/i, score: -0.5, flag: "has_unsubscribe_body" },
+  { pattern: /\bdear\s+(?:sir|madam|customer|user|friend)\b/i, score: 1.5, flag: "generic_greeting" },
+  { pattern: /\burgent\b.*\bact\s+now\b/i, score: 3, flag: "urgency_spam" },
+];
 
-  private static readonly HEADER_CHECKS = [
-    { header: "x-mailer", pattern: /mass\s*mail/i, score: 4 },
-    { header: "precedence", pattern: /bulk/i, score: 2 },
-  ];
+async function spamFilter(ctx: FilterContext): Promise<FilterContext> {
+  const { email } = ctx;
+  let score = ctx.verdict.score ?? 0;
 
-  async process(ctx: FilterContext): Promise<FilterAction> {
-    let score = ctx.verdict.score ?? 0;
-
-    // Check for known spam phrases in subject and body
-    const textContent = [
-      ctx.email.subject,
-      ctx.email.text ?? "",
-      ctx.email.html ?? "",
-    ].join(" ").toLowerCase();
-
-    for (const phrase of SpamFilterStage.SPAM_PHRASES) {
-      if (textContent.includes(phrase)) {
-        score += 2;
-        ctx.verdict.flags.add(`spam_phrase:${phrase}`);
+  // Check headers
+  for (const header of email.headers) {
+    const headerLine = `${header.key}: ${header.value}`;
+    for (const indicator of SPAM_HEADER_INDICATORS) {
+      if (indicator.pattern.test(headerLine)) {
+        score += indicator.score;
+        ctx.verdict.flags.add(indicator.flag);
       }
     }
-
-    // Header-based checks
-    for (const check of SpamFilterStage.HEADER_CHECKS) {
-      const header = ctx.email.headers.find((h) => h.key === check.header);
-      if (header && check.pattern.test(header.value)) {
-        score += check.score;
-        ctx.verdict.flags.add(`spam_header:${check.header}`);
-      }
-    }
-
-    // Missing or suspicious headers
-    if (!ctx.email.messageId) {
-      score += 1;
-      ctx.verdict.flags.add("missing_message_id");
-    }
-    if (!ctx.email.date) {
-      score += 1;
-      ctx.verdict.flags.add("missing_date");
-    }
-
-    // Excessive recipients
-    if (ctx.envelope.rcptTo.length > 20) {
-      score += 2;
-      ctx.verdict.flags.add("excessive_recipients");
-    }
-
-    ctx.verdict.score = score;
-
-    // Score thresholds
-    if (score >= 10) {
-      return { type: "reject", reason: `Spam score ${score} exceeds threshold` };
-    }
-    if (score >= 6) {
-      return { type: "quarantine", reason: `Spam score ${score} flagged for review` };
-    }
-
-    return { type: "continue" };
   }
+
+  // Check body content
+  const bodyText = (email.text ?? "") + " " + (email.html ?? "");
+  for (const pattern of SPAM_BODY_PATTERNS) {
+    if (pattern.pattern.test(bodyText)) {
+      score += pattern.score;
+      ctx.verdict.flags.add(pattern.flag);
+    }
+  }
+
+  // Ratio of images to text (common in spam)
+  if (email.html) {
+    const imgCount = (email.html.match(/<img/gi) ?? []).length;
+    const textLength = email.text?.length ?? 0;
+    if (imgCount > 3 && textLength < 100) {
+      score += 2;
+      ctx.verdict.flags.add("image_heavy");
+    }
+  }
+
+  // Empty subject
+  if (!email.subject || email.subject.trim().length === 0) {
+    score += 1;
+    ctx.verdict.flags.add("empty_subject");
+  }
+
+  // ALL CAPS subject
+  if (email.subject && email.subject === email.subject.toUpperCase() && email.subject.length > 10) {
+    score += 1.5;
+    ctx.verdict.flags.add("caps_subject");
+  }
+
+  ctx.verdict.score = score;
+
+  // Threshold decisions
+  if (score >= 8) {
+    ctx.verdict.action = "reject";
+    ctx.verdict.reason = `Spam score ${score} exceeds rejection threshold`;
+  } else if (score >= 5) {
+    ctx.verdict.action = "quarantine";
+    ctx.verdict.reason = `Spam score ${score} exceeds quarantine threshold`;
+  }
+
+  return ctx;
 }
 
 // --- Phishing Filter Stage ---
 
-class PhishingFilterStage implements FilterStage {
-  name = "phishing";
+async function phishingFilter(ctx: FilterContext): Promise<FilterContext> {
+  const { email } = ctx;
+  if (ctx.verdict.action === "reject") return ctx;
 
-  private static readonly SUSPICIOUS_URL_PATTERNS = [
-    /https?:\/\/[^/]*\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/i, // IP-based URLs
-    /https?:\/\/[^/]*@[^/]*/i, // URLs with @ (credential harvesting)
-    /%[0-9a-f]{2}.*%[0-9a-f]{2}/i, // Heavily encoded URLs
-  ];
+  let score = ctx.verdict.score ?? 0;
 
-  async process(ctx: FilterContext): Promise<FilterAction> {
-    let score = ctx.verdict.score ?? 0;
-    const html = ctx.email.html ?? "";
-
-    // Check for mismatched display text and href in links
+  if (email.html) {
+    // Check for deceptive links: display text is a URL that doesn't match href
     const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
-    let linkMatch: RegExpExecArray | null;
+    let match: RegExpExecArray | null;
+    while ((match = linkRegex.exec(email.html)) !== null) {
+      const href = match[1]!;
+      const displayText = match[2]!.trim();
 
-    while ((linkMatch = linkRegex.exec(html)) !== null) {
-      const href = linkMatch[1]!;
-      const displayText = linkMatch[2]!.trim();
-
-      // If display text looks like a URL but differs from href
-      if (displayText.match(/^https?:\/\//i) && !href.includes(displayText)) {
-        score += 4;
-        ctx.verdict.flags.add("phishing:mismatched_url");
-      }
-    }
-
-    // Check for suspicious URL patterns
-    const allUrls = html.match(/https?:\/\/[^\s"'<>]+/gi) ?? [];
-    for (const url of allUrls) {
-      for (const pattern of PhishingFilterStage.SUSPICIOUS_URL_PATTERNS) {
-        if (pattern.test(url)) {
-          score += 3;
-          ctx.verdict.flags.add("phishing:suspicious_url");
-          break;
+      // If display text looks like a URL but points elsewhere
+      if (displayText.match(/^https?:\/\//)) {
+        try {
+          const hrefUrl = new URL(href);
+          const displayUrl = new URL(displayText);
+          if (hrefUrl.hostname !== displayUrl.hostname) {
+            score += 4;
+            ctx.verdict.flags.add("deceptive_link");
+          }
+        } catch {
+          // Malformed URL in display text
         }
       }
     }
 
-    // Form action in email HTML
-    if (/<form[^>]+action/i.test(html)) {
-      score += 5;
-      ctx.verdict.flags.add("phishing:form_in_email");
+    // Check for known phishing patterns
+    const phishingPatterns = [
+      /verify\s+your\s+(?:account|identity|password)/i,
+      /suspended?\s+(?:your\s+)?account/i,
+      /confirm\s+your\s+(?:identity|billing|payment)/i,
+      /unusual\s+(?:activity|sign[- ]?in)/i,
+    ];
+
+    for (const pattern of phishingPatterns) {
+      if (pattern.test(email.html) || (email.text && pattern.test(email.text))) {
+        score += 2;
+        ctx.verdict.flags.add("phishing_language");
+        break;
+      }
     }
 
-    ctx.verdict.score = score;
-
-    if (score >= 12) {
-      return { type: "reject", reason: "Phishing content detected" };
+    // Form elements in HTML email (suspicious)
+    if (/<form[^>]*>/i.test(email.html)) {
+      score += 3;
+      ctx.verdict.flags.add("contains_form");
     }
-
-    return { type: "continue" };
   }
+
+  ctx.verdict.score = score;
+
+  if (score >= 8 && ctx.verdict.action !== "reject") {
+    ctx.verdict.action = "quarantine";
+    ctx.verdict.reason = `Phishing indicators detected (score: ${score})`;
+  }
+
+  return ctx;
 }
 
 // --- Content Filter Stage ---
 
-class ContentFilterStage implements FilterStage {
-  name = "content";
+async function contentFilter(ctx: FilterContext): Promise<FilterContext> {
+  const { email } = ctx;
+  if (ctx.verdict.action === "reject") return ctx;
 
-  private static readonly DANGEROUS_CONTENT_TYPES = new Set([
+  // Check attachment types for dangerous content
+  const dangerousExtensions = new Set([
+    ".exe", ".scr", ".bat", ".cmd", ".com", ".pif", ".vbs", ".vbe",
+    ".js", ".jse", ".wsf", ".wsh", ".msi", ".dll", ".cpl",
+  ]);
+
+  const dangerousContentTypes = new Set([
     "application/x-msdownload",
+    "application/x-executable",
     "application/x-msdos-program",
     "application/vnd.microsoft.portable-executable",
-    "application/x-sh",
-    "application/x-csh",
   ]);
 
-  private static readonly DANGEROUS_EXTENSIONS = new Set([
-    ".exe", ".scr", ".bat", ".cmd", ".com", ".pif", ".vbs",
-    ".js", ".wsh", ".wsf", ".ps1", ".reg", ".dll",
-  ]);
+  for (const attachment of email.attachments) {
+    const ext = attachment.filename.toLowerCase().match(/\.[^.]+$/)?.[0] ?? "";
 
-  async process(ctx: FilterContext): Promise<FilterAction> {
-    for (const attachment of ctx.email.attachments) {
-      // Check content type
-      if (ContentFilterStage.DANGEROUS_CONTENT_TYPES.has(attachment.contentType)) {
-        ctx.verdict.flags.add(`blocked_content_type:${attachment.contentType}`);
-        return {
-          type: "reject",
-          reason: `Blocked attachment type: ${attachment.contentType}`,
-        };
-      }
-
-      // Check file extension
-      const ext = attachment.filename.toLowerCase().match(/\.[^.]+$/)?.[0];
-      if (ext && ContentFilterStage.DANGEROUS_EXTENSIONS.has(ext)) {
-        ctx.verdict.flags.add(`blocked_extension:${ext}`);
-        return {
-          type: "reject",
-          reason: `Blocked attachment extension: ${ext}`,
-        };
-      }
-
-      // Check for double extensions (e.g., document.pdf.exe)
-      const parts = attachment.filename.split(".");
-      if (parts.length > 2) {
-        const lastExt = `.${parts[parts.length - 1]!.toLowerCase()}`;
-        if (ContentFilterStage.DANGEROUS_EXTENSIONS.has(lastExt)) {
-          ctx.verdict.flags.add("blocked_double_extension");
-          return {
-            type: "reject",
-            reason: `Blocked double extension in ${attachment.filename}`,
-          };
-        }
-      }
+    if (dangerousExtensions.has(ext)) {
+      ctx.verdict.flags.add(`dangerous_attachment:${ext}`);
+      ctx.verdict.score = (ctx.verdict.score ?? 0) + 5;
     }
 
-    return { type: "continue" };
+    if (dangerousContentTypes.has(attachment.contentType.toLowerCase())) {
+      ctx.verdict.flags.add("dangerous_content_type");
+      ctx.verdict.score = (ctx.verdict.score ?? 0) + 5;
+    }
+
+    // Double extension check (e.g., invoice.pdf.exe)
+    const doubleExt = attachment.filename.match(/\.\w+\.\w+$/);
+    if (doubleExt && dangerousExtensions.has(ext)) {
+      ctx.verdict.flags.add("double_extension");
+      ctx.verdict.score = (ctx.verdict.score ?? 0) + 3;
+    }
   }
+
+  // Password-protected archives (common malware vector)
+  const bodyText = (email.text ?? "") + " " + (email.html ?? "");
+  const hasArchive = email.attachments.some((a) =>
+    /\.(zip|rar|7z)$/i.test(a.filename),
+  );
+  if (hasArchive && /password/i.test(bodyText)) {
+    ctx.verdict.flags.add("password_protected_archive");
+    ctx.verdict.score = (ctx.verdict.score ?? 0) + 2;
+  }
+
+  if ((ctx.verdict.score ?? 0) >= 8 && ctx.verdict.action === "accept") {
+    ctx.verdict.action = "quarantine";
+    ctx.verdict.reason = "Suspicious content detected";
+  }
+
+  return ctx;
 }
 
 // --- Malware Scan Stage ---
 
-class MalwareScanStage implements FilterStage {
-  name = "malware";
+async function malwareScan(ctx: FilterContext): Promise<FilterContext> {
+  const { email } = ctx;
+  if (ctx.verdict.action === "reject") return ctx;
 
-  // Known malware signatures (CRC-based, for demo purposes).
-  // In production: integrate with ClamAV, VirusTotal, or similar service.
-  private static readonly EICAR_SIGNATURE = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR";
-
-  async process(ctx: FilterContext): Promise<FilterAction> {
-    for (const attachment of ctx.email.attachments) {
-      const content = new TextDecoder("utf-8", { fatal: false }).decode(attachment.content);
-
-      // Check for EICAR test string
-      if (content.includes(MalwareScanStage.EICAR_SIGNATURE)) {
-        ctx.verdict.flags.add("malware:eicar_test");
-        return {
-          type: "reject",
-          reason: `Malware detected in attachment: ${attachment.filename}`,
-        };
-      }
-
-      // In production: submit attachment hash/content to malware scanning service
-      // and await verdict. For large attachments, use streaming scan.
+  for (const attachment of email.attachments) {
+    // Check for EICAR test pattern (standard AV test string)
+    const content = new TextDecoder("utf-8", { fatal: false }).decode(attachment.content);
+    if (content.includes("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")) {
+      ctx.verdict.action = "reject";
+      ctx.verdict.reason = "Malware detected in attachment";
+      ctx.verdict.flags.add("malware_detected");
+      return ctx;
     }
 
-    return { type: "continue" };
+    // In production: send to ClamAV or cloud AV scanning service
+    // const scanResult = await avScanner.scan(attachment.content);
   }
+
+  return ctx;
 }
 
-// --- Pipeline ---
+// --- Pipeline Orchestrator ---
 
 export class FilterPipeline {
-  private stages: FilterStage[];
+  private stages: { name: string; handler: FilterStage }[] = [];
 
-  constructor(stages?: FilterStage[]) {
-    this.stages = stages ?? [
-      new AuthenticationCheckStage(),
-      new SpamFilterStage(),
-      new PhishingFilterStage(),
-      new ContentFilterStage(),
-      new MalwareScanStage(),
+  constructor() {
+    // Default pipeline stages in order
+    this.stages = [
+      { name: "authentication", handler: authenticationCheck },
+      { name: "spam", handler: spamFilter },
+      { name: "phishing", handler: phishingFilter },
+      { name: "content", handler: contentFilter },
+      { name: "malware", handler: malwareScan },
     ];
   }
 
   /**
-   * Run the email through all filter stages sequentially.
-   * Stops at the first stage that returns a non-continue action.
+   * Add a custom filter stage at a specific position.
    */
-  async process(
-    session: SmtpSession,
-    envelope: SmtpEnvelope,
-    email: ParsedEmail,
-  ): Promise<FilterVerdict> {
-    const verdict: FilterVerdict = {
-      action: "accept",
-      score: 0,
-      flags: new Set(),
-      authResults: [],
-    };
-
-    const ctx: FilterContext = { session, envelope, email, verdict };
-
-    for (const stage of this.stages) {
-      try {
-        const action = await stage.process(ctx);
-
-        switch (action.type) {
-          case "reject":
-            verdict.action = "reject";
-            verdict.reason = `[${stage.name}] ${action.reason}`;
-            return verdict;
-          case "quarantine":
-            verdict.action = "quarantine";
-            verdict.reason = `[${stage.name}] ${action.reason}`;
-            return verdict;
-          case "defer":
-            verdict.action = "defer";
-            verdict.reason = `[${stage.name}] ${action.reason}`;
-            return verdict;
-          case "continue":
-            break;
-        }
-      } catch (err) {
-        // Stage errors should not prevent delivery, but log them.
-        console.error(`[FilterPipeline] Stage "${stage.name}" threw:`, err);
-        verdict.flags.add(`stage_error:${stage.name}`);
-      }
-    }
-
-    return verdict;
-  }
-
-  /**
-   * Add a custom filter stage to the pipeline.
-   */
-  addStage(stage: FilterStage, position?: number): void {
+  addStage(name: string, handler: FilterStage, position?: number): void {
+    const stage = { name, handler };
     if (position !== undefined) {
       this.stages.splice(position, 0, stage);
     } else {
@@ -412,7 +324,7 @@ export class FilterPipeline {
   }
 
   /**
-   * Remove a stage by name.
+   * Remove a filter stage by name.
    */
   removeStage(name: string): boolean {
     const idx = this.stages.findIndex((s) => s.name === name);
@@ -421,7 +333,43 @@ export class FilterPipeline {
     return true;
   }
 
-  getStageNames(): string[] {
-    return this.stages.map((s) => s.name);
+  /**
+   * Run the full filter pipeline on an email.
+   */
+  async process(envelope: SmtpEnvelope, email: ParsedEmail): Promise<FilterVerdict> {
+    let ctx: FilterContext = {
+      envelope,
+      email,
+      verdict: {
+        action: "accept",
+        score: 0,
+        flags: new Set(),
+        authResults: [],
+      },
+      metadata: new Map(),
+    };
+
+    for (const stage of this.stages) {
+      try {
+        ctx = await stage.handler(ctx);
+
+        // Short-circuit on hard reject
+        if (ctx.verdict.action === "reject") {
+          console.log(
+            `[FilterPipeline] Rejected at stage '${stage.name}': ${ctx.verdict.reason}`,
+          );
+          break;
+        }
+      } catch (err) {
+        console.error(`[FilterPipeline] Error in stage '${stage.name}':`, err);
+        // On error, defer rather than silently accept
+        ctx.verdict.action = "defer";
+        ctx.verdict.reason = `Filter error in stage '${stage.name}'`;
+        ctx.verdict.flags.add(`error:${stage.name}`);
+        break;
+      }
+    }
+
+    return ctx.verdict;
   }
 }
