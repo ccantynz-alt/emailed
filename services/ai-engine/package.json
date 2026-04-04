@@ -4,36 +4,48 @@
   "private": true,
   "description": "Core AI/ML engine for the Emailed platform — spam detection, reputation scoring, content analysis, and intelligent email assistance",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.js"
     },
     "./spam": {
-      "types": "./dist/spam/classifier.d.ts",
+      "bun": "./src/spam/classifier.ts",
+      "types": "./src/spam/classifier.ts",
       "import": "./dist/spam/classifier.js"
     },
     "./reputation": {
-      "types": "./dist/reputation/scorer.d.ts",
+      "bun": "./src/reputation/scorer.ts",
+      "types": "./src/reputation/scorer.ts",
       "import": "./dist/reputation/scorer.js"
     },
     "./content": {
-      "types": "./dist/content/analyzer.d.ts",
+      "bun": "./src/content/analyzer.ts",
+      "types": "./src/content/analyzer.ts",
       "import": "./dist/content/analyzer.js"
     },
     "./compose": {
-      "types": "./dist/compose/assistant.d.ts",
+      "bun": "./src/compose/assistant.ts",
+      "types": "./src/compose/assistant.ts",
       "import": "./dist/compose/assistant.js"
     },
     "./priority": {
-      "types": "./dist/priority/ranker.d.ts",
+      "bun": "./src/priority/ranker.ts",
+      "types": "./src/priority/ranker.ts",
       "import": "./dist/priority/ranker.js"
     },
     "./relationships": {
-      "types": "./dist/relationships/graph.d.ts",
+      "bun": "./src/relationships/graph.ts",
+      "types": "./src/relationships/graph.ts",
       "import": "./dist/relationships/graph.js"
+    },
+    "./classifier": {
+      "bun": "./src/classifier.ts",
+      "types": "./src/classifier.ts",
+      "import": "./dist/classifier.js"
     }
   },
   "scripts": {

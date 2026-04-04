@@ -5,6 +5,15 @@ import { MailboxRouter } from "./routing/router.js";
 import { InMemoryEmailStore } from "./storage/store.js";
 import { PostgresEmailStore } from "./storage/postgres-store.js";
 import { createHttpInbound } from "./http-inbound.js";
+import {
+  initTelemetry,
+  shutdownTelemetry,
+  getTracer,
+  recordEmailReceived,
+  recordEmailFilterDuration,
+  recordActiveConnection,
+  SpanKind,
+} from "@emailed/shared";
 import type { SmtpSession, SmtpEnvelope } from "./types.js";
 
 /**
@@ -17,6 +26,44 @@ import type { SmtpSession, SmtpEnvelope } from "./types.js";
  *  2. HTTP webhook (port 8025 / HTTP_PORT) — Cloudflare Email Workers or
  *     other HTTP-based forwarders POST raw MIME to /inbound/webhook
  */
+
+/**
+ * Split raw email bytes into the header block (as string) and body (as Uint8Array).
+ * Headers and body are separated by a blank line (CRLF CRLF or LF LF).
+ */
+function splitRawMessage(rawData: Uint8Array): { rawHeaders: string; rawBody: Uint8Array } {
+  const bytes = rawData;
+  // Search for CRLFCRLF (\r\n\r\n) or LFLF (\n\n)
+  let splitIndex = -1;
+  let separatorLength = 0;
+
+  for (let i = 0; i < bytes.length - 1; i++) {
+    if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a &&
+        i + 3 < bytes.length && bytes[i + 2] === 0x0d && bytes[i + 3] === 0x0a) {
+      splitIndex = i;
+      separatorLength = 4;
+      break;
+    }
+    if (bytes[i] === 0x0a && bytes[i + 1] === 0x0a) {
+      splitIndex = i;
+      separatorLength = 2;
+      break;
+    }
+  }
+
+  if (splitIndex === -1) {
+    // No body found — entire message is headers
+    return {
+      rawHeaders: new TextDecoder().decode(bytes),
+      rawBody: new Uint8Array(0),
+    };
+  }
+
+  return {
+    rawHeaders: new TextDecoder().decode(bytes.subarray(0, splitIndex)),
+    rawBody: bytes.subarray(splitIndex + separatorLength),
+  };
+}
 
 const parser = new MimeParser();
 const pipeline = new FilterPipeline();
@@ -38,13 +85,20 @@ async function handleInboundMessage(
     `[Inbound] Parsed message ${parsed.messageId} from ${envelope.mailFrom} (${rawData.length} bytes)`,
   );
 
-  // 2. Run the filter pipeline (pass sender IP for SPF validation)
-  const verdict = await pipeline.process(envelope, parsed, session.remoteAddress);
+  // 2. Run the filter pipeline (pass sender IP for SPF validation, raw data for DKIM)
+  const { rawHeaders, rawBody } = splitRawMessage(rawData);
+  const filterStart = performance.now();
+  const verdict = await pipeline.process(envelope, parsed, session.remoteAddress, rawHeaders, rawBody);
+  const filterDurationMs = performance.now() - filterStart;
+  recordEmailFilterDuration("full-pipeline", filterDurationMs);
   console.log(
     `[Inbound] Filter verdict for ${parsed.messageId}: ${verdict.action} (score: ${verdict.score})`,
   );
 
   if (verdict.action === "reject") {
+    // Extract domain from sender for metrics
+    const senderDomain = (envelope.mailFrom ?? "").split("@")[1] ?? "unknown";
+    recordEmailReceived(senderDomain, "rejected");
     throw new Error(`Message rejected: ${verdict.reason}`);
   }
 
@@ -73,6 +127,11 @@ async function handleInboundMessage(
   }
 
   const elapsed = Date.now() - startTime;
+
+  // Record telemetry
+  const senderDomain = (envelope.mailFrom ?? "").split("@")[1] ?? "unknown";
+  recordEmailReceived(senderDomain, verdict.action === "quarantine" ? "quarantined" : "accepted");
+
   console.log(
     `[Inbound] Processed ${parsed.messageId}: ${deliveryCount} deliveries in ${elapsed}ms`,
   );
@@ -104,6 +163,12 @@ let httpServer: ReturnType<typeof Bun.serve> | null = null;
 
 async function main(): Promise<void> {
   console.log(`[Inbound] Starting inbound email processing service`);
+
+  // Initialize OpenTelemetry
+  await initTelemetry("emailed-inbound").catch((err) => {
+    console.warn("[Inbound] OpenTelemetry init failed:", err);
+  });
+
   console.log(`[Inbound] Store backend: ${process.env["DATABASE_URL"] ? "PostgreSQL" : "in-memory"}`);
 
   if (enableSmtp) {
@@ -127,19 +192,17 @@ async function main(): Promise<void> {
 }
 
 // Handle graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("[Inbound] Shutting down...");
+async function shutdown(signal: string): Promise<void> {
+  console.log(`[Inbound] Received ${signal} — shutting down...`);
   if (enableSmtp) await receiver.stop();
   if (httpServer) httpServer.stop();
+  await shutdownTelemetry().catch(() => {});
+  console.log("[Inbound] Shutdown complete");
   process.exit(0);
-});
+}
 
-process.on("SIGTERM", async () => {
-  console.log("[Inbound] Shutting down...");
-  if (enableSmtp) await receiver.stop();
-  if (httpServer) httpServer.stop();
-  process.exit(0);
-});
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 main().catch((err) => {
   console.error("[Inbound] Fatal error:", err);

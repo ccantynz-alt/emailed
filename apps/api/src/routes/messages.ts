@@ -25,6 +25,9 @@ import type {
 } from "../types.js";
 import { getDatabase, emails, deliveryResults, domains, accounts } from "@emailed/db";
 import { getSendQueue } from "../lib/queue.js";
+import { indexEmail, searchEmails } from "@emailed/shared";
+import { usageEnforcement } from "../middleware/usage.js";
+import { getWarmupOrchestrator } from "@emailed/reputation";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -231,6 +234,24 @@ async function handleSend(c: Context) {
     );
   }
 
+  // ── 1b. Check warm-up sending limits ──────────────────────────────
+  const warmupOrchestrator = getWarmupOrchestrator();
+  const warmupCheck = await warmupOrchestrator.canSend(domainRecord.id);
+
+  if (!warmupCheck.allowed) {
+    return c.json(
+      {
+        error: {
+          type: "rate_limit",
+          message: warmupCheck.reason ?? "Domain warm-up sending limit reached",
+          code: "warmup_limit_reached",
+          retryAfter: warmupCheck.retryAfter?.toISOString() ?? null,
+        },
+      },
+      429,
+    );
+  }
+
   // ── 2. Build the raw RFC-5322 message ─────────────────────────────
   const rawMessage = buildRawMessage(input, messageId, id);
 
@@ -333,7 +354,31 @@ async function handleSend(c: Context) {
     },
   );
 
-  // ── 7. Increment account usage counter (fire-and-forget) ─────────
+  // ── 6b. Record send against warm-up counter (fire-and-forget) ────
+  warmupOrchestrator.recordSend(domainRecord.id).catch(() => {});
+
+  // ── 7. Index in Meilisearch (fire-and-forget) ────────────────────
+  indexEmail({
+    id,
+    accountId: auth.accountId,
+    mailboxId: "sent",
+    subject: input.subject,
+    textBody: input.text ?? null,
+    fromAddress: input.from.email,
+    fromName: input.from.name ?? null,
+    toAddresses: input.to.map((r) => ({
+      address: r.email,
+      name: r.name,
+    })),
+    snippet: (input.text ?? input.html ?? "").replace(/<[^>]+>/g, " ").slice(0, 200),
+    hasAttachments: false,
+    status: "queued",
+    createdAt: now,
+  }).catch((err) => {
+    console.warn("[messages] Meilisearch indexing failed:", err);
+  });
+
+  // ── 8. Increment account usage counter (fire-and-forget) ─────────
   db.update(accounts)
     .set({
       emailsSentThisPeriod: sql`${accounts.emailsSentThisPeriod} + 1`,
@@ -342,7 +387,7 @@ async function handleSend(c: Context) {
     .where(eq(accounts.id, auth.accountId))
     .catch(() => {});
 
-  // ── 8. Return response ────────────────────────────────────────────
+  // ── 9. Return response ────────────────────────────────────────────
   return c.json({ id, messageId, status: "queued" as const }, 202);
 }
 
@@ -350,13 +395,76 @@ async function handleSend(c: Context) {
 
 const messages = new Hono();
 
-const sendMiddleware = [requireScope("messages:send"), validateBody(SendMessageSchema)] as const;
+const sendMiddleware = [requireScope("messages:send"), usageEnforcement, validateBody(SendMessageSchema)] as const;
 
 // POST /v1/messages/send — Send an email (production pipeline)
 messages.post("/send", ...sendMiddleware, handleSend);
 
 // POST /v1/messages — Alias for /send
 messages.post("/", ...sendMiddleware, handleSend);
+
+// GET /v1/messages/search — Full-text email search via Meilisearch
+messages.get(
+  "/search",
+  requireScope("messages:read"),
+  async (c) => {
+    const auth = c.get("auth");
+
+    const q = c.req.query("q") ?? "";
+    const mailbox = c.req.query("mailbox");
+    const limit = Math.min(parseInt(c.req.query("limit") ?? "20", 10) || 20, 100);
+    const offset = parseInt(c.req.query("offset") ?? "0", 10) || 0;
+
+    if (!q.trim()) {
+      return c.json(
+        {
+          error: {
+            type: "validation_error",
+            message: "Query parameter 'q' is required and must not be empty.",
+            code: "missing_query",
+          },
+        },
+        400,
+      );
+    }
+
+    try {
+      const result = await searchEmails(auth.accountId, q, {
+        mailboxId: mailbox,
+        limit,
+        offset,
+      });
+
+      return c.json({
+        data: result.hits.map((hit) => ({
+          id: hit.id,
+          subject: hit.subject,
+          from: {
+            email: hit.fromAddress,
+            name: hit.fromName,
+          },
+          snippet: hit.snippet,
+          createdAt: new Date(hit.createdAt * 1000).toISOString(),
+        })),
+        totalHits: result.totalHits,
+        processingTimeMs: result.processingTimeMs,
+        query: result.query,
+      });
+    } catch (err) {
+      console.error("[messages/search] Meilisearch error:", err);
+      return c.json(
+        {
+          error: {
+            type: "service_error",
+            message: "Search service is temporarily unavailable.",
+            code: "search_unavailable",
+          },
+        },
+        503,
+      );
+    }
+  },
+);
 
 // GET /v1/messages/:id — Retrieve message + delivery status
 messages.get(

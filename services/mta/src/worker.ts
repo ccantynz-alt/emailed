@@ -13,13 +13,14 @@
  * Supports graceful shutdown (drains in-flight jobs before exiting).
  */
 
-import { Worker, type Job } from "bullmq";
+import { Worker, Queue, type Job } from "bullmq";
 import { eq, and } from "drizzle-orm";
-import { getDatabase, emails, deliveryResults, domains, suppressionLists, events } from "@emailed/db";
+import { getDatabase, emails, deliveryResults, domains, suppressionLists, events, webhooks as webhooksTable } from "@emailed/db";
 import { signMessage, addSignatureToMessage } from "./dkim/signer.js";
 import { SmtpClient } from "./smtp/client.js";
 import { RelayClient, relayConfigFromEnv, type RelaySendResult } from "./relay/relay.js";
 import { DeliveryOptimizer } from "./delivery/optimizer.js";
+import { getTracer, recordEmailSent, recordEmailSendDuration, recordActiveConnection, SpanKind } from "@emailed/shared";
 import type { QueuedEmail, DkimSignOptions } from "./types.js";
 
 // ─── Job payload as stored in Redis ─────────────────────────────────────────
@@ -160,11 +161,15 @@ export class MtaWorker {
     const { email } = job.data;
     const db = getDatabase();
     const attemptNumber = job.attemptsMade;
+    const sendStart = performance.now();
+    const tracer = getTracer("mta-worker");
 
     console.log(
       `[mta-worker] Processing job ${job.id} (messageId=${email.messageId}, ` +
         `attempt=${attemptNumber + 1}, recipients=${email.to.length})`,
     );
+
+    recordActiveConnection("mta-worker", 1);
 
     // ── 1. Update email status to processing ────────────────────────────
     await db
@@ -554,12 +559,19 @@ export class MtaWorker {
 
     // ── 5. Update overall email status ──────────────────────────────────
     const now = new Date();
+    const sendDurationMs = performance.now() - sendStart;
+
+    // Record telemetry for the send operation
+    recordActiveConnection("mta-worker", -1);
+    recordEmailSendDuration(email.domain, sendDurationMs);
 
     if (allBounced && email.to.length > 0) {
       await db
         .update(emails)
         .set({ status: "bounced", updatedAt: now })
         .where(eq(emails.id, email.id));
+
+      recordEmailSent(email.domain, "bounced");
 
       // Record bounce event
       await this.recordDeliveryEvent(db, email, "email.bounced").catch(() => {});
@@ -573,6 +585,8 @@ export class MtaWorker {
         })
         .where(eq(emails.id, email.id));
 
+      recordEmailSent(email.domain, "delivered");
+
       // Record delivery event
       await this.recordDeliveryEvent(db, email, "email.delivered").catch(() => {});
     } else if (anyDeferred) {
@@ -580,6 +594,8 @@ export class MtaWorker {
         .update(emails)
         .set({ status: "deferred", updatedAt: now })
         .where(eq(emails.id, email.id));
+
+      recordEmailSent(email.domain, "deferred");
 
       // Record deferred event
       await this.recordDeliveryEvent(db, email, "email.deferred").catch(() => {});
@@ -594,11 +610,13 @@ export class MtaWorker {
         .update(emails)
         .set({ status: "failed", updatedAt: now })
         .where(eq(emails.id, email.id));
+
+      recordEmailSent(email.domain, "failed");
     }
   }
 
   /**
-   * Record a delivery event in the events table for webhook dispatch.
+   * Record a delivery event in the events table and enqueue webhook delivery jobs.
    */
   private async recordDeliveryEvent(
     db: ReturnType<typeof getDatabase>,
@@ -613,5 +631,68 @@ export class MtaWorker {
       messageId: email.messageId,
       type: eventType as "email.delivered",
     });
+
+    // Enqueue webhook delivery jobs for matching webhooks
+    await this.enqueueWebhooksForEvent(db, eventId, email.accountId, eventType);
+  }
+
+  /**
+   * Look up active webhooks for the account/event type and enqueue BullMQ
+   * jobs on the shared `emailed:webhooks` queue.
+   */
+  private async enqueueWebhooksForEvent(
+    db: ReturnType<typeof getDatabase>,
+    eventId: string,
+    accountId: string,
+    eventType: string,
+  ): Promise<void> {
+    const accountWebhooks = await db
+      .select({ id: webhooksTable.id, eventTypes: webhooksTable.eventTypes })
+      .from(webhooksTable)
+      .where(
+        and(
+          eq(webhooksTable.accountId, accountId),
+          eq(webhooksTable.isActive, true),
+        ),
+      );
+
+    if (accountWebhooks.length === 0) return;
+
+    // Lazily create a queue instance for the webhook queue
+    const webhookQueue = new Queue("emailed:webhooks", {
+      connection: { url: this.config.redisUrl },
+      defaultJobOptions: {
+        removeOnComplete: 100,
+        removeOnFail: 200,
+        attempts: 3,
+        backoff: { type: "custom" },
+      },
+    });
+
+    try {
+      for (const webhook of accountWebhooks) {
+        if (
+          webhook.eventTypes &&
+          webhook.eventTypes.length > 0 &&
+          !webhook.eventTypes.includes(eventType)
+        ) {
+          continue;
+        }
+
+        await webhookQueue.add(
+          "deliver",
+          {
+            webhookId: webhook.id,
+            eventId,
+            accountId,
+          },
+          {
+            jobId: `wh_${webhook.id}_${eventId}`,
+          },
+        );
+      }
+    } finally {
+      await webhookQueue.close();
+    }
   }
 }

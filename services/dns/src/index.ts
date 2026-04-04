@@ -3,6 +3,17 @@ export { DnsRecordManager } from "./records/manager";
 export { DnsHealthMonitor, type HealthMonitorConfig, type HealthAlert } from "./monitoring/health";
 export { DnsPropagationChecker, type PropagationCheckerConfig, type PropagationCheckOptions } from "./propagation/checker";
 export {
+  generateDomainConfig,
+  verifyDomainConfig,
+  checkDomainHealth,
+  rotateDkimKey,
+  type DnsRecordEntry,
+  type DomainConfigResult,
+  type VerificationStatus,
+  type RecordVerification,
+  type HealthReport,
+} from "./auto-config";
+export {
   RecordType,
   RecordClass,
   ResponseCode,

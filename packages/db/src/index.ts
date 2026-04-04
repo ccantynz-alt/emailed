@@ -75,6 +75,14 @@ export {
   suppressionListsRelations,
 } from "./schema/suppressions.js";
 
+// Schema - Warmup
+export {
+  warmupSessions,
+  warmupStatusEnum,
+  warmupScheduleTypeEnum,
+  warmupSessionsRelations,
+} from "./schema/warmup.js";
+
 // ---------------------------------------------------------------------------
 // Inferred types from schemas
 // ---------------------------------------------------------------------------
@@ -90,6 +98,7 @@ import type {
   webhookDeliveries,
 } from "./schema/events.js";
 import type { suppressionLists } from "./schema/suppressions.js";
+import type { warmupSessions } from "./schema/warmup.js";
 
 // Select types (what you get back from queries)
 export type Account = InferSelectModel<typeof accounts>;
@@ -120,3 +129,5 @@ export type NewWebhook = InferInsertModel<typeof webhooks>;
 export type NewWebhookDelivery = InferInsertModel<typeof webhookDeliveries>;
 export type SuppressionList = InferSelectModel<typeof suppressionLists>;
 export type NewSuppressionList = InferInsertModel<typeof suppressionLists>;
+export type WarmupSession = InferSelectModel<typeof warmupSessions>;
+export type NewWarmupSession = InferInsertModel<typeof warmupSessions>;

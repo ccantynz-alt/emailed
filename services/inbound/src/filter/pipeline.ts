@@ -1,6 +1,10 @@
 import { checkSpf } from "@emailed/mta/src/spf/validator.js";
 import { evaluateDmarc, determineAction } from "@emailed/mta/src/dmarc/enforcer.js";
+import { verifyDkim } from "./dkim-verifier.js";
+import type { DkimVerifyResult } from "./dkim-verifier.js";
 import type { ParsedEmail, AuthenticationResult, FilterVerdict, SmtpEnvelope } from "../types.js";
+import { classifyEmail, isAIAvailable } from "@emailed/ai-engine/classifier";
+import type { EmailClassificationInput } from "@emailed/ai-engine/classifier";
 
 // --- Filter Stage Interface ---
 
@@ -8,6 +12,8 @@ interface FilterContext {
   envelope: SmtpEnvelope;
   email: ParsedEmail;
   senderIp: string;
+  rawHeaders: string;
+  rawBody: Uint8Array;
   verdict: FilterVerdict;
   metadata: Map<string, unknown>;
 }
@@ -61,29 +67,46 @@ async function authenticationCheck(ctx: FilterContext): Promise<FilterContext> {
     ctx.verdict.flags.add("spf_softfail");
   }
 
-  // ── DKIM: parse signature headers (cryptographic verification is TODO) ──
-  const dkimSignature = email.headers.find((h) => h.key === "dkim-signature");
-  let dkimDomain: string | undefined;
-  let dkimSelector: string | undefined;
-  let dkimStatus: AuthenticationResult["result"] = "none" as AuthenticationResult["result"];
-
-  if (dkimSignature) {
-    const domainMatch = dkimSignature.value.match(/d=([^\s;]+)/);
-    const selectorMatch = dkimSignature.value.match(/s=([^\s;]+)/);
-    dkimDomain = domainMatch?.[1];
-    dkimSelector = selectorMatch?.[1];
-    // TODO: full DKIM cryptographic verification (DNS key fetch + signature check)
-    // For now, mark as neutral since we can't verify the signature without a verifier
-    dkimStatus = "neutral" as AuthenticationResult["result"];
+  // ── DKIM: full cryptographic verification via RFC 6376 ──────────────
+  let dkimResults: DkimVerifyResult[];
+  try {
+    dkimResults = await verifyDkim(ctx.rawHeaders, ctx.rawBody);
+  } catch {
+    dkimResults = [{
+      status: "temperror",
+      domain: "",
+      selector: "",
+      details: "DKIM verification threw an unexpected error",
+    }];
   }
 
-  ctx.verdict.authResults.push({
-    method: "dkim",
-    result: dkimStatus,
-    domain: dkimDomain,
-    selector: dkimSelector,
-    details: dkimSignature ? "DKIM signature present (verification pending)" : "No DKIM signature found",
-  });
+  // The best result is first (sorted by verifyDkim)
+  const bestDkim = dkimResults[0]!;
+  const dkimDomain: string | undefined = bestDkim.domain || undefined;
+  const dkimSelector: string | undefined = bestDkim.selector || undefined;
+  const dkimStatus: AuthenticationResult["result"] = bestDkim.status === "none"
+    ? "none"
+    : bestDkim.status as AuthenticationResult["result"];
+
+  // Push a result for each DKIM signature verified
+  for (const dkimResult of dkimResults) {
+    ctx.verdict.authResults.push({
+      method: "dkim",
+      result: dkimResult.status === "none" ? "none" : dkimResult.status as AuthenticationResult["result"],
+      domain: dkimResult.domain || undefined,
+      selector: dkimResult.selector || undefined,
+      details: dkimResult.details,
+    });
+  }
+
+  // Add spam score for DKIM failures
+  if (dkimStatus === "fail") {
+    ctx.verdict.score = (ctx.verdict.score ?? 0) + 2;
+    ctx.verdict.flags.add("dkim_fail");
+  } else if (dkimStatus === "permerror") {
+    ctx.verdict.score = (ctx.verdict.score ?? 0) + 1;
+    ctx.verdict.flags.add("dkim_permerror");
+  }
 
   // ── DMARC: real DNS-based policy evaluation via RFC 7489 ─────────────
   const fromDomain = email.from[0]?.address.split("@")[1];
@@ -210,6 +233,82 @@ async function spamFilter(ctx: FilterContext): Promise<FilterContext> {
   } else if (score >= 5) {
     ctx.verdict.action = "quarantine";
     ctx.verdict.reason = `Spam score ${score} exceeds quarantine threshold`;
+  }
+
+  return ctx;
+}
+
+// --- AI Classification Stage ---
+// Runs after rule-based spam filter for ambiguous scores (between 3 and 7).
+// Gracefully skips when ANTHROPIC_API_KEY is not configured.
+
+async function aiClassification(ctx: FilterContext): Promise<FilterContext> {
+  // Skip if already rejected or if AI is not available
+  if (ctx.verdict.action === "reject") return ctx;
+  if (!isAIAvailable()) return ctx;
+
+  const score = ctx.verdict.score ?? 0;
+
+  // Only invoke AI for ambiguous rule-based scores (3-7 range).
+  // Clear spam (>=8) and clean mail (<3) don't need expensive AI analysis.
+  if (score < 3 || score > 7) return ctx;
+
+  const { email } = ctx;
+
+  const input: EmailClassificationInput = {
+    from: email.from[0]?.address ?? "",
+    to: email.to[0]?.address ?? "",
+    subject: email.subject,
+    textBody: email.text,
+    htmlBody: email.html,
+    headers: email.headers.map((h) => ({ key: h.key, value: h.value })),
+  };
+
+  try {
+    const result = await classifyEmail(input);
+    if (!result.ok) return ctx;
+
+    const classification = result.value;
+
+    // Store AI classification metadata for auditing
+    ctx.metadata.set("ai_classification", classification);
+
+    // Add AI spam score contribution (weighted at 50% of AI score)
+    ctx.verdict.score = score + classification.spamScore * 0.5;
+
+    // Add AI classification flags
+    for (const category of classification.categories) {
+      ctx.verdict.flags.add(`ai:${category}`);
+    }
+    ctx.verdict.flags.add(
+      `ai_source:${classification.source}`,
+    );
+    ctx.verdict.flags.add(
+      `ai_confidence:${classification.confidence.toFixed(2)}`,
+    );
+
+    // High-confidence AI spam detection: quarantine
+    if (
+      classification.categories.includes("spam") &&
+      classification.confidence > 0.9
+    ) {
+      ctx.verdict.action = "quarantine";
+      ctx.verdict.reason = `AI classified as spam with ${(classification.confidence * 100).toFixed(0)}% confidence: ${classification.reasoning}`;
+      ctx.verdict.flags.add("ai_quarantine");
+    }
+
+    // High-confidence AI phishing detection: reject
+    if (
+      classification.categories.includes("phishing") &&
+      classification.confidence > 0.8
+    ) {
+      ctx.verdict.action = "reject";
+      ctx.verdict.reason = `AI classified as phishing with ${(classification.confidence * 100).toFixed(0)}% confidence: ${classification.reasoning}`;
+      ctx.verdict.flags.add("ai_phishing_reject");
+    }
+  } catch {
+    // AI classification failed — continue without it (graceful degradation)
+    ctx.verdict.flags.add("ai_classification_error");
   }
 
   return ctx;
@@ -370,6 +469,7 @@ export class FilterPipeline {
     this.stages = [
       { name: "authentication", handler: authenticationCheck },
       { name: "spam", handler: spamFilter },
+      { name: "aiClassification", handler: aiClassification },
       { name: "phishing", handler: phishingFilter },
       { name: "content", handler: contentFilter },
       { name: "malware", handler: malwareScan },
@@ -400,13 +500,23 @@ export class FilterPipeline {
 
   /**
    * Run the full filter pipeline on an email.
-   * @param senderIp - The IP address of the sending SMTP server (for SPF checks)
+   * @param senderIp  - The IP address of the sending SMTP server (for SPF checks)
+   * @param rawHeaders - The raw header block of the email (for DKIM verification)
+   * @param rawBody    - The raw body of the email (for DKIM verification)
    */
-  async process(envelope: SmtpEnvelope, email: ParsedEmail, senderIp: string = ""): Promise<FilterVerdict> {
+  async process(
+    envelope: SmtpEnvelope,
+    email: ParsedEmail,
+    senderIp: string = "",
+    rawHeaders: string = "",
+    rawBody: Uint8Array = new Uint8Array(0),
+  ): Promise<FilterVerdict> {
     let ctx: FilterContext = {
       envelope,
       email,
       senderIp,
+      rawHeaders,
+      rawBody,
       verdict: {
         action: "accept",
         score: 0,

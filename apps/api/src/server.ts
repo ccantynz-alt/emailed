@@ -17,7 +17,16 @@ import { timing } from "hono/timing";
 import { secureHeaders } from "hono/secure-headers";
 
 import { authMiddleware } from "./middleware/auth.js";
-import { rateLimiter } from "./middleware/rate-limiter.js";
+import {
+  globalIpRateLimit,
+  authRateLimit,
+  sendRateLimit,
+  readRateLimit,
+  writeRateLimit,
+  webhookRateLimit,
+  searchRateLimit,
+  closeRateLimitRedis,
+} from "./middleware/rate-limit.js";
 import { messages } from "./routes/messages.js";
 import { domains } from "./routes/domains.js";
 import { webhooks } from "./routes/webhooks.js";
@@ -29,14 +38,20 @@ import { account } from "./routes/account.js";
 import { auth } from "./routes/auth.js";
 import { health } from "./routes/health.js";
 import { admin } from "./routes/admin.js";
+import { billing } from "./routes/billing.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
+import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
+import { initSearchIndex, initTelemetry, shutdownTelemetry, telemetryMiddleware } from "@emailed/shared";
 
 // ─── Create the Hono app ───────────────────────────────────────────────────
 
 const app = new Hono();
 
 // ─── Global Middleware ──────────────────────────────────────────────────────
+
+// OpenTelemetry tracing and metrics
+app.use("*", telemetryMiddleware());
 
 // Request ID for distributed tracing
 app.use("*", requestId());
@@ -49,6 +64,9 @@ app.use("*", timing());
 
 // Security headers (CSP, X-Frame-Options, etc.)
 app.use("*", secureHeaders());
+
+// Global IP-based rate limit (DDoS baseline: 1000 req/min per IP)
+app.use("*", globalIpRateLimit);
 
 // CORS
 app.use(
@@ -67,6 +85,7 @@ app.use(
       "X-RateLimit-Limit",
       "X-RateLimit-Remaining",
       "X-RateLimit-Reset",
+      "Retry-After",
     ],
     maxAge: 86400,
     credentials: true,
@@ -88,7 +107,8 @@ app.get("/health", (c) => {
 // Deep health check with dependency verification (also no auth)
 app.route("/v1/health", health);
 
-// Auth endpoints (no API key auth required)
+// Auth endpoints: strict IP rate limiting (10 req/min), no API key auth
+app.use("/v1/auth/*", authRateLimit);
 app.route("/v1/auth", auth);
 
 // Tracking endpoints (no auth — embedded in emails)
@@ -96,14 +116,32 @@ app.route("/t", tracking);
 
 // ─── Authenticated routes ──────────────────────────────────────────────────
 
-// Apply auth + rate limiting to all /v1/* EXCEPT /v1/auth/* and /v1/health/*
-app.use("/v1/messages/*", authMiddleware, rateLimiter);
-app.use("/v1/domains/*", authMiddleware, rateLimiter);
-app.use("/v1/webhooks/*", authMiddleware, rateLimiter);
-app.use("/v1/analytics/*", authMiddleware, rateLimiter);
-app.use("/v1/suppressions/*", authMiddleware, rateLimiter);
-app.use("/v1/api-keys/*", authMiddleware, rateLimiter);
-app.use("/v1/account/*", authMiddleware, rateLimiter);
+// ─── Per-category rate limits on authenticated routes ─────────────────────
+// Send endpoint: 100 req/min per API key
+app.use("/v1/messages/send", authMiddleware, sendRateLimit);
+// Search endpoint: 60 req/min per API key
+app.use("/v1/messages/search", authMiddleware, searchRateLimit);
+// Read messages: 600 req/min per API key
+app.use("/v1/messages/*", authMiddleware, readRateLimit);
+// Domains: write-level limits (200 req/min)
+app.use("/v1/domains/*", authMiddleware, writeRateLimit);
+// Webhooks: write-level limits (200 req/min)
+app.use("/v1/webhooks/*", authMiddleware, writeRateLimit);
+// Analytics: read-level limits (600 req/min)
+app.use("/v1/analytics/*", authMiddleware, readRateLimit);
+// Suppressions: write-level limits (200 req/min)
+app.use("/v1/suppressions/*", authMiddleware, writeRateLimit);
+// API keys management: write-level limits (200 req/min)
+app.use("/v1/api-keys/*", authMiddleware, writeRateLimit);
+// Account management: write-level limits (200 req/min)
+app.use("/v1/account/*", authMiddleware, writeRateLimit);
+// Billing authenticated endpoints: write-level limits (200 req/min)
+app.use("/v1/billing/checkout", authMiddleware, writeRateLimit);
+app.use("/v1/billing/portal", authMiddleware, writeRateLimit);
+app.use("/v1/billing/usage", authMiddleware, readRateLimit);
+app.use("/v1/billing/plan", authMiddleware, readRateLimit);
+// Stripe webhook: IP-based, no auth (Stripe verifies via signature)
+app.use("/v1/billing/webhook", webhookRateLimit);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
@@ -113,6 +151,7 @@ app.route("/v1/analytics", analytics);
 app.route("/v1/suppressions", suppressions);
 app.route("/v1/api-keys", apiKeysRouter);
 app.route("/v1/account", account);
+app.route("/v1/billing", billing);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 
@@ -163,6 +202,19 @@ console.log(`  Port: ${port}`);
 console.log(`  Environment: ${process.env.NODE_ENV ?? "development"}`);
 console.log("=".repeat(60));
 
+// Initialize OpenTelemetry
+initTelemetry("emailed-api").catch((err) => {
+  console.warn("[api] OpenTelemetry init failed:", err);
+});
+
+// Initialize Meilisearch index on startup (non-blocking)
+initSearchIndex().catch((err) => {
+  console.warn("[api] Meilisearch init failed (search will be unavailable):", err);
+});
+
+// Start the webhook delivery worker (BullMQ consumer)
+startWebhookWorker();
+
 // ─── Graceful shutdown ──────────────────────────────────────────────────────
 
 let isShuttingDown = false;
@@ -179,9 +231,21 @@ async function shutdown(signal: string): Promise<void> {
   }, 15_000);
 
   try {
+    // Close the webhook delivery worker
+    await stopWebhookWorker();
+    console.log("[api] Webhook worker stopped");
+
     // Close the BullMQ send queue
     await closeSendQueue();
     console.log("[api] Send queue closed");
+
+    // Flush telemetry
+    await shutdownTelemetry();
+    console.log("[api] Telemetry shut down");
+
+    // Close rate-limit Redis connection
+    await closeRateLimitRedis();
+    console.log("[api] Rate-limit Redis closed");
 
     // Close the database connection pool
     await closeConnection();
