@@ -119,14 +119,16 @@ export class PostgresEmailStore implements EmailStore {
       messageId: email.messageId ?? `<${id}@inbound>`,
       fromAddress,
       fromName,
-      toAddresses: email.to.map((a) => ({
-        address: a.address,
-        name: a.name,
-      })),
-      ccAddresses: email.cc?.map((a) => ({
-        address: a.address,
-        name: a.name,
-      })) ?? null,
+      toAddresses: email.to.map((a) => {
+        const entry: { address: string; name?: string } = { address: a.address };
+        if (a.name !== undefined) entry.name = a.name;
+        return entry;
+      }),
+      ccAddresses: email.cc?.map((a) => {
+        const entry: { address: string; name?: string } = { address: a.address };
+        if (a.name !== undefined) entry.name = a.name;
+        return entry;
+      }) ?? null,
       subject: email.subject ?? "(no subject)",
       textBody: email.text ?? null,
       htmlBody: email.html ?? null,
