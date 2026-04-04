@@ -8,7 +8,7 @@ import type {
   ImapSession,
   ImapMailbox,
   ImapMessage,
-  ImapFetchItem,
+  ImapFetchDataItem,
   ImapSearchCriteria,
   ImapFlag,
   Result,
@@ -58,7 +58,7 @@ export interface AppendData {
 export async function handleFetch(
   session: ImapSession,
   sequenceSet: string,
-  items: ImapFetchItem[],
+  items: ImapFetchDataItem[],
   useUid: boolean,
   store: MessageStore,
 ): Promise<Result<FetchResponse[]>> {

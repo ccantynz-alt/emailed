@@ -278,7 +278,7 @@ function extractParts(parts: MimePart[]): ExtractedParts {
   for (const part of parts) {
     // Recurse into nested multipart
     if (part.parts && part.parts.length > 0) {
-      const nested = extractParts(part.parts);
+      const nested = extractParts(part.parts as MimePart[]);
       textBody ??= nested.textBody;
       htmlBody ??= nested.htmlBody;
       attachments.push(...nested.attachments);

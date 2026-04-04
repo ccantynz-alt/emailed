@@ -11,11 +11,11 @@
  *   GET    /v1/webhooks/:id/deliveries — list deliveries
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   createTestApp,
   jsonRequest,
-  mockDb,
+  mockQuery,
   DEFAULT_AUTH,
   TEST_ACCOUNT_ID,
 } from "./setup.js";
@@ -46,7 +46,6 @@ describe("POST /v1/webhooks", () => {
     expect(body.data.url).toBe("https://example.com/webhook");
     expect(body.data.events).toEqual(["delivered", "bounced"]);
     expect(body.data.active).toBe(true);
-    // Secret should be masked
     expect(body.data.secret).toContain("whsec_");
     expect(body.data).toHaveProperty("id");
     expect(body.data).toHaveProperty("createdAt");
@@ -112,7 +111,7 @@ describe("POST /v1/webhooks", () => {
 
 describe("GET /v1/webhooks", () => {
   it("should return empty list when no webhooks exist", async () => {
-    mockDb.orderBy.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks");
@@ -124,7 +123,7 @@ describe("GET /v1/webhooks", () => {
 
   it("should return list of webhooks", async () => {
     const now = new Date();
-    mockDb.orderBy.mockResolvedValueOnce([
+    mockQuery([
       {
         id: "wh_1",
         url: "https://example.com/webhook",
@@ -145,7 +144,6 @@ describe("GET /v1/webhooks", () => {
     expect(body.data).toHaveLength(1);
     expect(body.data[0].url).toBe("https://example.com/webhook");
     expect(body.data[0].events).toEqual(["delivered"]);
-    // Secret should be masked
     expect(body.data[0].secret).toBe("whsec_••••••••");
   });
 });
@@ -155,7 +153,7 @@ describe("GET /v1/webhooks", () => {
 describe("GET /v1/webhooks/:id", () => {
   it("should return a single webhook", async () => {
     const now = new Date();
-    mockDb.limit.mockResolvedValueOnce([
+    mockQuery([
       {
         id: "wh_1",
         url: "https://example.com/webhook",
@@ -178,7 +176,7 @@ describe("GET /v1/webhooks/:id", () => {
   });
 
   it("should return 404 for non-existent webhook", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/nonexistent");
@@ -194,10 +192,12 @@ describe("GET /v1/webhooks/:id", () => {
 describe("PATCH /v1/webhooks/:id", () => {
   it("should update webhook URL", async () => {
     const now = new Date();
-    // Ownership check
-    mockDb.limit.mockResolvedValueOnce([{ id: "wh_1" }]);
-    // Updated record
-    mockDb.limit.mockResolvedValueOnce([
+    // Query 1: ownership check (SELECT)
+    mockQuery([{ id: "wh_1" }]);
+    // Query 2: UPDATE
+    mockQuery(undefined);
+    // Query 3: refetch updated record (SELECT)
+    mockQuery([
       {
         id: "wh_1",
         url: "https://new-url.com/webhook",
@@ -223,8 +223,9 @@ describe("PATCH /v1/webhooks/:id", () => {
 
   it("should update webhook events", async () => {
     const now = new Date();
-    mockDb.limit.mockResolvedValueOnce([{ id: "wh_1" }]);
-    mockDb.limit.mockResolvedValueOnce([
+    mockQuery([{ id: "wh_1" }]); // SELECT existing
+    mockQuery(undefined); // UPDATE
+    mockQuery([
       {
         id: "wh_1",
         url: "https://example.com/webhook",
@@ -235,7 +236,7 @@ describe("PATCH /v1/webhooks/:id", () => {
         createdAt: now,
         updatedAt: now,
       },
-    ]);
+    ]); // SELECT updated
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/wh_1", {
@@ -250,8 +251,9 @@ describe("PATCH /v1/webhooks/:id", () => {
 
   it("should deactivate a webhook", async () => {
     const now = new Date();
-    mockDb.limit.mockResolvedValueOnce([{ id: "wh_1" }]);
-    mockDb.limit.mockResolvedValueOnce([
+    mockQuery([{ id: "wh_1" }]); // SELECT existing
+    mockQuery(undefined); // UPDATE
+    mockQuery([
       {
         id: "wh_1",
         url: "https://example.com/webhook",
@@ -262,7 +264,7 @@ describe("PATCH /v1/webhooks/:id", () => {
         createdAt: now,
         updatedAt: now,
       },
-    ]);
+    ]); // SELECT updated
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/wh_1", {
@@ -276,7 +278,7 @@ describe("PATCH /v1/webhooks/:id", () => {
   });
 
   it("should return 404 when updating non-existent webhook", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/nonexistent", {
@@ -292,7 +294,7 @@ describe("PATCH /v1/webhooks/:id", () => {
 
 describe("DELETE /v1/webhooks/:id", () => {
   it("should delete webhook and return success", async () => {
-    mockDb.limit.mockResolvedValueOnce([{ id: "wh_1" }]);
+    mockQuery([{ id: "wh_1" }]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/wh_1", {
@@ -306,7 +308,7 @@ describe("DELETE /v1/webhooks/:id", () => {
   });
 
   it("should return 404 when deleting non-existent webhook", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/nonexistent", {
@@ -322,7 +324,7 @@ describe("DELETE /v1/webhooks/:id", () => {
 describe("POST /v1/webhooks/:id/test", () => {
   it("should enqueue a test event", async () => {
     const now = new Date();
-    mockDb.limit.mockResolvedValueOnce([
+    mockQuery([
       {
         id: "wh_1",
         url: "https://example.com/webhook",
@@ -347,7 +349,7 @@ describe("POST /v1/webhooks/:id/test", () => {
   });
 
   it("should return 404 for non-existent webhook", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/nonexistent/test", {
@@ -363,10 +365,10 @@ describe("POST /v1/webhooks/:id/test", () => {
 describe("GET /v1/webhooks/:id/deliveries", () => {
   it("should return delivery attempts for a webhook", async () => {
     const now = new Date();
-    // Ownership check
-    mockDb.limit.mockResolvedValueOnce([{ id: "wh_1" }]);
-    // Delivery rows
-    mockDb.offset.mockResolvedValueOnce([
+    // Query 1: ownership check
+    mockQuery([{ id: "wh_1" }]);
+    // Query 2: delivery rows
+    mockQuery([
       {
         id: "del_1",
         eventId: "evt_1",
@@ -402,7 +404,7 @@ describe("GET /v1/webhooks/:id/deliveries", () => {
   });
 
   it("should return 404 when webhook does not belong to account", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/other_wh/deliveries");
@@ -411,8 +413,8 @@ describe("GET /v1/webhooks/:id/deliveries", () => {
   });
 
   it("should return empty list when no deliveries exist", async () => {
-    mockDb.limit.mockResolvedValueOnce([{ id: "wh_1" }]);
-    mockDb.offset.mockResolvedValueOnce([]);
+    mockQuery([{ id: "wh_1" }]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/webhooks/wh_1/deliveries");
@@ -444,7 +446,7 @@ describe("Webhooks CRUD lifecycle", () => {
     const webhookId = created.id;
 
     // 2. Read
-    mockDb.limit.mockResolvedValueOnce([
+    mockQuery([
       {
         id: webhookId,
         url: "https://example.com/hook",
@@ -462,20 +464,20 @@ describe("Webhooks CRUD lifecycle", () => {
     expect(retrieved.url).toBe("https://example.com/hook");
 
     // 3. Update
-    mockDb.limit
-      .mockResolvedValueOnce([{ id: webhookId }])
-      .mockResolvedValueOnce([
-        {
-          id: webhookId,
-          url: "https://example.com/hook-v2",
-          eventTypes: ["delivered", "bounced"],
-          secret: "whsec_test",
-          description: "Updated",
-          isActive: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]);
+    mockQuery([{ id: webhookId }]); // SELECT existing
+    mockQuery(undefined); // UPDATE
+    mockQuery([
+      {
+        id: webhookId,
+        url: "https://example.com/hook-v2",
+        eventTypes: ["delivered", "bounced"],
+        secret: "whsec_test",
+        description: "Updated",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]); // SELECT updated
 
     const updateRes = await jsonRequest(app, `/v1/webhooks/${webhookId}`, {
       method: "PATCH",
@@ -490,7 +492,7 @@ describe("Webhooks CRUD lifecycle", () => {
     expect(updated.url).toBe("https://example.com/hook-v2");
 
     // 4. Delete
-    mockDb.limit.mockResolvedValueOnce([{ id: webhookId }]);
+    mockQuery([{ id: webhookId }]);
     const deleteRes = await jsonRequest(app, `/v1/webhooks/${webhookId}`, {
       method: "DELETE",
     });

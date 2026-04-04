@@ -405,7 +405,7 @@ export class MailboxOperations {
         filtered[prop] = mailbox[prop as keyof Mailbox];
       }
     }
-    return filtered as Mailbox;
+    return filtered as unknown as Mailbox;
   }
 
   private validateCreate(data: Partial<Mailbox>, store: Map<JmapId, Mailbox>): JmapSetError | null {

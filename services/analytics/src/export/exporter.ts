@@ -309,7 +309,7 @@ export class DataExporter {
 
       for await (const batch of eventStream) {
         // Check if job was cancelled
-        if (job.status === "failed") break;
+        if ((job.status as string) === "failed") break;
 
         for (const event of batch) {
           let line: string;

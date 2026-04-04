@@ -298,7 +298,7 @@ export class EscalationRouter {
     };
 
     matchedRules.sort(
-      (a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency],
+      (a, b) => (urgencyOrder[a.urgency] ?? 2) - (urgencyOrder[b.urgency] ?? 2),
     );
 
     const primaryRule = matchedRules[0]!;

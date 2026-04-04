@@ -15,15 +15,15 @@
 // Server
 export { ImapServer } from "./server/imap-server.js";
 export {
-  parseImapCommand,
-  formatTaggedResponse,
-  formatUntaggedResponse,
+  parseCommand,
+  formatTagged,
+  formatUntagged as formatUntaggedResponse,
   formatContinuation,
   buildCapabilityString,
 } from "./server/commands.js";
 
 // Handlers
-export { handleLogin, handleAuthenticate, AuthRateLimiter } from "./handlers/auth.js";
+export { handleLogin, handleAuthenticate, isRateLimited, recordFailedAttempt, clearRateLimit } from "./handlers/auth.js";
 export {
   handleSelect,
   handleExamine,
@@ -64,6 +64,7 @@ export type {
   ImapAddress,
   ImapBodyStructure,
   ImapFetchItem,
+  ImapFetchDataItem,
   ImapSearchCriteria,
   ImapFlag,
   Result,

@@ -225,6 +225,10 @@ export interface ImapMessage {
   envelope: ImapEnvelope;
   /** MIME body structure per RFC 9051 Section 7.5.2. */
   bodyStructure: ImapBodyStructure;
+  /** Full message body (RFC822 content). */
+  body?: string;
+  /** Raw headers text. */
+  rawHeaders?: string;
 }
 
 /**
@@ -319,6 +323,17 @@ export interface ImapFetchItem {
   rfc822Header: boolean;
   /** Fetch just the text (RFC822.TEXT). */
   rfc822Text: boolean;
+}
+
+/**
+ * Individual fetch data item with a type discriminator.
+ * Used by handlers to iterate over requested items.
+ */
+export interface ImapFetchDataItem {
+  /** The type of data to fetch. */
+  type: string;
+  /** Body section specifier (for BODY/BODY.PEEK). */
+  section?: string;
 }
 
 /**
@@ -466,6 +481,9 @@ export const SYSTEM_FLAGS = [
 ] as const;
 
 export type SystemFlag = (typeof SYSTEM_FLAGS)[number];
+
+/** Flag type used in message operations — either a system flag or a custom keyword. */
+export type ImapFlag = string;
 
 // ─── Default Capabilities ───────────────────────────────────────────────────
 

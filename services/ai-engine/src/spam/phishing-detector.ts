@@ -506,7 +506,7 @@ export class PhishingDetector {
         : extractUrlsFromText(textBody);
 
       const urlAnalysis: UrlAnalysisResult[] = rawUrls.map((u) =>
-        analyzeUrl(u.url, 'displayText' in u ? u.displayText : undefined),
+        analyzeUrl(u.url, 'displayText' in u ? (u.displayText as string | undefined) : undefined),
       );
 
       // 2. Domain spoofing

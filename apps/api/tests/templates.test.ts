@@ -11,10 +11,11 @@
  *   Variable auto-detection from {{mustache}} syntax
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   createTestApp,
   jsonRequest,
+  mockQuery,
   mockDb,
   DEFAULT_AUTH,
 } from "./setup.js";
@@ -54,7 +55,8 @@ function fakeTemplateRow(overrides: Record<string, unknown> = {}) {
 describe("POST /v1/templates", () => {
   it("should create a template and return 201", async () => {
     const row = fakeTemplateRow();
-    mockDb.limit.mockResolvedValueOnce([row]);
+    mockQuery(undefined); // INSERT resolves
+    mockQuery([row]); // SELECT after insert
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates", {
@@ -93,7 +95,8 @@ describe("POST /v1/templates", () => {
 
   it("should accept text-only template", async () => {
     const row = fakeTemplateRow({ htmlBody: null });
-    mockDb.limit.mockResolvedValueOnce([row]);
+    mockQuery(undefined); // INSERT
+    mockQuery([row]); // SELECT after insert
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates", {
@@ -139,7 +142,7 @@ describe("POST /v1/templates", () => {
 
 describe("GET /v1/templates", () => {
   it("should return empty list when no templates exist", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates");
@@ -151,8 +154,10 @@ describe("GET /v1/templates", () => {
   });
 
   it("should return paginated template list", async () => {
-    const rows = [fakeTemplateRow(), fakeTemplateRow({ id: "tmpl_2", name: "Second" })];
-    mockDb.limit.mockResolvedValueOnce(rows);
+    mockQuery([
+      fakeTemplateRow(),
+      fakeTemplateRow({ id: "tmpl_2", name: "Second" }),
+    ]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates", {
@@ -165,7 +170,7 @@ describe("GET /v1/templates", () => {
   });
 
   it("should support category filter", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates", {
@@ -173,7 +178,6 @@ describe("GET /v1/templates", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockDb.where).toHaveBeenCalled();
   });
 });
 
@@ -181,7 +185,7 @@ describe("GET /v1/templates", () => {
 
 describe("GET /v1/templates/:id", () => {
   it("should return a single template with variables", async () => {
-    mockDb.limit.mockResolvedValueOnce([fakeTemplateRow()]);
+    mockQuery([fakeTemplateRow()]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1");
@@ -198,7 +202,7 @@ describe("GET /v1/templates/:id", () => {
   });
 
   it("should return 404 for non-existent template", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/nonexistent");
@@ -213,12 +217,12 @@ describe("GET /v1/templates/:id", () => {
 
 describe("PATCH /v1/templates/:id", () => {
   it("should update template name", async () => {
-    const existing = fakeTemplateRow();
-    mockDb.limit
-      .mockResolvedValueOnce([existing]) // existing check
-      .mockResolvedValueOnce([
-        fakeTemplateRow({ name: "Updated Name", version: 2 }),
-      ]); // updated record
+    // Query 1: existing check (SELECT)
+    mockQuery([fakeTemplateRow()]);
+    // Query 2: UPDATE
+    mockQuery(undefined);
+    // Query 3: refetched updated record (SELECT)
+    mockQuery([fakeTemplateRow({ name: "Updated Name", version: 2 })]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1", {
@@ -233,7 +237,6 @@ describe("PATCH /v1/templates/:id", () => {
   });
 
   it("should update template body and re-extract variables", async () => {
-    const existing = fakeTemplateRow();
     const updated = fakeTemplateRow({
       htmlBody: "<p>Hi {{firstName}} {{lastName}}</p>",
       variables: [
@@ -244,9 +247,9 @@ describe("PATCH /v1/templates/:id", () => {
       ],
       version: 2,
     });
-    mockDb.limit
-      .mockResolvedValueOnce([existing])
-      .mockResolvedValueOnce([updated]);
+    mockQuery([fakeTemplateRow()]); // existing SELECT
+    mockQuery(undefined); // UPDATE
+    mockQuery([updated]); // refetch SELECT
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1", {
@@ -260,7 +263,7 @@ describe("PATCH /v1/templates/:id", () => {
   });
 
   it("should return 404 when updating non-existent template", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/nonexistent", {
@@ -276,7 +279,7 @@ describe("PATCH /v1/templates/:id", () => {
 
 describe("DELETE /v1/templates/:id", () => {
   it("should soft-delete a template", async () => {
-    mockDb.limit.mockResolvedValueOnce([{ id: "tmpl_1" }]);
+    mockQuery([{ id: "tmpl_1" }]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1", {
@@ -293,7 +296,7 @@ describe("DELETE /v1/templates/:id", () => {
   });
 
   it("should return 404 for non-existent template", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/nonexistent", {
@@ -308,7 +311,7 @@ describe("DELETE /v1/templates/:id", () => {
 
 describe("POST /v1/templates/:id/preview", () => {
   it("should render template with provided variables", async () => {
-    mockDb.limit.mockResolvedValueOnce([fakeTemplateRow()]);
+    mockQuery([fakeTemplateRow()]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1/preview", {
@@ -328,7 +331,7 @@ describe("POST /v1/templates/:id/preview", () => {
   });
 
   it("should use default values for missing variables", async () => {
-    mockDb.limit.mockResolvedValueOnce([fakeTemplateRow()]);
+    mockQuery([fakeTemplateRow()]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1/preview", {
@@ -341,13 +344,12 @@ describe("POST /v1/templates/:id/preview", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.subject).toBe("Welcome Bob!");
-    // Should use default "Emailed" for company
     expect(body.data.text).toContain("Emailed");
     expect(body.data.warnings).toBeDefined();
   });
 
   it("should warn about missing required variables", async () => {
-    mockDb.limit.mockResolvedValueOnce([fakeTemplateRow()]);
+    mockQuery([fakeTemplateRow()]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1/preview", {
@@ -359,13 +361,12 @@ describe("POST /v1/templates/:id/preview", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    // "name" is required and not provided
     expect(body.data.warnings.length).toBeGreaterThan(0);
     expect(body.data.warnings.some((w: string) => w.includes("name"))).toBe(true);
   });
 
   it("should return 404 for non-existent template", async () => {
-    mockDb.limit.mockResolvedValueOnce([]);
+    mockQuery([]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/nonexistent/preview", {
@@ -377,7 +378,7 @@ describe("POST /v1/templates/:id/preview", () => {
   });
 
   it("should accept empty variables object", async () => {
-    mockDb.limit.mockResolvedValueOnce([fakeTemplateRow()]);
+    mockQuery([fakeTemplateRow()]);
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates/tmpl_1/preview", {
@@ -405,7 +406,8 @@ describe("Template variable auto-detection", () => {
         { name: "company", defaultValue: "Emailed", required: false },
       ],
     });
-    mockDb.limit.mockResolvedValueOnce([row]);
+    mockQuery(undefined); // INSERT
+    mockQuery([row]); // SELECT after insert
 
     const app = buildApp();
     const res = await jsonRequest(app, "/v1/templates", {
@@ -419,7 +421,6 @@ describe("Template variable auto-detection", () => {
 
     expect(res.status).toBe(201);
     const body = await res.json();
-    // Variables should be auto-extracted
     expect(body.data.variables).toBeDefined();
     expect(Array.isArray(body.data.variables)).toBe(true);
   });

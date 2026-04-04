@@ -16,7 +16,25 @@ import type { Result } from "@emailed/shared";
 
 import type { HashAlgorithm, HmacAlgorithm, Argon2Params, HashedPassword } from "./types.js";
 
-const scryptAsync = promisify(scrypt);
+function scryptAsync(
+  password: string | Buffer,
+  salt: string | Buffer,
+  keylen: number,
+  options?: Record<string, unknown>,
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const args = options
+      ? [password, salt, keylen, options, (err: Error | null, derivedKey: Buffer) => {
+          if (err) reject(err);
+          else resolve(derivedKey);
+        }] as const
+      : [password, salt, keylen, (err: Error | null, derivedKey: Buffer) => {
+          if (err) reject(err);
+          else resolve(derivedKey);
+        }] as const;
+    (scrypt as Function)(...args);
+  });
+}
 
 /** Default Argon2 parameters (used as scrypt stand-in; see note below). */
 const DEFAULT_ARGON2_PARAMS: Argon2Params = {
