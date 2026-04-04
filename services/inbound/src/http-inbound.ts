@@ -26,7 +26,7 @@ interface HttpInboundConfig {
   /** Shared email store instance */
   store: EmailStore;
   /** Optional shared secret for authenticating webhook callers */
-  webhookSecret?: string;
+  webhookSecret?: string | undefined;
 }
 
 /**
@@ -199,7 +199,7 @@ export function createHttpInbound(config: HttpInboundConfig): Hono {
       return c.json({ error: "Request must contain a 'messages' array" }, 400);
     }
 
-    const results: Array<{ messageId?: string; status: string; error?: string }> = [];
+    const results: Array<{ messageId?: string | undefined; status: string; error?: string | undefined }> = [];
 
     for (const msg of body.messages) {
       try {
@@ -221,7 +221,7 @@ export function createHttpInbound(config: HttpInboundConfig): Hono {
 
         const verdict = await pipeline.process(envelope, parsed, senderIp);
         if (verdict.action === "reject") {
-          results.push({ messageId: parsed.messageId, status: "rejected", error: verdict.reason });
+          results.push({ messageId: parsed.messageId, status: "rejected", error: verdict.reason ?? "Rejected" });
           continue;
         }
 

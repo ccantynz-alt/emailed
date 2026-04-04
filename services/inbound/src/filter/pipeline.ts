@@ -65,7 +65,7 @@ async function authenticationCheck(ctx: FilterContext): Promise<FilterContext> {
   const dkimSignature = email.headers.find((h) => h.key === "dkim-signature");
   let dkimDomain: string | undefined;
   let dkimSelector: string | undefined;
-  let dkimStatus: AuthenticationResult["result"] = "none";
+  let dkimStatus: AuthenticationResult["result"] = "none" as AuthenticationResult["result"];
 
   if (dkimSignature) {
     const domainMatch = dkimSignature.value.match(/d=([^\s;]+)/);
@@ -74,7 +74,7 @@ async function authenticationCheck(ctx: FilterContext): Promise<FilterContext> {
     dkimSelector = selectorMatch?.[1];
     // TODO: full DKIM cryptographic verification (DNS key fetch + signature check)
     // For now, mark as neutral since we can't verify the signature without a verifier
-    dkimStatus = "neutral";
+    dkimStatus = "neutral" as AuthenticationResult["result"];
   }
 
   ctx.verdict.authResults.push({
@@ -271,7 +271,7 @@ async function phishingFilter(ctx: FilterContext): Promise<FilterContext> {
 
   ctx.verdict.score = score;
 
-  if (score >= 8 && ctx.verdict.action !== "reject") {
+  if (score >= 8) {
     ctx.verdict.action = "quarantine";
     ctx.verdict.reason = `Phishing indicators detected (score: ${score})`;
   }

@@ -39,11 +39,11 @@ async function main() {
 
   const client = postgres(connectionString, {
     max: 1,
-    ssl: sslConfig ? "require" : undefined,
     // Disable prepared statements for Neon's serverless driver compatibility.
     // Neon's connection pooler (pgbouncer in transaction mode) does not support
     // prepared statements.
     prepare: false,
+    ...(sslConfig ? { ssl: "require" as const } : {}),
   });
 
   const db = drizzle(client);

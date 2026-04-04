@@ -1,231 +1,264 @@
+"use client";
+
+import { useCallback } from "react";
 import { Box, Text } from "@emailed/ui";
 import { MetricCard } from "../../components/metric-card";
 import { StatusBadge } from "../../components/status-badge";
-import { ChartContainer } from "../../components/chart-container";
 import { DataTable } from "../../components/data-table";
+import { adminApi } from "../../lib/api";
+import type { AdminStats, AdminDomain } from "../../lib/api";
+import { useApi } from "../../lib/use-api";
 
-interface IpReputation {
-  readonly id: string;
-  readonly ip: string;
-  readonly score: number;
-  readonly warmupProgress: number;
-  readonly status: "active" | "warming" | "cooldown" | "blocked";
-  readonly dailyVolume: number;
-  readonly maxVolume: number;
-  readonly blocklists: number;
-  readonly lastChecked: string;
-}
-
-const ipReputations: readonly IpReputation[] = [
-  { id: "1", ip: "198.51.100.10", score: 98, warmupProgress: 100, status: "active", dailyVolume: 245000, maxVolume: 300000, blocklists: 0, lastChecked: "2 min ago" },
-  { id: "2", ip: "198.51.100.11", score: 97, warmupProgress: 100, status: "active", dailyVolume: 198000, maxVolume: 300000, blocklists: 0, lastChecked: "2 min ago" },
-  { id: "3", ip: "198.51.100.12", score: 96, warmupProgress: 100, status: "active", dailyVolume: 212000, maxVolume: 300000, blocklists: 0, lastChecked: "2 min ago" },
-  { id: "4", ip: "198.51.100.13", score: 95, warmupProgress: 100, status: "active", dailyVolume: 187000, maxVolume: 300000, blocklists: 0, lastChecked: "2 min ago" },
-  { id: "5", ip: "198.51.100.14", score: 92, warmupProgress: 100, status: "active", dailyVolume: 156000, maxVolume: 250000, blocklists: 0, lastChecked: "2 min ago" },
-  { id: "6", ip: "203.0.113.40", score: 78, warmupProgress: 65, status: "warming", dailyVolume: 42000, maxVolume: 150000, blocklists: 0, lastChecked: "3 min ago" },
-  { id: "7", ip: "203.0.113.41", score: 72, warmupProgress: 55, status: "warming", dailyVolume: 35000, maxVolume: 150000, blocklists: 0, lastChecked: "3 min ago" },
-  { id: "8", ip: "203.0.113.42", score: 85, warmupProgress: 80, status: "warming", dailyVolume: 68000, maxVolume: 150000, blocklists: 0, lastChecked: "3 min ago" },
-  { id: "9", ip: "192.0.2.50", score: 45, warmupProgress: 100, status: "cooldown", dailyVolume: 0, maxVolume: 0, blocklists: 2, lastChecked: "1 min ago" },
-] as const;
-
-const blocklistAlerts = [
-  { id: "1", ip: "192.0.2.50", list: "Spamhaus CBL", listedSince: "2026-03-30", status: "active" as const, remediationStatus: "In progress" },
-  { id: "2", ip: "192.0.2.50", list: "Barracuda BRBL", listedSince: "2026-04-01", status: "active" as const, remediationStatus: "Delisting requested" },
-  { id: "3", ip: "198.51.100.14", list: "Spamhaus CBL", listedSince: "2026-03-25", status: "resolved" as const, remediationStatus: "Cleared 2026-04-02" },
-] as const;
-
-const complianceMetrics = [
-  { label: "CAN-SPAM Compliance", value: "99.98%", status: "healthy" as const },
-  { label: "GDPR Consent Rate", value: "99.7%", status: "healthy" as const },
-  { label: "CASL Compliance", value: "99.9%", status: "healthy" as const },
-  { label: "Unsubscribe Honor Rate", value: "100%", status: "healthy" as const },
-  { label: "FBL Processing", value: "< 2s avg", status: "healthy" as const },
-  { label: "Abuse Complaints", value: "0.003%", status: "healthy" as const },
-] as const;
-
-function formatVolume(n: number): string {
+function formatNumber(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return n.toString();
 }
 
-function WarmupProgressBar({ progress }: { readonly progress: number }) {
-  const color = progress === 100 ? "bg-status-success" : progress >= 50 ? "bg-status-warning" : "bg-brand-500";
+function formatRate(rate: number): string {
+  return `${(rate * 100).toFixed(2)}%`;
+}
+
+function DomainHealthBar({ domain }: { readonly domain: AdminDomain }) {
+  const checks = [domain.spfVerified, domain.dkimVerified, domain.dmarcVerified, domain.returnPathVerified];
+  const passed = checks.filter(Boolean).length;
+  const pct = (passed / checks.length) * 100;
+  const color = pct === 100 ? "bg-status-success" : pct >= 50 ? "bg-status-warning" : "bg-status-error";
+
   return (
     <Box className="flex items-center gap-2">
-      <Box className="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={`Warmup progress: ${progress}%`}>
-        <Box className={`h-full rounded-full ${color} transition-all`} style={{ width: `${progress}%` }} />
+      <Box className="flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden w-20" role="progressbar" aria-valuenow={passed} aria-valuemin={0} aria-valuemax={checks.length} aria-label={`${passed} of ${checks.length} checks passing`}>
+        <Box className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </Box>
-      <Text variant="caption" className="text-content-secondary font-mono w-10 text-right">{progress}%</Text>
+      <Text variant="caption" className="text-content-secondary font-mono w-8 text-right">{passed}/{checks.length}</Text>
     </Box>
   );
 }
 
-WarmupProgressBar.displayName = "WarmupProgressBar";
+DomainHealthBar.displayName = "DomainHealthBar";
 
-function ScoreGauge({ score }: { readonly score: number }) {
-  const color = score >= 90 ? "text-status-success" : score >= 70 ? "text-status-warning" : "text-status-error";
-  return (
-    <Text variant="body-sm" className={`font-mono font-bold ${color}`}>{score}</Text>
-  );
-}
-
-ScoreGauge.displayName = "ScoreGauge";
-
-const ipColumns = [
+const domainColumns = [
   {
-    key: "ip",
-    header: "IP Address",
+    key: "domain",
+    header: "Domain",
     sortable: true,
-    sortValue: (row: IpReputation) => row.ip,
-    render: (row: IpReputation) => (
-      <Text variant="body-sm" className="text-content font-mono">{row.ip}</Text>
+    sortValue: (row: AdminDomain) => row.domain,
+    render: (row: AdminDomain) => (
+      <Text variant="body-sm" className="text-content font-medium">{row.domain}</Text>
     ),
-  },
-  {
-    key: "score",
-    header: "Score",
-    sortable: true,
-    sortValue: (row: IpReputation) => row.score,
-    render: (row: IpReputation) => <ScoreGauge score={row.score} />,
   },
   {
     key: "status",
     header: "Status",
     sortable: true,
-    sortValue: (row: IpReputation) => row.status,
-    render: (row: IpReputation) => {
-      const map = {
-        active: { status: "healthy" as const, label: "Active" },
-        warming: { status: "warning" as const, label: "Warming" },
-        cooldown: { status: "critical" as const, label: "Cooldown" },
-        blocked: { status: "critical" as const, label: "Blocked" },
-      } as const;
-      const config = map[row.status];
+    sortValue: (row: AdminDomain) => row.status,
+    render: (row: AdminDomain) => {
+      const map: Record<string, { status: "healthy" | "warning" | "critical" | "unknown"; label: string }> = {
+        verified: { status: "healthy", label: "Verified" },
+        pending: { status: "warning", label: "Pending" },
+        failed: { status: "critical", label: "Failed" },
+      };
+      const config = map[row.status] ?? { status: "unknown" as const, label: row.status };
       return <StatusBadge status={config.status} label={config.label} />;
     },
   },
   {
-    key: "warmup",
-    header: "Warmup",
+    key: "health",
+    header: "Auth Health",
     width: "w-40",
-    render: (row: IpReputation) => <WarmupProgressBar progress={row.warmupProgress} />,
+    render: (row: AdminDomain) => <DomainHealthBar domain={row} />,
   },
   {
-    key: "volume",
-    header: "Daily Volume",
+    key: "spf",
+    header: "SPF",
+    render: (row: AdminDomain) => (
+      <Text variant="caption" className={`font-mono font-medium ${row.spfVerified ? "text-status-success" : "text-status-error"}`}>
+        {row.spfVerified ? "Pass" : "Fail"}
+      </Text>
+    ),
+  },
+  {
+    key: "dkim",
+    header: "DKIM",
+    render: (row: AdminDomain) => (
+      <Text variant="caption" className={`font-mono font-medium ${row.dkimVerified ? "text-status-success" : "text-status-error"}`}>
+        {row.dkimVerified ? "Pass" : "Fail"}
+      </Text>
+    ),
+  },
+  {
+    key: "dmarc",
+    header: "DMARC",
+    render: (row: AdminDomain) => (
+      <Text variant="caption" className={`font-mono font-medium ${row.dmarcVerified ? "text-status-success" : "text-status-error"}`}>
+        {row.dmarcVerified ? "Pass" : "Fail"}
+      </Text>
+    ),
+  },
+  {
+    key: "returnPath",
+    header: "Return Path",
+    render: (row: AdminDomain) => (
+      <Text variant="caption" className={`font-mono font-medium ${row.returnPathVerified ? "text-status-success" : "text-status-error"}`}>
+        {row.returnPathVerified ? "Pass" : "Fail"}
+      </Text>
+    ),
+  },
+  {
+    key: "sent24h",
+    header: "Sent (24h)",
     sortable: true,
-    sortValue: (row: IpReputation) => row.dailyVolume,
-    render: (row: IpReputation) => (
+    sortValue: (row: AdminDomain) => row.messagesSent24h,
+    render: (row: AdminDomain) => (
       <Text variant="body-sm" className="text-content-secondary font-mono">
-        {row.dailyVolume > 0 ? `${formatVolume(row.dailyVolume)} / ${formatVolume(row.maxVolume)}` : "--"}
+        {row.messagesSent24h > 0 ? formatNumber(row.messagesSent24h) : "--"}
       </Text>
-    ),
-  },
-  {
-    key: "blocklists",
-    header: "Blocklists",
-    sortable: true,
-    sortValue: (row: IpReputation) => row.blocklists,
-    render: (row: IpReputation) => (
-      <Text variant="body-sm" className={`font-mono ${row.blocklists > 0 ? "text-status-error font-medium" : "text-content-tertiary"}`}>
-        {row.blocklists}
-      </Text>
-    ),
-  },
-  {
-    key: "lastChecked",
-    header: "Last Check",
-    render: (row: IpReputation) => (
-      <Text variant="caption" className="text-content-tertiary">{row.lastChecked}</Text>
     ),
   },
 ] as const;
 
 export default function ReputationPage() {
-  const activeIps = ipReputations.filter((ip) => ip.status === "active").length;
-  const warmingIps = ipReputations.filter((ip) => ip.status === "warming").length;
-  const avgScore = Math.round(ipReputations.reduce((sum, ip) => sum + ip.score, 0) / ipReputations.length);
-  const activeBlocklistings = blocklistAlerts.filter((a) => a.status === "active").length;
+  const statsFetcher = useCallback(() => adminApi.getStats(), []);
+  const domainsFetcher = useCallback(() => adminApi.listDomains(), []);
+
+  const { data: stats, loading: statsLoading, error: statsError } = useApi<AdminStats>(statsFetcher);
+  const { data: domains, loading: domainsLoading } = useApi<AdminDomain[]>(domainsFetcher);
+
+  const domainList = domains ?? [];
+  const verifiedDomains = domainList.filter((d) => d.status === "verified");
+  const fullyAuthDomains = domainList.filter(
+    (d) => d.spfVerified && d.dkimVerified && d.dmarcVerified && d.returnPathVerified,
+  );
+  const avgAuthScore = domainList.length > 0
+    ? Math.round(
+        domainList.reduce((sum, d) => {
+          const checks = [d.spfVerified, d.dkimVerified, d.dmarcVerified, d.returnPathVerified];
+          return sum + checks.filter(Boolean).length;
+        }, 0) / (domainList.length * 4) * 100
+      )
+    : 0;
 
   return (
     <Box className="flex flex-col gap-8">
       <Box>
         <Text variant="heading-lg" className="text-content font-bold">Reputation Management</Text>
         <Text variant="body-sm" className="text-content-secondary mt-1">
-          IP and domain reputation scores, warmup progress, blocklist monitoring, and compliance
+          Domain authentication health, deliverability metrics, and compliance overview
         </Text>
       </Box>
 
+      {statsError && (
+        <Box className="rounded-xl bg-status-error/10 border border-status-error/30 p-4">
+          <Text variant="body-sm" className="text-status-error">
+            Failed to load reputation data: {statsError}
+          </Text>
+        </Box>
+      )}
+
       <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" role="region" aria-label="Reputation summary">
-        <MetricCard label="Average IP Score" value={avgScore.toString()} trend={{ direction: "up", value: "2.1" }} sparklineData={[82, 84, 85, 86, 87, 87, 88, 88, avgScore]} />
-        <MetricCard label="Active IPs" value={activeIps.toString()} description={`${warmingIps} warming up`} />
-        <MetricCard label="Active Blocklistings" value={activeBlocklistings.toString()} trend={{ direction: "down", value: "1" }} />
-        <MetricCard label="Compliance Score" value="99.9%" trend={{ direction: "neutral", value: "stable" }} />
+        <MetricCard
+          label="Auth Score"
+          value={domainsLoading ? "..." : `${avgAuthScore}%`}
+          description={`${fullyAuthDomains.length} fully authenticated domains`}
+        />
+        <MetricCard
+          label="Verified Domains"
+          value={domainsLoading ? "..." : verifiedDomains.length.toString()}
+          description={`${domainList.length} total`}
+        />
+        <MetricCard
+          label="Delivery Rate"
+          value={statsLoading ? "..." : (stats ? `${(stats.totals.deliveryRate * 100).toFixed(1)}%` : "--")}
+        />
+        <MetricCard
+          label="Bounce Rate"
+          value={statsLoading ? "..." : (stats ? formatRate(stats.totals.bounceRate) : "--")}
+        />
       </Box>
 
       <Box>
-        <Text variant="heading-md" className="text-content font-semibold mb-4">IP Reputation</Text>
-        <DataTable
-          columns={ipColumns}
-          data={ipReputations}
-          rowKey={(row) => row.id}
-          pageSize={10}
-          filterPlaceholder="Search by IP..."
-          filterFn={(row, query) => row.ip.includes(query)}
-          emptyMessage="No IPs found"
-        />
+        <Text variant="heading-md" className="text-content font-semibold mb-4">Domain Authentication Status</Text>
+        {domainsLoading ? (
+          <Box className="rounded-xl bg-surface-secondary border border-border p-8 text-center">
+            <Text variant="body-sm" className="text-content-tertiary">Loading domains...</Text>
+          </Box>
+        ) : (
+          <DataTable
+            columns={domainColumns}
+            data={domainList}
+            rowKey={(row) => row.id}
+            pageSize={10}
+            filterPlaceholder="Search by domain..."
+            filterFn={(row, query) => row.domain.toLowerCase().includes(query.toLowerCase())}
+            emptyMessage="No domains found"
+          />
+        )}
       </Box>
 
       <Box className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Box className="rounded-xl bg-surface-secondary border border-border p-5">
-          <Text variant="heading-sm" className="text-content font-semibold mb-4">Blocklist Alerts</Text>
-          <Box className="flex flex-col gap-3" role="list" aria-label="Blocklist alerts">
-            {blocklistAlerts.map((alert) => (
-              <Box key={alert.id} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0" role="listitem">
-                <Box className="flex flex-col gap-0.5">
-                  <Box className="flex items-center gap-2">
-                    <Text variant="body-sm" className="text-content font-mono">{alert.ip}</Text>
-                    <StatusBadge status={alert.status === "active" ? "critical" : "healthy"} label={alert.status === "active" ? "Listed" : "Cleared"} />
+          <Text variant="heading-sm" className="text-content font-semibold mb-4">Deliverability Metrics</Text>
+          {statsLoading ? (
+            <Box className="flex flex-col gap-3">
+              {Array.from({ length: 6 }, (_, i) => (
+                <Box key={i} className="h-8 bg-surface-tertiary/50 rounded animate-pulse" />
+              ))}
+            </Box>
+          ) : (
+            <Box className="flex flex-col gap-3" role="list" aria-label="Deliverability metrics">
+              {[
+                { label: "Delivery Rate", value: stats ? `${(stats.totals.deliveryRate * 100).toFixed(1)}%` : "--", status: "healthy" as const },
+                { label: "Bounce Rate", value: stats ? formatRate(stats.totals.bounceRate) : "--", status: (stats && stats.totals.bounceRate > 0.02) ? "critical" as const : "healthy" as const },
+                { label: "Open Rate", value: stats ? `${(stats.totals.openRate * 100).toFixed(1)}%` : "--", status: "healthy" as const },
+                { label: "Click Rate", value: stats ? `${(stats.totals.clickRate * 100).toFixed(1)}%` : "--", status: "healthy" as const },
+                { label: "Complaint Rate", value: stats && stats.totals.sent > 0 ? formatRate(stats.totals.complained / stats.totals.sent) : "--", status: "healthy" as const },
+              ].map((metric) => (
+                <Box key={metric.label} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0" role="listitem">
+                  <Box className="flex items-center gap-3">
+                    <StatusBadge status={metric.status} />
+                    <Text variant="body-sm" className="text-content">{metric.label}</Text>
                   </Box>
-                  <Text variant="caption" className="text-content-secondary">
-                    {alert.list} - since {alert.listedSince}
-                  </Text>
+                  <Text variant="body-sm" className="text-content font-mono font-medium">{metric.value}</Text>
                 </Box>
-                <Text variant="caption" className="text-content-tertiary">{alert.remediationStatus}</Text>
-              </Box>
-            ))}
-          </Box>
+              ))}
+            </Box>
+          )}
         </Box>
 
         <Box className="rounded-xl bg-surface-secondary border border-border p-5">
-          <Text variant="heading-sm" className="text-content font-semibold mb-4">Compliance Metrics</Text>
-          <Box className="flex flex-col gap-3" role="list" aria-label="Compliance metrics">
-            {complianceMetrics.map((metric) => (
-              <Box key={metric.label} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0" role="listitem">
-                <Box className="flex items-center gap-3">
-                  <StatusBadge status={metric.status} />
-                  <Text variant="body-sm" className="text-content">{metric.label}</Text>
-                </Box>
-                <Text variant="body-sm" className="text-content font-mono font-medium">{metric.value}</Text>
-              </Box>
-            ))}
-          </Box>
+          <Text variant="heading-sm" className="text-content font-semibold mb-4">Authentication Coverage</Text>
+          {domainsLoading ? (
+            <Box className="flex flex-col gap-3">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Box key={i} className="h-8 bg-surface-tertiary/50 rounded animate-pulse" />
+              ))}
+            </Box>
+          ) : (
+            <Box className="flex flex-col gap-4" role="list" aria-label="Authentication coverage">
+              {[
+                { label: "SPF", count: domainList.filter((d) => d.spfVerified).length },
+                { label: "DKIM", count: domainList.filter((d) => d.dkimVerified).length },
+                { label: "DMARC", count: domainList.filter((d) => d.dmarcVerified).length },
+                { label: "Return Path", count: domainList.filter((d) => d.returnPathVerified).length },
+              ].map((item) => {
+                const pct = domainList.length > 0 ? (item.count / domainList.length) * 100 : 0;
+                const color = pct === 100 ? "bg-status-success" : pct >= 50 ? "bg-status-warning" : "bg-status-error";
+                return (
+                  <Box key={item.label} role="listitem">
+                    <Box className="flex items-center justify-between mb-1">
+                      <Text variant="body-sm" className="text-content">{item.label}</Text>
+                      <Text variant="body-sm" className="text-content-secondary font-mono">{item.count}/{domainList.length}</Text>
+                    </Box>
+                    <Box className="h-2 bg-surface-tertiary rounded-full overflow-hidden">
+                      <Box className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
         </Box>
       </Box>
-
-      <ChartContainer title="Reputation Score Trend (30 days)" description="Average IP reputation score across all active IPs">
-        <Box className="h-48 flex items-end gap-1" role="img" aria-label="Reputation score trend chart">
-          {[85, 86, 86, 87, 87, 87, 88, 88, 88, 89, 89, 89, 89, 90, 90, 90, 91, 91, 91, 91, 92, 92, 92, 92, 93, 93, 93, avgScore, avgScore, avgScore].map((score, i) => (
-            <Box
-              key={i}
-              className="flex-1 bg-brand-500/60 hover:bg-brand-500/80 rounded-t transition-colors"
-              style={{ height: `${(score - 80) * 8}%` }}
-              title={`Day ${i + 1}: ${score}`}
-            />
-          ))}
-        </Box>
-      </ChartContainer>
     </Box>
   );
 }

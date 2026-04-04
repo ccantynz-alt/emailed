@@ -41,8 +41,8 @@ async function main() {
 
   const client = postgres(connectionString, {
     max: 1,
-    ssl: sslConfig ? "require" : undefined,
     prepare: false,
+    ...(sslConfig ? { ssl: "require" as const } : {}),
   });
 
   const db = drizzle(client);
