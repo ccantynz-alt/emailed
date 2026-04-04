@@ -10,15 +10,19 @@ data:
   # ─── Service URLs (internal cluster DNS) ───────────────────────────────────
   API_INTERNAL_URL: "http://api.emailed.svc.cluster.local"
   CLICKHOUSE_URL: "http://clickhouse.emailed.svc.cluster.local:8123"
+  CLICKHOUSE_USER: "emailed"
   MEILI_URL: "http://meilisearch.emailed.svc.cluster.local:7700"
   JMAP_URL: "http://jmap.emailed.svc.cluster.local:8080"
   REPUTATION_URL: "http://reputation.emailed.svc.cluster.local"
   INBOUND_URL: "http://inbound.emailed.svc.cluster.local:8025"
+  MTA_URL: "http://mta.emailed.svc.cluster.local"
   S3_ENDPOINT: "https://s3.amazonaws.com"
 
   # ─── Public URLs ───────────────────────────────────────────────────────────
   WEB_URL: "https://app.emailed.dev"
   API_URL: "https://api.emailed.dev"
+  ADMIN_URL: "https://admin.emailed.dev"
+  JMAP_PUBLIC_URL: "https://jmap.emailed.dev"
 
   # ─── S3 / Object Storage ──────────────────────────────────────────────────
   S3_BUCKET: "emailed-attachments"
@@ -27,6 +31,8 @@ data:
   # ─── MTA Configuration ────────────────────────────────────────────────────
   MTA_HOSTNAME: "mail.emailed.dev"
   DKIM_SELECTOR: "default"
+  MTA_MAX_CONNECTIONS: "500"
+  MTA_MAX_MESSAGE_SIZE_MB: "25"
 
   # ─── CORS ─────────────────────────────────────────────────────────────────
   CORS_ORIGINS: "https://app.emailed.dev,https://admin.emailed.dev"
@@ -51,3 +57,7 @@ data:
   MAX_ATTACHMENT_SIZE_MB: "25"
   MAX_RECIPIENTS_PER_MESSAGE: "500"
   BOUNCE_THRESHOLD_PERCENT: "5"
+
+  # ─── Telemetry ────────────────────────────────────────────────────────────
+  NEXT_TELEMETRY_DISABLED: "1"
+  NODE_ENV: "production"

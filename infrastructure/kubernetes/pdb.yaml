@@ -1,0 +1,108 @@
+# ─── PodDisruptionBudgets ─────────────────────────────────────────────────────
+# Ensure minimum availability during voluntary disruptions (node drains,
+# cluster upgrades, etc.).
+# ─────────────────────────────────────────────────────────────────────────────
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-pdb
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: api
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-pdb
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mta-pdb
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: mta
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mta
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: inbound-pdb
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: inbound
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inbound
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: jmap-pdb
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: jmap
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jmap
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: admin-pdb
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: admin
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: admin
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: reputation-pdb
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: reputation
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: reputation

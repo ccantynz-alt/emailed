@@ -205,7 +205,238 @@ spec:
           port: 443
 
 ---
-# ─── PostgreSQL: Allow ingress from API and MTA only ────────────────────────
+# ─── Inbound: Allow SMTP from internet, egress to databases + AI APIs ──────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inbound-policy
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: inbound
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inbound
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 25
+        - protocol: TCP
+          port: 8025
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: meilisearch
+      ports:
+        - protocol: TCP
+          port: 7700
+    # External AI APIs (Anthropic) and S3
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# ─── JMAP: Allow from ingress controller + IMAP LB, egress to databases ────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jmap-policy
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: jmap
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: jmap
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    - ports:
+        - protocol: TCP
+          port: 993
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: meilisearch
+      ports:
+        - protocol: TCP
+          port: 7700
+
+---
+# ─── Reputation: Allow from API, egress to databases + external ────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: reputation-policy
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: reputation
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: reputation
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mta
+      ports:
+        - protocol: TCP
+          port: 3005
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clickhouse
+      ports:
+        - protocol: TCP
+          port: 8123
+    # External blocklist lookups
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# ─── Meilisearch: Allow from API, inbound, JMAP ────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: meilisearch-policy
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: meilisearch
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: meilisearch
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inbound
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: jmap
+      ports:
+        - protocol: TCP
+          port: 7700
+
+---
+# ─── ClickHouse: Allow from API and reputation ─────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: clickhouse-policy
+  namespace: emailed
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/part-of: emailed-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: clickhouse
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: reputation
+      ports:
+        - protocol: TCP
+          port: 8123
+        - protocol: TCP
+          port: 9000
+
+---
+# ─── PostgreSQL: Allow ingress from all app services ────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -228,12 +459,21 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: mta
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inbound
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: jmap
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: reputation
       ports:
         - protocol: TCP
           port: 5432
 
 ---
-# ─── Redis: Allow ingress from API and MTA only ─────────────────────────────
+# ─── Redis: Allow ingress from all app services ─────────────────────────────
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -256,6 +496,15 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: mta
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inbound
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: jmap
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: reputation
       ports:
         - protocol: TCP
           port: 6379

@@ -39,6 +39,7 @@ import { auth } from "./routes/auth.js";
 import { health } from "./routes/health.js";
 import { admin } from "./routes/admin.js";
 import { billing } from "./routes/billing.js";
+import { templatesRouter } from "./routes/templates.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
@@ -135,6 +136,9 @@ app.use("/v1/suppressions/*", authMiddleware, writeRateLimit);
 app.use("/v1/api-keys/*", authMiddleware, writeRateLimit);
 // Account management: write-level limits (200 req/min)
 app.use("/v1/account/*", authMiddleware, writeRateLimit);
+// Templates: write-level limits (200 req/min)
+app.use("/v1/templates/*", authMiddleware, writeRateLimit);
+app.use("/v1/templates", authMiddleware, writeRateLimit);
 // Billing authenticated endpoints: write-level limits (200 req/min)
 app.use("/v1/billing/checkout", authMiddleware, writeRateLimit);
 app.use("/v1/billing/portal", authMiddleware, writeRateLimit);
@@ -152,6 +156,7 @@ app.route("/v1/suppressions", suppressions);
 app.route("/v1/api-keys", apiKeysRouter);
 app.route("/v1/account", account);
 app.route("/v1/billing", billing);
+app.route("/v1/templates", templatesRouter);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 

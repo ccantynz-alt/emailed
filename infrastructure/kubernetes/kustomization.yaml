@@ -1,0 +1,47 @@
+# ─── Kustomize configuration ─────────────────────────────────────────────────
+# Apply all manifests with: kubectl apply -k infrastructure/kubernetes/
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: emailed
+
+resources:
+  # Namespace and RBAC
+  - namespace.yml
+  - service-accounts.yaml
+
+  # Configuration
+  - configmap.yml
+  - secrets.yml
+
+  # Infrastructure services
+  - postgres-statefulset.yml
+  - redis-deployment.yml
+  - clickhouse-statefulset.yaml
+  - meilisearch-deployment.yaml
+
+  # Application services
+  - api-deployment.yml
+  - web-deployment.yml
+  - admin-deployment.yaml
+  - admin-service.yaml
+  - mta-deployment.yml
+  - inbound-deployment.yaml
+  - inbound-service.yaml
+  - jmap-deployment.yaml
+  - jmap-service.yaml
+  - reputation-deployment.yaml
+  - reputation-service.yaml
+
+  # Networking
+  - ingress.yaml
+  - network-policy.yml
+
+  # Autoscaling and availability
+  - hpa.yml
+  - pdb.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: emailed-platform
