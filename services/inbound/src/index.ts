@@ -32,8 +32,8 @@ async function handleInboundMessage(
     `[Inbound] Parsed message ${parsed.messageId} from ${envelope.mailFrom} (${rawData.length} bytes)`,
   );
 
-  // 2. Run the filter pipeline
-  const verdict = await pipeline.process(envelope, parsed);
+  // 2. Run the filter pipeline (pass sender IP for SPF validation)
+  const verdict = await pipeline.process(envelope, parsed, session.remoteAddress);
   console.log(
     `[Inbound] Filter verdict for ${parsed.messageId}: ${verdict.action} (score: ${verdict.score})`,
   );

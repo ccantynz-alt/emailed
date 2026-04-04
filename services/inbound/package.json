@@ -17,6 +17,7 @@
   "dependencies": {
     "@emailed/shared": "workspace:*",
     "@emailed/db": "workspace:*",
+    "@emailed/mta": "workspace:*",
     "@emailed/email-parser": "workspace:*",
     "drizzle-orm": "^0.36.0",
     "zod": "^3.23.0"

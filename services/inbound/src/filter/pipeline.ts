@@ -1,3 +1,5 @@
+import { checkSpf } from "@emailed/mta/src/spf/validator.js";
+import { evaluateDmarc, determineAction } from "@emailed/mta/src/dmarc/enforcer.js";
 import type { ParsedEmail, AuthenticationResult, FilterVerdict, SmtpEnvelope } from "../types.js";
 
 // --- Filter Stage Interface ---
@@ -5,6 +7,7 @@ import type { ParsedEmail, AuthenticationResult, FilterVerdict, SmtpEnvelope } f
 interface FilterContext {
   envelope: SmtpEnvelope;
   email: ParsedEmail;
+  senderIp: string;
   verdict: FilterVerdict;
   metadata: Map<string, unknown>;
 }
@@ -14,60 +17,122 @@ type FilterStage = (ctx: FilterContext) => Promise<FilterContext>;
 // --- Authentication Check Stage ---
 
 async function authenticationCheck(ctx: FilterContext): Promise<FilterContext> {
-  const { email, envelope } = ctx;
+  const { email, envelope, senderIp } = ctx;
 
-  // SPF check: verify the sending server is authorized for the sender domain
+  // ── SPF: real DNS-based validation via RFC 7208 ──────────────────────
   const senderDomain = envelope.mailFrom.split("@")[1];
-  if (senderDomain) {
-    const spfResult: AuthenticationResult = {
+  let spfAuthResult: AuthenticationResult;
+
+  if (senderDomain && senderIp) {
+    try {
+      const spfCheck = await checkSpf(senderIp, senderDomain);
+      spfAuthResult = {
+        method: "spf",
+        result: spfCheck.result,
+        domain: spfCheck.domain,
+        details: spfCheck.mechanismMatched
+          ? `mechanism: ${spfCheck.mechanismMatched}`
+          : spfCheck.explanation ?? `SPF ${spfCheck.result} for ${senderDomain}`,
+      };
+    } catch {
+      spfAuthResult = {
+        method: "spf",
+        result: "temperror",
+        domain: senderDomain,
+        details: "SPF lookup failed",
+      };
+    }
+  } else {
+    spfAuthResult = {
       method: "spf",
-      result: "neutral", // In production: perform actual DNS lookup for SPF record
+      result: "none",
       domain: senderDomain,
-      details: `Checked SPF for ${senderDomain}`,
+      details: senderIp ? "No sender domain" : "No sender IP available",
     };
-    ctx.verdict.authResults.push(spfResult);
+  }
+  ctx.verdict.authResults.push(spfAuthResult);
+
+  // Add spam score for SPF failures
+  if (spfAuthResult.result === "fail") {
+    ctx.verdict.score = (ctx.verdict.score ?? 0) + 2;
+    ctx.verdict.flags.add("spf_fail");
+  } else if (spfAuthResult.result === "softfail") {
+    ctx.verdict.score = (ctx.verdict.score ?? 0) + 1;
+    ctx.verdict.flags.add("spf_softfail");
   }
 
-  // DKIM check: verify signature in headers
+  // ── DKIM: parse signature headers (cryptographic verification is TODO) ──
   const dkimSignature = email.headers.find((h) => h.key === "dkim-signature");
+  let dkimDomain: string | undefined;
+  let dkimSelector: string | undefined;
+  let dkimStatus: AuthenticationResult["result"] = "none";
+
   if (dkimSignature) {
     const domainMatch = dkimSignature.value.match(/d=([^\s;]+)/);
     const selectorMatch = dkimSignature.value.match(/s=([^\s;]+)/);
-
-    const dkimResult: AuthenticationResult = {
-      method: "dkim",
-      result: "neutral", // In production: verify cryptographic signature
-      domain: domainMatch?.[1],
-      selector: selectorMatch?.[1],
-      details: "DKIM signature present",
-    };
-    ctx.verdict.authResults.push(dkimResult);
-  } else {
-    ctx.verdict.authResults.push({
-      method: "dkim",
-      result: "none",
-      details: "No DKIM signature found",
-    });
+    dkimDomain = domainMatch?.[1];
+    dkimSelector = selectorMatch?.[1];
+    // TODO: full DKIM cryptographic verification (DNS key fetch + signature check)
+    // For now, mark as neutral since we can't verify the signature without a verifier
+    dkimStatus = "neutral";
   }
 
-  // DMARC check: verify alignment between SPF/DKIM domains and From header
+  ctx.verdict.authResults.push({
+    method: "dkim",
+    result: dkimStatus,
+    domain: dkimDomain,
+    selector: dkimSelector,
+    details: dkimSignature ? "DKIM signature present (verification pending)" : "No DKIM signature found",
+  });
+
+  // ── DMARC: real DNS-based policy evaluation via RFC 7489 ─────────────
   const fromDomain = email.from[0]?.address.split("@")[1];
   if (fromDomain) {
-    const spfAligned = senderDomain === fromDomain;
-    const dkimDomain = ctx.verdict.authResults.find((r) => r.method === "dkim")?.domain;
-    const dkimAligned = dkimDomain === fromDomain;
+    try {
+      const dmarcEval = await evaluateDmarc(
+        fromDomain,
+        {
+          result: spfAuthResult.result === "pass" ? "pass" : spfAuthResult.result === "fail" ? "fail" : "neutral",
+          domain: spfAuthResult.domain ?? senderDomain ?? "",
+        },
+        {
+          status: dkimStatus === "pass" ? "pass" : dkimStatus === "fail" ? "fail" : "neutral",
+          domain: dkimDomain ?? "",
+          selector: dkimSelector ?? "",
+        },
+      );
 
-    const dmarcResult: AuthenticationResult = {
-      method: "dmarc",
-      result: spfAligned || dkimAligned ? "pass" : "fail",
-      domain: fromDomain,
-      details: `SPF aligned: ${spfAligned}, DKIM aligned: ${dkimAligned}`,
-    };
-    ctx.verdict.authResults.push(dmarcResult);
+      const dmarcAuthResult: AuthenticationResult = {
+        method: "dmarc",
+        result: dmarcEval.result === "pass" ? "pass" : dmarcEval.result === "fail" ? "fail" : "none",
+        domain: fromDomain,
+        details: `policy=${dmarcEval.policy}, applied=${dmarcEval.appliedPolicy}, ` +
+          `spfAligned=${dmarcEval.spfAligned}, dkimAligned=${dmarcEval.dkimAligned}`,
+      };
+      ctx.verdict.authResults.push(dmarcAuthResult);
 
-    if (dmarcResult.result === "fail") {
-      ctx.verdict.score = (ctx.verdict.score ?? 0) + 3;
-      ctx.verdict.flags.add("dmarc_fail");
+      // Apply DMARC policy to filter verdict
+      const dmarcAction = determineAction(dmarcEval);
+      if (dmarcAction === "reject") {
+        ctx.verdict.action = "reject";
+        ctx.verdict.reason = `DMARC policy rejection for ${fromDomain} (p=${dmarcEval.policy})`;
+        ctx.verdict.flags.add("dmarc_reject");
+      } else if (dmarcAction === "quarantine") {
+        ctx.verdict.score = (ctx.verdict.score ?? 0) + 4;
+        ctx.verdict.flags.add("dmarc_quarantine");
+      } else if (dmarcEval.result === "fail") {
+        // DMARC failed but policy is "none" — still add score
+        ctx.verdict.score = (ctx.verdict.score ?? 0) + 2;
+        ctx.verdict.flags.add("dmarc_fail");
+      }
+    } catch {
+      // DMARC lookup failure — don't block the message
+      ctx.verdict.authResults.push({
+        method: "dmarc",
+        result: "temperror",
+        domain: fromDomain,
+        details: "DMARC evaluation failed",
+      });
     }
   }
 
@@ -335,11 +400,13 @@ export class FilterPipeline {
 
   /**
    * Run the full filter pipeline on an email.
+   * @param senderIp - The IP address of the sending SMTP server (for SPF checks)
    */
-  async process(envelope: SmtpEnvelope, email: ParsedEmail): Promise<FilterVerdict> {
+  async process(envelope: SmtpEnvelope, email: ParsedEmail, senderIp: string = ""): Promise<FilterVerdict> {
     let ctx: FilterContext = {
       envelope,
       email,
+      senderIp,
       verdict: {
         action: "accept",
         score: 0,
