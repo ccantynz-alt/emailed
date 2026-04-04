@@ -56,9 +56,9 @@
 - [x] Rate limiting on all public endpoints (Redis sliding window + fallback)
 - [ ] IMAP4rev2 bridge for legacy clients (in progress — parser + formatter done)
 - [x] Docker/Kubernetes deployment configs
-- [ ] CI/CD pipeline (GitHub Actions)
+- [x] CI/CD pipeline (GitHub Actions)
 - [x] API documentation (OpenAPI specs)
-- [ ] End-to-end integration tests
+- [x] End-to-end integration tests
 - [x] Suppression list management API
 - [x] Email template system (stored templates with variable substitution)
 - [x] Bounce/complaint feedback loop processing
