@@ -1,8 +1,12 @@
 // Client
 export {
   getDatabase,
+  getDb,
+  db,
   createMigrationClient,
   closeConnection,
+  checkConnectionHealth,
+  poolConfig,
 } from "./client/connection.js";
 export type {
   Database,
@@ -63,3 +67,46 @@ export {
   apiKeysRelations,
   apiKeyUsageRelations,
 } from "./schema/api-keys.js";
+
+// ---------------------------------------------------------------------------
+// Inferred types from schemas
+// ---------------------------------------------------------------------------
+
+import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
+import type { accounts, users } from "./schema/users.js";
+import type { emails, attachments, deliveryResults } from "./schema/emails.js";
+import type { domains, dnsRecords } from "./schema/domains.js";
+import type { apiKeys, apiKeyUsage } from "./schema/api-keys.js";
+import type {
+  events,
+  webhooks,
+  webhookDeliveries,
+} from "./schema/events.js";
+
+// Select types (what you get back from queries)
+export type Account = InferSelectModel<typeof accounts>;
+export type User = InferSelectModel<typeof users>;
+export type Email = InferSelectModel<typeof emails>;
+export type Attachment = InferSelectModel<typeof attachments>;
+export type DeliveryResult = InferSelectModel<typeof deliveryResults>;
+export type Domain = InferSelectModel<typeof domains>;
+export type DnsRecord = InferSelectModel<typeof dnsRecords>;
+export type ApiKey = InferSelectModel<typeof apiKeys>;
+export type ApiKeyUsage = InferSelectModel<typeof apiKeyUsage>;
+export type Event = InferSelectModel<typeof events>;
+export type Webhook = InferSelectModel<typeof webhooks>;
+export type WebhookDelivery = InferSelectModel<typeof webhookDeliveries>;
+
+// Insert types (what you pass when creating rows)
+export type NewAccount = InferInsertModel<typeof accounts>;
+export type NewUser = InferInsertModel<typeof users>;
+export type NewEmail = InferInsertModel<typeof emails>;
+export type NewAttachment = InferInsertModel<typeof attachments>;
+export type NewDeliveryResult = InferInsertModel<typeof deliveryResults>;
+export type NewDomain = InferInsertModel<typeof domains>;
+export type NewDnsRecord = InferInsertModel<typeof dnsRecords>;
+export type NewApiKey = InferInsertModel<typeof apiKeys>;
+export type NewApiKeyUsage = InferInsertModel<typeof apiKeyUsage>;
+export type NewEvent = InferInsertModel<typeof events>;
+export type NewWebhook = InferInsertModel<typeof webhooks>;
+export type NewWebhookDelivery = InferInsertModel<typeof webhookDeliveries>;

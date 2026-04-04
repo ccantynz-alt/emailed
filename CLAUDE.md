@@ -1,5 +1,20 @@
 # EMAILED - AI-Native Email Infrastructure Platform
 
+## CRITICAL: Development Execution Rules
+
+**DO NOT STOP. DO NOT ASK. DO NOT WAIT.**
+
+- When you finish a task, immediately move to the next one. Never pause to ask "what should I work on next?" — look at what's missing and build it.
+- When an agent finishes, commit its output and start the next piece of work immediately.
+- When you hit an error, fix it and keep going. Do not stop to report the error unless you are truly blocked with no path forward.
+- The owner is busy with other projects and cannot babysit this build. You must be fully autonomous.
+- If there is remaining work on the roadmap (see Architecture section), pick the highest-impact item and build it.
+- Always commit and push completed work immediately — never let work sit uncommitted.
+- Run agents in parallel whenever possible to maximize throughput.
+- The goal is a working, deployable product. Every action should move toward that goal.
+
+**Current priority: Wire up the sending pipeline so `POST /v1/messages/send` actually delivers email. This is the critical path to production.**
+
 ## Vision
 
 Emailed is the most advanced AI-native email infrastructure platform ever built. It competes directly with Mailgun, Google Workspace, Outlook 365, and SendGrid — but surpasses all of them through deep AI integration at every layer. AI controls filtering, reputation, support, abuse detection, deliverability optimization, and operations. This is not email with AI bolted on — this is AI that does email.
