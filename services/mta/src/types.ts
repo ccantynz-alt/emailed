@@ -344,6 +344,7 @@ export type QueueJobStatus =
 
 export interface QueuedEmail {
   id: string;
+  accountId: string;
   messageId: string;
   from: string;
   to: string[];

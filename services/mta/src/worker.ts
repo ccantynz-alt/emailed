@@ -15,7 +15,7 @@
 
 import { Worker, type Job } from "bullmq";
 import { eq, and } from "drizzle-orm";
-import { getDatabase, emails, deliveryResults, domains, suppressionLists } from "@emailed/db";
+import { getDatabase, emails, deliveryResults, domains, suppressionLists, events } from "@emailed/db";
 import { signMessage, addSignatureToMessage } from "./dkim/signer.js";
 import { SmtpClient } from "./smtp/client.js";
 import { DeliveryOptimizer } from "./delivery/optimizer.js";
@@ -418,6 +418,9 @@ export class MtaWorker {
         .update(emails)
         .set({ status: "bounced", updatedAt: now })
         .where(eq(emails.id, email.id));
+
+      // Record bounce event
+      await this.recordDeliveryEvent(db, email, "email.bounced").catch(() => {});
     } else if (anyDelivered && !anyDeferred) {
       await db
         .update(emails)
@@ -427,11 +430,17 @@ export class MtaWorker {
           updatedAt: now,
         })
         .where(eq(emails.id, email.id));
+
+      // Record delivery event
+      await this.recordDeliveryEvent(db, email, "email.delivered").catch(() => {});
     } else if (anyDeferred) {
       await db
         .update(emails)
         .set({ status: "deferred", updatedAt: now })
         .where(eq(emails.id, email.id));
+
+      // Record deferred event
+      await this.recordDeliveryEvent(db, email, "email.deferred").catch(() => {});
 
       // Throw so BullMQ retries with exponential backoff
       throw new Error(
@@ -444,5 +453,23 @@ export class MtaWorker {
         .set({ status: "failed", updatedAt: now })
         .where(eq(emails.id, email.id));
     }
+  }
+
+  /**
+   * Record a delivery event in the events table for webhook dispatch.
+   */
+  private async recordDeliveryEvent(
+    db: ReturnType<typeof getDatabase>,
+    email: QueuedEmail,
+    eventType: string,
+  ): Promise<void> {
+    const eventId = crypto.randomUUID().replace(/-/g, "");
+    await db.insert(events).values({
+      id: eventId,
+      accountId: email.accountId,
+      emailId: email.id,
+      messageId: email.messageId,
+      type: eventType as "email.delivered",
+    });
   }
 }

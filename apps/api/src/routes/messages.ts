@@ -325,6 +325,7 @@ async function handleSend(c: Context) {
     {
       email: {
         id,
+        accountId: auth.accountId,
         messageId,
         from: input.from.email,
         to: allRecipients,
@@ -338,7 +339,6 @@ async function handleSend(c: Context) {
         createdAt: now,
         domain: senderDomain,
         metadata: {
-          accountId: auth.accountId,
           domainId: domainRecord.id,
           tags: input.tags ?? [],
         },
