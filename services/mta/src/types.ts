@@ -220,7 +220,7 @@ export type DmarcAlignment = "strict" | "relaxed";
 export interface DmarcRecord {
   version: "DMARC1";
   policy: DmarcPolicy;
-  subdomainPolicy?: DmarcPolicy;
+  subdomainPolicy?: DmarcPolicy | undefined;
   percentage: number;
   dkimAlignment: DmarcAlignment;
   spfAlignment: DmarcAlignment;
@@ -344,6 +344,7 @@ export type QueueJobStatus =
 
 export interface QueuedEmail {
   id: string;
+  accountId: string;
   messageId: string;
   from: string;
   to: string[];

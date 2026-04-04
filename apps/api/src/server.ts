@@ -22,8 +22,15 @@ import { messages } from "./routes/messages.js";
 import { domains } from "./routes/domains.js";
 import { webhooks } from "./routes/webhooks.js";
 import { analytics } from "./routes/analytics.js";
+import { suppressions } from "./routes/suppressions.js";
+import { tracking } from "./routes/tracking.js";
+import { apiKeysRouter } from "./routes/api-keys.js";
+import { account } from "./routes/account.js";
+import { auth } from "./routes/auth.js";
 import { health } from "./routes/health.js";
+import { admin } from "./routes/admin.js";
 import { closeConnection } from "@emailed/db";
+import { closeSendQueue } from "./lib/queue.js";
 
 // ─── Create the Hono app ───────────────────────────────────────────────────
 
@@ -81,16 +88,31 @@ app.get("/health", (c) => {
 // Deep health check with dependency verification (also no auth)
 app.route("/v1/health", health);
 
+// Auth endpoints (no API key auth required)
+app.route("/v1/auth", auth);
+
+// Tracking endpoints (no auth — embedded in emails)
+app.route("/t", tracking);
+
 // ─── Authenticated routes ──────────────────────────────────────────────────
 
-app.use("/v1/*", authMiddleware);
-app.use("/v1/*", rateLimiter);
+// Apply auth + rate limiting to all /v1/* EXCEPT /v1/auth/* and /v1/health/*
+app.use("/v1/messages/*", authMiddleware, rateLimiter);
+app.use("/v1/domains/*", authMiddleware, rateLimiter);
+app.use("/v1/webhooks/*", authMiddleware, rateLimiter);
+app.use("/v1/analytics/*", authMiddleware, rateLimiter);
+app.use("/v1/suppressions/*", authMiddleware, rateLimiter);
+app.use("/v1/api-keys/*", authMiddleware, rateLimiter);
+app.use("/v1/account/*", authMiddleware, rateLimiter);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
 app.route("/v1/domains", domains);
 app.route("/v1/webhooks", webhooks);
 app.route("/v1/analytics", analytics);
+app.route("/v1/suppressions", suppressions);
+app.route("/v1/api-keys", apiKeysRouter);
+app.route("/v1/account", account);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 
@@ -157,6 +179,10 @@ async function shutdown(signal: string): Promise<void> {
   }, 15_000);
 
   try {
+    // Close the BullMQ send queue
+    await closeSendQueue();
+    console.log("[api] Send queue closed");
+
     // Close the database connection pool
     await closeConnection();
     console.log("[api] Database connections closed");

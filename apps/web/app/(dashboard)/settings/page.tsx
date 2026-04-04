@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Box,
   Text,
@@ -11,15 +12,42 @@ import {
   CardFooter,
   PageLayout,
 } from "@emailed/ui";
+import { authApi, accountApi } from "../../../lib/api";
+
+interface UserData {
+  name: string;
+  email: string;
+}
+
+interface AccountData {
+  planTier: string;
+  emailsSentThisPeriod: number;
+}
 
 export default function SettingsPage() {
+  const [user, setUser] = useState<UserData | null>(null);
+  const [account, setAccount] = useState<AccountData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      authApi.me().catch(() => null),
+      accountApi.get().catch(() => null),
+    ]).then(([userRes, accountRes]) => {
+      if (userRes) setUser({ name: userRes.data.name, email: userRes.data.email });
+      if (accountRes) setAccount({ planTier: accountRes.data.planTier, emailsSentThisPeriod: accountRes.data.emailsSentThisPeriod });
+      setLoading(false);
+    });
+  }, []);
+
   return (
     <PageLayout
       title="Settings"
       description="Manage your account, preferences, and security settings."
     >
       <Box className="max-w-3xl space-y-6">
-        <ProfileSection />
+        <ProfileSection user={user} loading={loading} />
+        <AccountOverview account={account} loading={loading} />
         <SecuritySection />
         <NotificationSection />
         <DangerZone />
@@ -28,7 +56,36 @@ export default function SettingsPage() {
   );
 }
 
-function ProfileSection() {
+function ProfileSection({ user, loading }: { user: UserData | null; loading: boolean }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    // TODO: wire to profile update endpoint when available
+    await new Promise((r) => setTimeout(r, 500));
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const initials = (name || "U")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <Card>
       <CardHeader>
@@ -39,26 +96,37 @@ function ProfileSection() {
           <Box className="flex items-center gap-4 mb-4">
             <Box className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center">
               <Text variant="heading-lg" className="text-brand-700">
-                U
+                {loading ? "..." : initials}
               </Text>
-            </Box>
-            <Box>
-              <Button variant="secondary" size="sm">
-                Change Avatar
-              </Button>
             </Box>
           </Box>
           <Box className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Full Name" variant="text" defaultValue="User" />
-            <Input label="Email" variant="email" defaultValue="user@emailed.dev" />
+            <Input
+              label="Full Name"
+              variant="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={loading}
+            />
+            <Input
+              label="Email"
+              variant="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
           </Box>
-          <Input label="Display Name" variant="text" defaultValue="user" hint="This is how others will see you." />
         </Box>
       </CardContent>
       <CardFooter>
-        <Box className="flex justify-end">
-          <Button variant="primary" size="sm">
-            Save Changes
+        <Box className="flex items-center justify-end gap-3">
+          {saved && (
+            <Text variant="body-sm" className="text-status-success">
+              Saved
+            </Text>
+          )}
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || loading}>
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </Box>
       </CardFooter>
@@ -67,6 +135,34 @@ function ProfileSection() {
 }
 
 ProfileSection.displayName = "ProfileSection";
+
+function AccountOverview({ account, loading }: { account: AccountData | null; loading: boolean }) {
+  return (
+    <Card>
+      <CardHeader>
+        <Text variant="heading-sm">Account</Text>
+      </CardHeader>
+      <CardContent>
+        <Box className="grid grid-cols-2 gap-4">
+          <Box>
+            <Text variant="body-sm" muted>Plan</Text>
+            <Text variant="body-md" className="font-medium capitalize">
+              {loading ? "..." : (account?.planTier ?? "free")}
+            </Text>
+          </Box>
+          <Box>
+            <Text variant="body-sm" muted>Emails sent this period</Text>
+            <Text variant="body-md" className="font-medium">
+              {loading ? "..." : (account?.emailsSentThisPeriod ?? 0).toLocaleString()}
+            </Text>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
+AccountOverview.displayName = "AccountOverview";
 
 function SecuritySection() {
   return (
@@ -126,6 +222,10 @@ function SecuritySection() {
 SecuritySection.displayName = "SecuritySection";
 
 function NotificationSection() {
+  const [emailNotifs, setEmailNotifs] = useState(true);
+  const [aiDigest, setAiDigest] = useState(true);
+  const [deliverabilityAlerts, setDeliverabilityAlerts] = useState(true);
+
   return (
     <Card>
       <CardHeader>
@@ -142,8 +242,12 @@ function NotificationSection() {
                 Receive notifications about important account events.
               </Text>
             </Box>
-            <Button variant="ghost" size="sm">
-              Enabled
+            <Button
+              variant={emailNotifs ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setEmailNotifs(!emailNotifs)}
+            >
+              {emailNotifs ? "Enabled" : "Disabled"}
             </Button>
           </Box>
           <Box className="flex items-center justify-between">
@@ -155,8 +259,12 @@ function NotificationSection() {
                 Get a daily AI-generated summary of your inbox activity.
               </Text>
             </Box>
-            <Button variant="ghost" size="sm">
-              Enabled
+            <Button
+              variant={aiDigest ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setAiDigest(!aiDigest)}
+            >
+              {aiDigest ? "Enabled" : "Disabled"}
             </Button>
           </Box>
           <Box className="flex items-center justify-between">
@@ -168,8 +276,12 @@ function NotificationSection() {
                 Be notified when domain reputation or deliverability drops.
               </Text>
             </Box>
-            <Button variant="ghost" size="sm">
-              Enabled
+            <Button
+              variant={deliverabilityAlerts ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setDeliverabilityAlerts(!deliverabilityAlerts)}
+            >
+              {deliverabilityAlerts ? "Enabled" : "Disabled"}
             </Button>
           </Box>
         </Box>
@@ -181,6 +293,17 @@ function NotificationSection() {
 NotificationSection.displayName = "NotificationSection";
 
 function DangerZone() {
+  const [confirming, setConfirming] = useState(false);
+
+  const handleDelete = () => {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    // TODO: wire to account deletion endpoint
+    setConfirming(false);
+  };
+
   return (
     <Card className="border-status-error/30">
       <CardHeader>
@@ -198,9 +321,16 @@ function DangerZone() {
               Permanently delete your account and all associated data. This action cannot be undone.
             </Text>
           </Box>
-          <Button variant="destructive" size="sm">
-            Delete Account
-          </Button>
+          <Box className="flex items-center gap-2">
+            {confirming && (
+              <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+            )}
+            <Button variant="destructive" size="sm" onClick={handleDelete}>
+              {confirming ? "Confirm Delete" : "Delete Account"}
+            </Button>
+          </Box>
         </Box>
       </CardContent>
     </Card>

@@ -68,6 +68,13 @@ export {
   apiKeyUsageRelations,
 } from "./schema/api-keys.js";
 
+// Schema - Suppressions
+export {
+  suppressionLists,
+  suppressionReasonEnum,
+  suppressionListsRelations,
+} from "./schema/suppressions.js";
+
 // ---------------------------------------------------------------------------
 // Inferred types from schemas
 // ---------------------------------------------------------------------------
@@ -82,6 +89,7 @@ import type {
   webhooks,
   webhookDeliveries,
 } from "./schema/events.js";
+import type { suppressionLists } from "./schema/suppressions.js";
 
 // Select types (what you get back from queries)
 export type Account = InferSelectModel<typeof accounts>;
@@ -110,3 +118,5 @@ export type NewApiKeyUsage = InferInsertModel<typeof apiKeyUsage>;
 export type NewEvent = InferInsertModel<typeof events>;
 export type NewWebhook = InferInsertModel<typeof webhooks>;
 export type NewWebhookDelivery = InferInsertModel<typeof webhookDeliveries>;
+export type SuppressionList = InferSelectModel<typeof suppressionLists>;
+export type NewSuppressionList = InferInsertModel<typeof suppressionLists>;

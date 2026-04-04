@@ -6,6 +6,7 @@ import * as emailsSchema from "../schema/emails.js";
 import * as domainsSchema from "../schema/domains.js";
 import * as eventsSchema from "../schema/events.js";
 import * as apiKeysSchema from "../schema/api-keys.js";
+import * as suppressionsSchema from "../schema/suppressions.js";
 
 const schema = {
   ...usersSchema,
@@ -13,6 +14,7 @@ const schema = {
   ...domainsSchema,
   ...eventsSchema,
   ...apiKeysSchema,
+  ...suppressionsSchema,
 };
 
 export type DatabaseSchema = typeof schema;
@@ -58,11 +60,21 @@ export function getDatabase(config?: ConnectionConfig) {
     );
   }
 
+  // Auto-detect Neon serverless Postgres and apply sensible defaults:
+  // - SSL is required (postgres.js reads sslmode=require from the URL, but we
+  //   also pass it explicitly as a safety net).
+  // - Prepared statements must be disabled when using Neon's connection pooler
+  //   (pgbouncer in transaction mode).
+  const isNeon = connectionString.includes(".neon.tech");
+  const needsSsl =
+    isNeon || connectionString.includes("sslmode=require");
+
   clientInstance = postgres(connectionString, {
     max: config?.maxConnections ?? DEFAULT_CONFIG.maxConnections,
     idle_timeout: config?.idleTimeout ?? DEFAULT_CONFIG.idleTimeout,
     connect_timeout: config?.connectTimeout ?? DEFAULT_CONFIG.connectTimeout,
-    prepare: config?.prepare ?? DEFAULT_CONFIG.prepare,
+    prepare: config?.prepare ?? (isNeon ? false : DEFAULT_CONFIG.prepare),
+    ...(needsSsl ? { ssl: "require" as const } : {}),
   });
 
   dbInstance = drizzle(clientInstance, { schema });

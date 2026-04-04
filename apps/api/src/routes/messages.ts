@@ -9,7 +9,6 @@
 
 import { Hono } from "hono";
 import { z } from "zod";
-import { Queue } from "bullmq";
 import { eq, desc, and, lt, sql } from "drizzle-orm";
 import { requireScope } from "../middleware/auth.js";
 import {
@@ -24,29 +23,8 @@ import type {
   PaginationParams,
   PaginatedResponse,
 } from "../types.js";
-import { getDatabase, emails, deliveryResults, domains } from "@emailed/db";
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const QUEUE_NAME = process.env["MTA_QUEUE_NAME"] ?? "emailed:outbound";
-const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6379";
-
-// ─── Lazy-initialised shared BullMQ queue (sender-side, no worker) ─────────
-
-let sendQueue: Queue | null = null;
-
-function getSendQueue(): Queue {
-  if (!sendQueue) {
-    sendQueue = new Queue(QUEUE_NAME, {
-      connection: { url: REDIS_URL },
-      defaultJobOptions: {
-        removeOnComplete: true,
-        removeOnFail: false,
-      },
-    });
-  }
-  return sendQueue;
-}
+import { getDatabase, emails, deliveryResults, domains, accounts } from "@emailed/db";
+import { getSendQueue } from "../lib/queue.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -67,6 +45,31 @@ function domainOf(address: string): string {
   return idx === -1 ? address : address.slice(idx + 1).toLowerCase();
 }
 
+const API_BASE_URL = process.env["API_URL"] ?? "http://localhost:3001";
+
+/**
+ * Inject open-tracking pixel and rewrite links for click tracking.
+ */
+function injectTracking(html: string, emailId: string): string {
+  // Inject open-tracking pixel before </body> or at end
+  const pixel = `<img src="${API_BASE_URL}/t/${emailId}/open.gif" width="1" height="1" alt="" style="display:none" />`;
+  const tracked = html.includes("</body>")
+    ? html.replace("</body>", `${pixel}</body>`)
+    : html + pixel;
+
+  // Rewrite <a href="..."> links for click tracking (skip mailto: and tel:)
+  return tracked.replace(
+    /<a\s([^>]*?)href=["']([^"']+)["']/gi,
+    (_match, prefix: string, url: string) => {
+      if (url.startsWith("mailto:") || url.startsWith("tel:") || url.startsWith("#")) {
+        return `<a ${prefix}href="${url}"`;
+      }
+      const trackedUrl = `${API_BASE_URL}/t/${emailId}/click?url=${encodeURIComponent(url)}`;
+      return `<a ${prefix}href="${trackedUrl}"`;
+    },
+  );
+}
+
 /**
  * Build an RFC 5322 raw message from the API input.
  * Produces headers + body separated by a blank line.
@@ -74,6 +77,7 @@ function domainOf(address: string): string {
 function buildRawMessage(
   input: SendMessageInput,
   messageId: string,
+  emailId?: string,
 ): string {
   const lines: string[] = [];
 
@@ -117,6 +121,13 @@ function buildRawMessage(
     lines.push(`Reply-To: ${replyStr}`);
   }
 
+  // List-Unsubscribe (RFC 8058) — required by Gmail/Yahoo for bulk senders
+  if (emailId) {
+    const unsubUrl = `${API_BASE_URL}/t/${emailId}/unsubscribe`;
+    lines.push(`List-Unsubscribe: <${unsubUrl}>`);
+    lines.push("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
+  }
+
   // Custom headers
   if (input.headers) {
     for (const [key, value] of Object.entries(input.headers)) {
@@ -137,8 +148,10 @@ function buildRawMessage(
     }
   }
 
-  // Content type + body
-  if (input.html && input.text) {
+  // Content type + body (with tracking pixel injection for HTML)
+  const trackedHtml = input.html && emailId ? injectTracking(input.html, emailId) : input.html;
+
+  if (trackedHtml && input.text) {
     const boundary = `----=_Part_${generateId().slice(0, 16)}`;
     lines.push(`Content-Type: multipart/alternative; boundary="${boundary}"`);
     lines.push("");
@@ -151,13 +164,13 @@ function buildRawMessage(
     lines.push("Content-Type: text/html; charset=utf-8");
     lines.push("Content-Transfer-Encoding: quoted-printable");
     lines.push("");
-    lines.push(input.html);
+    lines.push(trackedHtml);
     lines.push(`--${boundary}--`);
-  } else if (input.html) {
+  } else if (trackedHtml) {
     lines.push("Content-Type: text/html; charset=utf-8");
     lines.push("Content-Transfer-Encoding: quoted-printable");
     lines.push("");
-    lines.push(input.html);
+    lines.push(trackedHtml);
   } else {
     lines.push("Content-Type: text/plain; charset=utf-8");
     lines.push("Content-Transfer-Encoding: quoted-printable");
@@ -185,289 +198,165 @@ const ListMessagesQuery = PaginationSchema.extend({
   tag: z.string().optional(),
 });
 
+// ─── Shared send handler ───────────────────────────────────────────────────
+
+import type { Context } from "hono";
+
+async function handleSend(c: Context) {
+  const input = getValidatedBody<SendMessageInput>(c);
+  const auth = c.get("auth");
+  const db = getDatabase();
+
+  const id = generateId();
+  const senderDomain = domainOf(input.from.email);
+  const messageId = generateMessageId(senderDomain);
+
+  // ── 1. Resolve the sender domain in our database ──────────────────
+  const [domainRecord] = await db
+    .select({ id: domains.id, dkimSelector: domains.dkimSelector })
+    .from(domains)
+    .where(and(eq(domains.domain, senderDomain), eq(domains.accountId, auth.accountId)))
+    .limit(1);
+
+  if (!domainRecord) {
+    return c.json(
+      {
+        error: {
+          type: "validation_error",
+          message: `Domain "${senderDomain}" is not verified for this account. Add it via POST /v1/domains first.`,
+          code: "domain_not_found",
+        },
+      },
+      422,
+    );
+  }
+
+  // ── 2. Build the raw RFC-5322 message ─────────────────────────────
+  const rawMessage = buildRawMessage(input, messageId, id);
+
+  // ── 3. Collect all recipient addresses (to + cc + bcc) ────────────
+  const allRecipients = [
+    ...input.to.map((r) => r.email),
+    ...(input.cc ?? []).map((r) => r.email),
+    ...(input.bcc ?? []).map((r) => r.email),
+  ];
+
+  // ── 4. Persist the email record in Postgres ───────────────────────
+  const now = new Date();
+
+  await db.insert(emails).values({
+    id,
+    accountId: auth.accountId,
+    domainId: domainRecord.id,
+    messageId,
+    fromAddress: input.from.email,
+    fromName: input.from.name ?? null,
+    toAddresses: input.to.map((r) => ({
+      address: r.email,
+      name: r.name,
+    })),
+    ccAddresses: input.cc
+      ? input.cc.map((r) => ({ address: r.email, name: r.name }))
+      : null,
+    bccAddresses: input.bcc
+      ? input.bcc.map((r) => ({ address: r.email, name: r.name }))
+      : null,
+    replyToAddress: input.replyTo?.email ?? null,
+    replyToName: input.replyTo?.name ?? null,
+    subject: input.subject,
+    textBody: input.text ?? null,
+    htmlBody: input.html ?? null,
+    customHeaders: input.headers ?? null,
+    status: "queued",
+    tags: input.tags ?? [],
+    scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // ── 5. Create delivery_results rows (one per recipient) ───────────
+  const deliveryRows = allRecipients.map((recipient) => ({
+    id: generateId(),
+    emailId: id,
+    recipientAddress: recipient,
+    status: "queued" as const,
+    attemptCount: 0,
+  }));
+
+  if (deliveryRows.length > 0) {
+    await db.insert(deliveryResults).values(deliveryRows);
+  }
+
+  // ── 6. Enqueue to MTA via BullMQ ─────────────────────────────────
+  const queue = getSendQueue();
+
+  let delay: number | undefined;
+  if (input.scheduledAt) {
+    const delayMs = new Date(input.scheduledAt).getTime() - Date.now();
+    if (delayMs > 0) {
+      delay = delayMs;
+    }
+  }
+
+  await queue.add(
+    id,
+    {
+      email: {
+        id,
+        accountId: auth.accountId,
+        messageId,
+        from: input.from.email,
+        to: allRecipients,
+        rawMessage,
+        priority: 3 as const,
+        attempts: 0,
+        maxAttempts: 8,
+        scheduledAt: input.scheduledAt
+          ? new Date(input.scheduledAt)
+          : new Date(),
+        createdAt: now,
+        domain: senderDomain,
+        metadata: {
+          domainId: domainRecord.id,
+          tags: input.tags ?? [],
+        },
+      },
+      addedAt: now.toISOString(),
+    },
+    {
+      priority: 3,
+      attempts: 8,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: true,
+      removeOnFail: false,
+      ...(delay !== undefined ? { delay } : {}),
+    },
+  );
+
+  // ── 7. Increment account usage counter (fire-and-forget) ─────────
+  db.update(accounts)
+    .set({
+      emailsSentThisPeriod: sql`${accounts.emailsSentThisPeriod} + 1`,
+      updatedAt: now,
+    })
+    .where(eq(accounts.id, auth.accountId))
+    .catch(() => {});
+
+  // ── 8. Return response ────────────────────────────────────────────
+  return c.json({ id, messageId, status: "queued" as const }, 202);
+}
+
 // ─── Route handler ──────────────────────────────────────────────────────────
 
 const messages = new Hono();
 
+const sendMiddleware = [requireScope("messages:send"), validateBody(SendMessageSchema)] as const;
+
 // POST /v1/messages/send — Send an email (production pipeline)
-messages.post(
-  "/send",
-  requireScope("messages:send"),
-  validateBody(SendMessageSchema),
-  async (c) => {
-    const input = getValidatedBody<SendMessageInput>(c);
-    const auth = c.get("auth");
-    const db = getDatabase();
-
-    const id = generateId();
-    const senderDomain = domainOf(input.from.email);
-    const messageId = generateMessageId(senderDomain);
-
-    // ── 1. Resolve the sender domain in our database ──────────────────
-    const [domainRecord] = await db
-      .select({ id: domains.id, dkimSelector: domains.dkimSelector })
-      .from(domains)
-      .where(and(eq(domains.domain, senderDomain), eq(domains.accountId, auth.accountId)))
-      .limit(1);
-
-    if (!domainRecord) {
-      return c.json(
-        {
-          error: {
-            type: "validation_error",
-            message: `Domain "${senderDomain}" is not verified for this account. Add it via POST /v1/domains first.`,
-            code: "domain_not_found",
-          },
-        },
-        422,
-      );
-    }
-
-    // ── 2. Build the raw RFC-5322 message ─────────────────────────────
-    const rawMessage = buildRawMessage(input, messageId);
-
-    // ── 3. Collect all recipient addresses (to + cc + bcc) ────────────
-    const allRecipients = [
-      ...input.to.map((r) => r.email),
-      ...(input.cc ?? []).map((r) => r.email),
-      ...(input.bcc ?? []).map((r) => r.email),
-    ];
-
-    // ── 4. Persist the email record in Postgres ───────────────────────
-    const now = new Date();
-
-    await db.insert(emails).values({
-      id,
-      accountId: auth.accountId,
-      domainId: domainRecord.id,
-      messageId,
-      fromAddress: input.from.email,
-      fromName: input.from.name ?? null,
-      toAddresses: input.to.map((r) => ({
-        address: r.email,
-        name: r.name,
-      })),
-      ccAddresses: input.cc
-        ? input.cc.map((r) => ({ address: r.email, name: r.name }))
-        : null,
-      bccAddresses: input.bcc
-        ? input.bcc.map((r) => ({ address: r.email, name: r.name }))
-        : null,
-      replyToAddress: input.replyTo?.email ?? null,
-      replyToName: input.replyTo?.name ?? null,
-      subject: input.subject,
-      textBody: input.text ?? null,
-      htmlBody: input.html ?? null,
-      customHeaders: input.headers ?? null,
-      status: "queued",
-      tags: input.tags ?? [],
-      scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // ── 5. Create delivery_results rows (one per recipient) ───────────
-    const deliveryRows = allRecipients.map((recipient) => ({
-      id: generateId(),
-      emailId: id,
-      recipientAddress: recipient,
-      status: "queued" as const,
-      attemptCount: 0,
-    }));
-
-    if (deliveryRows.length > 0) {
-      await db.insert(deliveryResults).values(deliveryRows);
-    }
-
-    // ── 6. Enqueue to MTA via BullMQ ─────────────────────────────────
-    const queue = getSendQueue();
-
-    // Compute optional delay for scheduled sends
-    let delay: number | undefined;
-    if (input.scheduledAt) {
-      const delayMs = new Date(input.scheduledAt).getTime() - Date.now();
-      if (delayMs > 0) {
-        delay = delayMs;
-      }
-    }
-
-    await queue.add(
-      id,
-      {
-        email: {
-          id,
-          messageId,
-          from: input.from.email,
-          to: allRecipients,
-          rawMessage,
-          priority: 3 as const,
-          attempts: 0,
-          maxAttempts: 8,
-          scheduledAt: input.scheduledAt
-            ? new Date(input.scheduledAt)
-            : new Date(),
-          createdAt: now,
-          domain: senderDomain,
-          metadata: {
-            accountId: auth.accountId,
-            domainId: domainRecord.id,
-            tags: input.tags ?? [],
-          },
-        },
-        addedAt: now.toISOString(),
-      },
-      {
-        priority: 3,
-        attempts: 8,
-        backoff: { type: "exponential", delay: 60_000 },
-        removeOnComplete: true,
-        removeOnFail: false,
-        ...(delay !== undefined ? { delay } : {}),
-      },
-    );
-
-    // ── 7. Return response ────────────────────────────────────────────
-    return c.json(
-      {
-        id,
-        messageId,
-        status: "queued" as const,
-      },
-      202,
-    );
-  },
-);
+messages.post("/send", ...sendMiddleware, handleSend);
 
 // POST /v1/messages — Alias for /send
-messages.post(
-  "/",
-  requireScope("messages:send"),
-  validateBody(SendMessageSchema),
-  async (c) => {
-    // Re-dispatch to /send handler logic. We duplicate the handler here
-    // to keep the route registrations simple and avoid Hono redirect quirks.
-    const input = getValidatedBody<SendMessageInput>(c);
-    const auth = c.get("auth");
-    const db = getDatabase();
-
-    const id = generateId();
-    const senderDomain = domainOf(input.from.email);
-    const messageId = generateMessageId(senderDomain);
-
-    const [domainRecord] = await db
-      .select({ id: domains.id, dkimSelector: domains.dkimSelector })
-      .from(domains)
-      .where(and(eq(domains.domain, senderDomain), eq(domains.accountId, auth.accountId)))
-      .limit(1);
-
-    if (!domainRecord) {
-      return c.json(
-        {
-          error: {
-            type: "validation_error",
-            message: `Domain "${senderDomain}" is not verified for this account. Add it via POST /v1/domains first.`,
-            code: "domain_not_found",
-          },
-        },
-        422,
-      );
-    }
-
-    const rawMessage = buildRawMessage(input, messageId);
-
-    const allRecipients = [
-      ...input.to.map((r) => r.email),
-      ...(input.cc ?? []).map((r) => r.email),
-      ...(input.bcc ?? []).map((r) => r.email),
-    ];
-
-    const now = new Date();
-
-    await db.insert(emails).values({
-      id,
-      accountId: auth.accountId,
-      domainId: domainRecord.id,
-      messageId,
-      fromAddress: input.from.email,
-      fromName: input.from.name ?? null,
-      toAddresses: input.to.map((r) => ({ address: r.email, name: r.name })),
-      ccAddresses: input.cc
-        ? input.cc.map((r) => ({ address: r.email, name: r.name }))
-        : null,
-      bccAddresses: input.bcc
-        ? input.bcc.map((r) => ({ address: r.email, name: r.name }))
-        : null,
-      replyToAddress: input.replyTo?.email ?? null,
-      replyToName: input.replyTo?.name ?? null,
-      subject: input.subject,
-      textBody: input.text ?? null,
-      htmlBody: input.html ?? null,
-      customHeaders: input.headers ?? null,
-      status: "queued",
-      tags: input.tags ?? [],
-      scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const deliveryRows = allRecipients.map((recipient) => ({
-      id: generateId(),
-      emailId: id,
-      recipientAddress: recipient,
-      status: "queued" as const,
-      attemptCount: 0,
-    }));
-
-    if (deliveryRows.length > 0) {
-      await db.insert(deliveryResults).values(deliveryRows);
-    }
-
-    const queue = getSendQueue();
-
-    let delay: number | undefined;
-    if (input.scheduledAt) {
-      const delayMs = new Date(input.scheduledAt).getTime() - Date.now();
-      if (delayMs > 0) delay = delayMs;
-    }
-
-    await queue.add(
-      id,
-      {
-        email: {
-          id,
-          messageId,
-          from: input.from.email,
-          to: allRecipients,
-          rawMessage,
-          priority: 3 as const,
-          attempts: 0,
-          maxAttempts: 8,
-          scheduledAt: input.scheduledAt
-            ? new Date(input.scheduledAt)
-            : new Date(),
-          createdAt: now,
-          domain: senderDomain,
-          metadata: {
-            accountId: auth.accountId,
-            domainId: domainRecord.id,
-            tags: input.tags ?? [],
-          },
-        },
-        addedAt: now.toISOString(),
-      },
-      {
-        priority: 3,
-        attempts: 8,
-        backoff: { type: "exponential", delay: 60_000 },
-        removeOnComplete: true,
-        removeOnFail: false,
-        ...(delay !== undefined ? { delay } : {}),
-      },
-    );
-
-    return c.json({ id, messageId, status: "queued" as const }, 202);
-  },
-);
+messages.post("/", ...sendMiddleware, handleSend);
 
 // GET /v1/messages/:id — Retrieve message + delivery status
 messages.get(
@@ -514,6 +403,9 @@ messages.get(
         to: emailRecord.toAddresses,
         cc: emailRecord.ccAddresses,
         subject: emailRecord.subject,
+        textBody: emailRecord.textBody,
+        htmlBody: emailRecord.htmlBody,
+        preview: (emailRecord.textBody ?? emailRecord.htmlBody ?? "").slice(0, 256).replace(/<[^>]+>/g, ""),
         status: emailRecord.status,
         tags: emailRecord.tags,
         createdAt: emailRecord.createdAt.toISOString(),
@@ -583,7 +475,10 @@ messages.get(
         fromAddress: emails.fromAddress,
         fromName: emails.fromName,
         toAddresses: emails.toAddresses,
+        ccAddresses: emails.ccAddresses,
         subject: emails.subject,
+        textBody: emails.textBody,
+        htmlBody: emails.htmlBody,
         status: emails.status,
         tags: emails.tags,
         createdAt: emails.createdAt,
@@ -607,9 +502,12 @@ messages.get(
       messageId: row.messageId,
       from: { email: row.fromAddress, name: row.fromName },
       to: row.toAddresses,
+      cc: row.ccAddresses,
       subject: row.subject,
+      preview: (row.textBody ?? row.htmlBody ?? "").slice(0, 256).replace(/<[^>]+>/g, ""),
       status: row.status,
       tags: row.tags,
+      hasAttachments: false,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       sentAt: row.sentAt?.toISOString() ?? null,

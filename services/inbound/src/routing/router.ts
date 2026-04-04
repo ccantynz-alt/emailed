@@ -1,8 +1,12 @@
+import { eq } from "drizzle-orm";
 import type { RoutingRule, ResolvedRecipient } from "../types.js";
 
 /**
  * Mailbox router: resolves recipients, handles aliases,
  * forwarding rules, and catch-all configurations.
+ *
+ * When DATABASE_URL is set, domain lookups are performed against
+ * the PostgreSQL domains table. Otherwise falls back to in-memory maps.
  */
 
 interface DomainConfig {
@@ -32,11 +36,53 @@ interface MailboxInfo {
 }
 
 export class MailboxRouter {
-  // In production, these would query a database.
   private domains = new Map<string, DomainConfig>();
   private aliases = new Map<string, Alias>();
   private mailboxes = new Map<string, MailboxInfo>();
   private rules: RoutingRule[] = [];
+
+  /**
+   * Look up a domain config, checking the database first (if available),
+   * then falling back to the in-memory map.
+   */
+  private async lookupDomain(domain: string): Promise<DomainConfig | null> {
+    // Check in-memory first (fast path)
+    const cached = this.domains.get(domain);
+    if (cached) return cached;
+
+    // Try database lookup
+    if (process.env["DATABASE_URL"]) {
+      try {
+        const { getDatabase, domains: domainsTable } = await import("@emailed/db");
+        const db = getDatabase();
+        const [row] = await db
+          .select({
+            domain: domainsTable.domain,
+            accountId: domainsTable.accountId,
+            isActive: domainsTable.isActive,
+            verificationStatus: domainsTable.verificationStatus,
+          })
+          .from(domainsTable)
+          .where(eq(domainsTable.domain, domain))
+          .limit(1);
+
+        if (row && row.isActive && row.verificationStatus === "verified") {
+          const config: DomainConfig = {
+            domain: row.domain,
+            accountId: row.accountId,
+            enabled: true,
+          };
+          // Cache for subsequent lookups in this session
+          this.domains.set(domain, config);
+          return config;
+        }
+      } catch (e) {
+        console.warn(`[MailboxRouter] DB domain lookup failed for ${domain}:`, e);
+      }
+    }
+
+    return null;
+  }
 
   /**
    * Register a domain for receiving mail.
@@ -98,8 +144,8 @@ export class MailboxRouter {
     const domain = address.split("@")[1];
     if (!domain) return null;
 
-    // Check if we handle this domain
-    const domainConfig = this.domains.get(domain);
+    // Check if we handle this domain (DB-backed with in-memory fallback)
+    const domainConfig = await this.lookupDomain(domain);
     if (!domainConfig || !domainConfig.enabled) {
       return null; // Domain not managed by us
     }
@@ -190,8 +236,23 @@ export class MailboxRouter {
       }
     }
 
-    // No resolution found
-    return null;
+    // 6. Default: deliver to account inbox if domain is verified
+    //    This ensures inbound mail to any address on a managed domain
+    //    is stored, even without explicit mailbox/alias configuration.
+    return {
+      originalAddress: address,
+      resolvedAddress: address,
+      mailboxId: "inbox",
+      accountId: domainConfig.accountId,
+      rule: {
+        id: `default:${domain}`,
+        pattern: `*@${domain}`,
+        type: "catch-all",
+        action: "deliver",
+        destination: "inbox",
+        priority: 1000,
+      },
+    };
   }
 
   private matchRule(address: string): RoutingRule | undefined {

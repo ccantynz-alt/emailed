@@ -19,9 +19,10 @@
     "lint": "eslint src/",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "bun run src/migrate.ts",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "bun run src/seed.ts"
   },
   "dependencies": {
     "@emailed/shared": "workspace:*",

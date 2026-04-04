@@ -3,18 +3,27 @@ import { MimeParser } from "./parser/mime-parser.js";
 import { FilterPipeline } from "./filter/pipeline.js";
 import { MailboxRouter } from "./routing/router.js";
 import { InMemoryEmailStore } from "./storage/store.js";
+import { PostgresEmailStore } from "./storage/postgres-store.js";
+import { createHttpInbound } from "./http-inbound.js";
 import type { SmtpSession, SmtpEnvelope } from "./types.js";
 
 /**
  * Inbound email processing service.
  *
- * Pipeline: SMTP receive -> MIME parse -> filter -> route -> store
+ * Pipeline: SMTP/HTTP receive -> MIME parse -> filter -> route -> store
+ *
+ * Two ingress paths:
+ *  1. SMTP receiver (port 25 / SMTP_PORT) — direct MX delivery
+ *  2. HTTP webhook (port 8025 / HTTP_PORT) — Cloudflare Email Workers or
+ *     other HTTP-based forwarders POST raw MIME to /inbound/webhook
  */
 
 const parser = new MimeParser();
 const pipeline = new FilterPipeline();
 const router = new MailboxRouter();
-const store = new InMemoryEmailStore();
+const store = process.env["DATABASE_URL"]
+  ? new PostgresEmailStore()
+  : new InMemoryEmailStore();
 
 async function handleInboundMessage(
   session: SmtpSession,
@@ -29,8 +38,8 @@ async function handleInboundMessage(
     `[Inbound] Parsed message ${parsed.messageId} from ${envelope.mailFrom} (${rawData.length} bytes)`,
   );
 
-  // 2. Run the filter pipeline
-  const verdict = await pipeline.process(envelope, parsed);
+  // 2. Run the filter pipeline (pass sender IP for SPF validation)
+  const verdict = await pipeline.process(envelope, parsed, session.remoteAddress);
   console.log(
     `[Inbound] Filter verdict for ${parsed.messageId}: ${verdict.action} (score: ${verdict.score})`,
   );
@@ -71,20 +80,48 @@ async function handleInboundMessage(
 
 // --- Service Startup ---
 
-const hostname = process.env.SMTP_HOSTNAME ?? "mx.emailed.dev";
-const port = parseInt(process.env.SMTP_PORT ?? "25", 10);
+const hostname = process.env["SMTP_HOSTNAME"] ?? "mx.emailed.dev";
+const smtpPort = parseInt(process.env["SMTP_PORT"] ?? "25", 10);
+const httpPort = parseInt(process.env["HTTP_PORT"] ?? "8025", 10);
+const enableSmtp = process.env["DISABLE_SMTP"] !== "true";
+const enableHttp = process.env["DISABLE_HTTP"] !== "true";
 
 const receiver = new SmtpReceiver({
   hostname,
-  port,
+  port: smtpPort,
   onMessage: handleInboundMessage,
 });
 
+const httpApp = createHttpInbound({
+  parser,
+  pipeline,
+  router,
+  store,
+  webhookSecret: process.env["INBOUND_WEBHOOK_SECRET"],
+});
+
+let httpServer: ReturnType<typeof Bun.serve> | null = null;
+
 async function main(): Promise<void> {
   console.log(`[Inbound] Starting inbound email processing service`);
-  console.log(`[Inbound] SMTP receiver: ${hostname}:${port}`);
+  console.log(`[Inbound] Store backend: ${process.env["DATABASE_URL"] ? "PostgreSQL" : "in-memory"}`);
 
-  await receiver.start();
+  if (enableSmtp) {
+    console.log(`[Inbound] SMTP receiver: ${hostname}:${smtpPort}`);
+    await receiver.start();
+  } else {
+    console.log(`[Inbound] SMTP receiver: disabled`);
+  }
+
+  if (enableHttp) {
+    httpServer = Bun.serve({
+      port: httpPort,
+      fetch: httpApp.fetch,
+    });
+    console.log(`[Inbound] HTTP webhook: http://0.0.0.0:${httpPort}/inbound/webhook`);
+  } else {
+    console.log(`[Inbound] HTTP webhook: disabled`);
+  }
 
   console.log(`[Inbound] Service started. Store stats:`, store.getStats());
 }
@@ -92,13 +129,15 @@ async function main(): Promise<void> {
 // Handle graceful shutdown
 process.on("SIGINT", async () => {
   console.log("[Inbound] Shutting down...");
-  await receiver.stop();
+  if (enableSmtp) await receiver.stop();
+  if (httpServer) httpServer.stop();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("[Inbound] Shutting down...");
-  await receiver.stop();
+  if (enableSmtp) await receiver.stop();
+  if (httpServer) httpServer.stop();
   process.exit(0);
 });
 
@@ -107,4 +146,4 @@ main().catch((err) => {
   process.exit(1);
 });
 
-export { receiver, parser, pipeline, router, store };
+export { receiver, httpApp, parser, pipeline, router, store };

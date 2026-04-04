@@ -25,7 +25,8 @@ function normalizeCharset(charset: string): string {
 function decodeCharset(bytes: Uint8Array, charset: string): string {
   const normalized = normalizeCharset(charset);
   try {
-    const decoder = new TextDecoder(normalized);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-unknown -- charset strings come from email headers
+    const decoder = new TextDecoder(normalized as ConstructorParameters<typeof TextDecoder>[0]);
     return decoder.decode(bytes);
   } catch {
     // Fallback to UTF-8

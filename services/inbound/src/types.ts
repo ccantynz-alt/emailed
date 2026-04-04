@@ -3,21 +3,21 @@
  */
 
 export interface EmailAddress {
-  name?: string;
+  name?: string | undefined;
   address: string;
 }
 
 export interface MimeHeader {
   key: string;
   value: string;
-  params?: Record<string, string>;
+  params?: Record<string, string> | undefined;
 }
 
 export interface ParsedAttachment {
   filename: string;
   contentType: string;
   contentDisposition: "attachment" | "inline";
-  contentId?: string;
+  contentId?: string | undefined;
   size: number;
   content: Uint8Array;
   checksum: string;
@@ -25,18 +25,18 @@ export interface ParsedAttachment {
 
 export interface ParsedEmail {
   messageId: string;
-  date?: Date;
+  date?: Date | undefined;
   from: EmailAddress[];
   to: EmailAddress[];
   cc: EmailAddress[];
   bcc: EmailAddress[];
   replyTo: EmailAddress[];
   subject: string;
-  inReplyTo?: string;
+  inReplyTo?: string | undefined;
   references: string[];
   headers: MimeHeader[];
-  text?: string;
-  html?: string;
+  text?: string | undefined;
+  html?: string | undefined;
   attachments: ParsedAttachment[];
   rawSize: number;
 }
@@ -45,12 +45,12 @@ export interface SmtpSession {
   id: string;
   remoteAddress: string;
   remotePort: number;
-  clientHostname?: string;
-  heloHostname?: string;
+  clientHostname?: string | undefined;
+  heloHostname?: string | undefined;
   secure: boolean;
-  mailFrom?: string;
+  mailFrom?: string | undefined;
   rcptTo: string[];
-  authenticatedUser?: string;
+  authenticatedUser?: string | undefined;
   startedAt: Date;
 }
 
@@ -71,15 +71,15 @@ export interface InboundMessage {
 export interface AuthenticationResult {
   method: "spf" | "dkim" | "dmarc" | "arc";
   result: "pass" | "fail" | "softfail" | "neutral" | "none" | "temperror" | "permerror";
-  domain?: string;
-  selector?: string;
-  details?: string;
+  domain?: string | undefined;
+  selector?: string | undefined;
+  details?: string | undefined;
 }
 
 export interface FilterVerdict {
   action: "accept" | "reject" | "quarantine" | "defer";
-  reason?: string;
-  score?: number;
+  reason?: string | undefined;
+  score?: number | undefined;
   flags: Set<string>;
   authResults: AuthenticationResult[];
 }
@@ -106,16 +106,29 @@ export interface StoredEmail {
   accountId: string;
   mailboxId: string;
   messageId: string;
-  threadId?: string;
-  from: EmailAddress[];
+  threadId?: string | undefined;
+  from: EmailAddress | EmailAddress[];
   to: EmailAddress[];
   cc: EmailAddress[];
+  bcc?: EmailAddress[] | undefined;
+  replyTo?: EmailAddress | EmailAddress[] | undefined;
   subject: string;
   snippet: string;
-  hasAttachments: boolean;
+  textBody?: string | undefined;
+  htmlBody?: string | undefined;
+  attachments?: Array<{
+    id: string;
+    filename: string;
+    contentType: string;
+    size: number;
+    contentId?: string | undefined;
+  }> | undefined;
+  hasAttachments?: boolean | undefined;
   size: number;
   flags: Set<string>;
   labels: string[];
+  headers?: Record<string, string> | MimeHeader[] | undefined;
+  filterVerdict?: FilterVerdict | undefined;
   receivedAt: Date;
   internalDate: Date;
 }

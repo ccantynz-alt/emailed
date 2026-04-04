@@ -1,3 +1,4 @@
+import * as net from "node:net";
 import type { SmtpSession, SmtpEnvelope } from "../types.js";
 
 /**
@@ -358,6 +359,8 @@ export class SmtpConnectionHandler {
 export class SmtpReceiver {
   private config: SmtpReceiverConfig;
   private running = false;
+  private server: net.Server | null = null;
+  private activeConnections = new Set<net.Socket>();
 
   constructor(config: Partial<SmtpReceiverConfig> & Pick<SmtpReceiverConfig, "onMessage">) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -367,23 +370,158 @@ export class SmtpReceiver {
     if (this.running) throw new Error("SMTP Receiver already running");
     this.running = true;
 
-    console.log(
-      `[SmtpReceiver] Listening on ${this.config.hostname}:${this.config.port}`,
+    return new Promise<void>((resolve, reject) => {
+      this.server = net.createServer((socket) => {
+        this.handleConnection(socket);
+      });
+
+      this.server.maxConnections = 500;
+
+      this.server.on("error", (err) => {
+        console.error("[SmtpReceiver] Server error:", err);
+        if (!this.running) reject(err);
+      });
+
+      this.server.listen(this.config.port, () => {
+        console.log(
+          `[SmtpReceiver] Listening on ${this.config.hostname}:${this.config.port}`,
+        );
+        resolve();
+      });
+    });
+  }
+
+  private handleConnection(socket: net.Socket): void {
+    const remoteAddress = socket.remoteAddress ?? "unknown";
+    const remotePort = socket.remotePort ?? 0;
+
+    this.activeConnections.add(socket);
+    const handler = new SmtpConnectionHandler(
+      this.config,
+      remoteAddress,
+      remotePort,
     );
 
-    // In production: create a TCP server using Bun.listen() and handle
-    // each connection with SmtpConnectionHandler.
-    // Each connection gets its own handler instance for state management.
+    // Send SMTP greeting
+    socket.write(`220 ${this.config.hostname} ESMTP Emailed\r\n`);
+
+    socket.setTimeout(this.config.connectionTimeout);
+
+    let lineBuffer = "";
+
+    let inDataMode = false;
+
+    socket.on("data", async (data) => {
+      // When in DATA mode, pass raw bytes to the data chunk processor
+      if (inDataMode) {
+        try {
+          const response = await handler.processDataChunk(data);
+          if (response) {
+            // DATA complete (end-of-data marker found)
+            inDataMode = false;
+            socket.write(`${response.code} ${response.message}\r\n`);
+            if (response.close) {
+              socket.end();
+              return;
+            }
+          }
+        } catch (err) {
+          console.error(
+            `[SmtpReceiver] Error processing data from ${remoteAddress}:`,
+            err,
+          );
+          inDataMode = false;
+          socket.write("451 Internal server error\r\n");
+        }
+        return;
+      }
+
+      lineBuffer += data.toString("utf-8");
+
+      // Process complete SMTP command lines
+      let newlineIdx: number;
+      while ((newlineIdx = lineBuffer.indexOf("\r\n")) !== -1) {
+        const line = lineBuffer.slice(0, newlineIdx);
+        lineBuffer = lineBuffer.slice(newlineIdx + 2);
+
+        try {
+          const response = await handler.processCommand(line);
+          if (response) {
+            socket.write(`${response.code} ${response.message}\r\n`);
+
+            if (response.close) {
+              socket.end();
+              return;
+            }
+
+            // 354 means server is ready to receive DATA
+            if (response.code === 354) {
+              inDataMode = true;
+              // Any remaining data in the lineBuffer is part of the message body
+              if (lineBuffer.length > 0) {
+                const remaining = new TextEncoder().encode(lineBuffer);
+                lineBuffer = "";
+                const dataResponse = await handler.processDataChunk(remaining);
+                if (dataResponse) {
+                  inDataMode = false;
+                  socket.write(`${dataResponse.code} ${dataResponse.message}\r\n`);
+                }
+              }
+              return;
+            }
+          }
+        } catch (err) {
+          console.error(
+            `[SmtpReceiver] Error processing command from ${remoteAddress}:`,
+            err,
+          );
+          socket.write("451 Internal server error\r\n");
+        }
+      }
+    });
+
+    socket.on("timeout", () => {
+      socket.write("421 Connection timed out\r\n");
+      socket.end();
+    });
+
+    socket.on("error", (err) => {
+      console.warn(`[SmtpReceiver] Socket error from ${remoteAddress}:`, err.message);
+    });
+
+    socket.on("close", () => {
+      this.activeConnections.delete(socket);
+    });
   }
 
   async stop(): Promise<void> {
     if (!this.running) return;
     this.running = false;
+
+    // Close all active connections
+    for (const socket of this.activeConnections) {
+      socket.write("421 Service shutting down\r\n");
+      socket.end();
+    }
+    this.activeConnections.clear();
+
+    // Close the server
+    if (this.server) {
+      await new Promise<void>((resolve) => {
+        this.server!.close(() => resolve());
+      });
+      this.server = null;
+    }
+
     console.log("[SmtpReceiver] Stopped");
   }
 
   isRunning(): boolean {
     return this.running;
+  }
+
+  getConnectionCount(): number {
+    return this.activeConnections.size;
   }
 
   /**

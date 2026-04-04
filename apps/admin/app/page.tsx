@@ -1,86 +1,63 @@
+"use client";
+
+import { useCallback } from "react";
 import { Box, Text } from "@emailed/ui";
 import { MetricCard } from "../components/metric-card";
 import { StatusBadge } from "../components/status-badge";
 import { ChartContainer } from "../components/chart-container";
+import { adminApi } from "../lib/api";
+import type { AdminStats, AdminEvent } from "../lib/api";
+import { useApi } from "../lib/use-api";
 
-const metrics = [
-  {
-    label: "Messages Sent (24h)",
-    value: "1,284,392",
-    trend: { direction: "up" as const, value: "12.3%" },
-    description: "vs. 1,143,201 yesterday",
-    sparklineData: [980, 1020, 1100, 1050, 1150, 1200, 1180, 1250, 1284],
-  },
-  {
-    label: "Messages Received (24h)",
-    value: "2,847,103",
-    trend: { direction: "up" as const, value: "8.7%" },
-    description: "vs. 2,618,444 yesterday",
-    sparklineData: [2400, 2500, 2550, 2600, 2650, 2700, 2750, 2800, 2847],
-  },
-  {
-    label: "Active Users",
-    value: "34,219",
-    trend: { direction: "up" as const, value: "2.1%" },
-    description: "423 new in last 7 days",
-    sparklineData: [33100, 33400, 33600, 33800, 33900, 34000, 34100, 34150, 34219],
-  },
-  {
-    label: "Queue Depth",
-    value: "1,847",
-    trend: { direction: "down" as const, value: "23.4%" },
-    description: "Processing at 4,200 msg/s",
-    sparklineData: [3200, 2800, 2500, 2200, 2000, 1900, 1850, 1847, 1847],
-  },
-  {
-    label: "Reputation Score",
-    value: "97.2",
-    trend: { direction: "up" as const, value: "0.3" },
-    description: "Excellent across all IPs",
-    sparklineData: [96.5, 96.7, 96.8, 96.9, 97.0, 97.0, 97.1, 97.1, 97.2],
-  },
-  {
-    label: "Bounce Rate",
-    value: "0.42%",
-    trend: { direction: "down" as const, value: "0.08%" },
-    description: "Well below 2% threshold",
-    sparklineData: [0.55, 0.52, 0.50, 0.48, 0.47, 0.45, 0.44, 0.43, 0.42],
-  },
-  {
-    label: "Spam Detection Rate",
-    value: "99.87%",
-    trend: { direction: "up" as const, value: "0.02%" },
-    description: "12,847 blocked today",
-    sparklineData: [99.80, 99.82, 99.83, 99.84, 99.85, 99.85, 99.86, 99.86, 99.87],
-  },
-  {
-    label: "Avg. Delivery Time",
-    value: "1.2s",
-    trend: { direction: "down" as const, value: "0.3s" },
-    description: "p99: 3.8s",
-    sparklineData: [1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.3, 1.2, 1.2],
-  },
-] as const;
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
 
-const recentAlerts = [
-  { id: "1", message: "IP 198.51.100.14 reputation recovered to 95+", status: "healthy" as const, time: "12 min ago" },
-  { id: "2", message: "Unusual sending pattern detected for domain bulk-news.co", status: "warning" as const, time: "34 min ago" },
-  { id: "3", message: "Spamhaus CBL listing cleared for 203.0.113.42", status: "healthy" as const, time: "1 hr ago" },
-  { id: "4", message: "Queue depth spike resolved automatically", status: "healthy" as const, time: "2 hr ago" },
-  { id: "5", message: "Failed DKIM verification rate elevated for acme.com", status: "warning" as const, time: "3 hr ago" },
-] as const;
+function formatRate(rate: number): string {
+  return `${(rate * 100).toFixed(1)}%`;
+}
 
-const deliveryRateData = [
-  { label: "Mon", delivered: 96.2, bounced: 2.1, deferred: 1.7 },
-  { label: "Tue", delivered: 96.8, bounced: 1.8, deferred: 1.4 },
-  { label: "Wed", delivered: 97.1, bounced: 1.6, deferred: 1.3 },
-  { label: "Thu", delivered: 96.9, bounced: 1.9, deferred: 1.2 },
-  { label: "Fri", delivered: 97.3, bounced: 1.5, deferred: 1.2 },
-  { label: "Sat", delivered: 97.5, bounced: 1.3, deferred: 1.2 },
-  { label: "Sun", delivered: 97.8, bounced: 1.2, deferred: 1.0 },
-] as const;
+function eventTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    "email.delivered": "Delivered",
+    "email.bounced": "Bounced",
+    "email.deferred": "Deferred",
+    "email.opened": "Opened",
+    "email.clicked": "Clicked",
+    "email.complained": "Complained",
+    "email.sent": "Sent",
+    "email.failed": "Failed",
+  };
+  return labels[type] ?? type;
+}
+
+function eventTypeStatus(type: string): "healthy" | "warning" | "critical" | "unknown" {
+  if (type.includes("delivered") || type.includes("opened") || type.includes("clicked")) return "healthy";
+  if (type.includes("deferred") || type.includes("complained")) return "warning";
+  if (type.includes("bounced") || type.includes("failed")) return "critical";
+  return "unknown";
+}
+
+function timeAgo(isoDate: string): string {
+  const seconds = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 export default function DashboardPage() {
+  const statsFetcher = useCallback(() => adminApi.getStats(), []);
+  const eventsFetcher = useCallback(() => adminApi.listEvents({ limit: 10 }), []);
+
+  const { data: stats, loading: statsLoading, error: statsError } = useApi<AdminStats>(statsFetcher);
+  const { data: events, loading: eventsLoading } = useApi<AdminEvent[]>(eventsFetcher);
+
   return (
     <Box className="flex flex-col gap-8">
       <Box>
@@ -90,120 +67,131 @@ export default function DashboardPage() {
         </Text>
       </Box>
 
+      {statsError && (
+        <Box className="rounded-xl bg-status-error/10 border border-status-error/30 p-4">
+          <Text variant="body-sm" className="text-status-error">
+            Failed to load stats: {statsError}. Showing empty state.
+          </Text>
+        </Box>
+      )}
+
       <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" role="region" aria-label="Key metrics">
-        {metrics.map((metric) => (
-          <MetricCard
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-            trend={metric.trend}
-            description={metric.description}
-            sparklineData={metric.sparklineData}
-          />
-        ))}
+        <MetricCard
+          label="Messages Sent (24h)"
+          value={statsLoading ? "..." : formatNumber(stats?.last24h.sent ?? 0)}
+          description={`Total all-time: ${formatNumber(stats?.totals.sent ?? 0)}`}
+        />
+        <MetricCard
+          label="Delivered (24h)"
+          value={statsLoading ? "..." : formatNumber(stats?.last24h.delivered ?? 0)}
+          description={`Delivery rate: ${stats ? formatRate(stats.totals.deliveryRate) : "--"}`}
+        />
+        <MetricCard
+          label="Bounced (24h)"
+          value={statsLoading ? "..." : formatNumber(stats?.last24h.bounced ?? 0)}
+          description={`Bounce rate: ${stats ? formatRate(stats.totals.bounceRate) : "--"}`}
+        />
+        <MetricCard
+          label="Queued"
+          value={statsLoading ? "..." : formatNumber(stats?.last24h.queued ?? 0)}
+          description={`Failed: ${formatNumber(stats?.last24h.failed ?? 0)}, Deferred: ${formatNumber(stats?.last24h.deferred ?? 0)}`}
+        />
+        <MetricCard
+          label="Total Accounts"
+          value={statsLoading ? "..." : formatNumber(stats?.platform.totalAccounts ?? 0)}
+        />
+        <MetricCard
+          label="Total Domains"
+          value={statsLoading ? "..." : formatNumber(stats?.platform.totalDomains ?? 0)}
+        />
+        <MetricCard
+          label="Total Users"
+          value={statsLoading ? "..." : formatNumber(stats?.platform.totalUsers ?? 0)}
+        />
+        <MetricCard
+          label="Open Rate"
+          value={statsLoading ? "..." : (stats ? formatRate(stats.totals.openRate) : "--")}
+          description={`Click rate: ${stats ? formatRate(stats.totals.clickRate) : "--"}`}
+        />
       </Box>
 
       <Box className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Box className="lg:col-span-2">
-          <ChartContainer title="Delivery Rate (7 days)" description="Percentage breakdown by delivery outcome">
-            <Box className="flex items-end gap-3 h-48" role="img" aria-label="Delivery rate bar chart for the past 7 days">
-              {deliveryRateData.map((day) => (
-                <Box key={day.label} className="flex-1 flex flex-col items-center gap-1">
-                  <Box className="w-full flex flex-col gap-0.5" style={{ height: "160px" }}>
-                    <Box
-                      className="w-full bg-status-success/80 rounded-t"
-                      style={{ height: `${day.delivered * 1.6}px` }}
-                      title={`Delivered: ${day.delivered}%`}
-                    />
-                    <Box
-                      className="w-full bg-status-error/60"
-                      style={{ height: `${day.bounced * 8}px` }}
-                      title={`Bounced: ${day.bounced}%`}
-                    />
-                    <Box
-                      className="w-full bg-status-warning/60 rounded-b"
-                      style={{ height: `${day.deferred * 8}px` }}
-                      title={`Deferred: ${day.deferred}%`}
-                    />
-                  </Box>
-                  <Text variant="caption" className="text-content-tertiary">{day.label}</Text>
-                </Box>
-              ))}
-            </Box>
-            <Box className="flex items-center gap-4 mt-4 pt-4 border-t border-border/50">
-              <Box className="flex items-center gap-2">
-                <Box className="w-3 h-3 rounded bg-status-success/80" />
-                <Text variant="caption" className="text-content-secondary">Delivered</Text>
-              </Box>
-              <Box className="flex items-center gap-2">
-                <Box className="w-3 h-3 rounded bg-status-error/60" />
-                <Text variant="caption" className="text-content-secondary">Bounced</Text>
-              </Box>
-              <Box className="flex items-center gap-2">
-                <Box className="w-3 h-3 rounded bg-status-warning/60" />
-                <Text variant="caption" className="text-content-secondary">Deferred</Text>
-              </Box>
-            </Box>
+          <ChartContainer title="All-Time Status Breakdown" description="Email counts by current status" loading={statsLoading}>
+            {stats && <StatusBreakdownChart stats={stats} />}
           </ChartContainer>
         </Box>
 
         <Box>
           <Box className="rounded-xl bg-surface-secondary border border-border p-5">
-            <Text variant="heading-sm" className="text-content font-semibold mb-4">Recent Alerts</Text>
-            <Box className="flex flex-col gap-3" role="log" aria-label="Recent platform alerts">
-              {recentAlerts.map((alert) => (
-                <Box key={alert.id} className="flex items-start gap-3 pb-3 border-b border-border/30 last:border-0 last:pb-0">
-                  <Box className="pt-0.5">
-                    <StatusBadge status={alert.status} />
-                  </Box>
-                  <Box className="flex-1 min-w-0">
-                    <Text variant="body-sm" className="text-content leading-snug">
-                      {alert.message}
-                    </Text>
-                    <Text variant="caption" className="text-content-tertiary mt-0.5">
-                      {alert.time}
-                    </Text>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
+            <Text variant="heading-sm" className="text-content font-semibold mb-4">Recent Events</Text>
+            {eventsLoading ? (
+              <Box className="flex flex-col gap-3">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Box key={i} className="h-12 bg-surface-tertiary/50 rounded animate-pulse" />
+                ))}
+              </Box>
+            ) : (
+              <Box className="flex flex-col gap-3" role="log" aria-label="Recent platform events">
+                {(events ?? []).length === 0 ? (
+                  <Text variant="body-sm" className="text-content-tertiary">No events yet</Text>
+                ) : (
+                  (events ?? []).slice(0, 8).map((event) => (
+                    <Box key={event.id} className="flex items-start gap-3 pb-3 border-b border-border/30 last:border-0 last:pb-0">
+                      <Box className="pt-0.5">
+                        <StatusBadge status={eventTypeStatus(event.type)} label={eventTypeLabel(event.type)} />
+                      </Box>
+                      <Box className="flex-1 min-w-0">
+                        <Text variant="body-sm" className="text-content leading-snug truncate">
+                          {event.recipient}
+                        </Text>
+                        <Text variant="caption" className="text-content-tertiary mt-0.5">
+                          {timeAgo(event.timestamp)}
+                        </Text>
+                      </Box>
+                    </Box>
+                  ))
+                )}
+              </Box>
+            )}
           </Box>
         </Box>
       </Box>
 
       <Box className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SystemHealthPanel />
-        <AIInsightsPanel />
+        <EngagementPanel stats={stats} loading={statsLoading} />
+        <PlatformSummaryPanel stats={stats} loading={statsLoading} />
       </Box>
     </Box>
   );
 }
 
-function SystemHealthPanel() {
-  const services = [
-    { name: "SMTP Outbound (MTA)", status: "healthy" as const, latency: "12ms" },
-    { name: "SMTP Inbound", status: "healthy" as const, latency: "8ms" },
-    { name: "JMAP Server", status: "healthy" as const, latency: "5ms" },
-    { name: "AI Engine", status: "healthy" as const, latency: "42ms" },
-    { name: "DNS Authoritative", status: "healthy" as const, latency: "2ms" },
-    { name: "Sentinel Pipeline", status: "healthy" as const, latency: "<1ms" },
-    { name: "PostgreSQL", status: "healthy" as const, latency: "3ms" },
-    { name: "Redis", status: "healthy" as const, latency: "1ms" },
-    { name: "ClickHouse", status: "warning" as const, latency: "28ms" },
-    { name: "Meilisearch", status: "healthy" as const, latency: "6ms" },
-  ] as const;
+function StatusBreakdownChart({ stats }: { readonly stats: AdminStats }) {
+  const items = [
+    { label: "Delivered", value: stats.totals.delivered, color: "bg-status-success/80" },
+    { label: "Bounced", value: stats.totals.bounced, color: "bg-status-error/60" },
+    { label: "Queued", value: stats.totals.queued, color: "bg-status-warning/60" },
+    { label: "Failed", value: stats.totals.failed, color: "bg-status-error/40" },
+    { label: "Deferred", value: stats.totals.deferred, color: "bg-brand-500/60" },
+    { label: "Complained", value: stats.totals.complained, color: "bg-content-tertiary/60" },
+  ];
+
+  const maxValue = Math.max(...items.map((i) => i.value), 1);
 
   return (
-    <Box className="rounded-xl bg-surface-secondary border border-border p-5">
-      <Text variant="heading-sm" className="text-content font-semibold mb-4">System Health</Text>
-      <Box className="flex flex-col gap-2" role="list" aria-label="Service health status">
-        {services.map((service) => (
-          <Box key={service.name} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0" role="listitem">
-            <Box className="flex items-center gap-3">
-              <StatusBadge status={service.status} />
-              <Text variant="body-sm" className="text-content">{service.name}</Text>
+    <Box>
+      <Box className="flex items-end gap-3 h-48" role="img" aria-label="Email status breakdown bar chart">
+        {items.map((item) => (
+          <Box key={item.label} className="flex-1 flex flex-col items-center gap-1">
+            <Text variant="caption" className="text-content-secondary font-mono">{formatNumber(item.value)}</Text>
+            <Box className="w-full flex flex-col justify-end" style={{ height: "160px" }}>
+              <Box
+                className={`w-full ${item.color} rounded-t`}
+                style={{ height: `${Math.max((item.value / maxValue) * 100, 2)}%` }}
+                title={`${item.label}: ${item.value.toLocaleString()}`}
+              />
             </Box>
-            <Text variant="caption" className="text-content-tertiary font-mono">{service.latency}</Text>
+            <Text variant="caption" className="text-content-tertiary">{item.label}</Text>
           </Box>
         ))}
       </Box>
@@ -211,66 +199,76 @@ function SystemHealthPanel() {
   );
 }
 
-SystemHealthPanel.displayName = "SystemHealthPanel";
+StatusBreakdownChart.displayName = "StatusBreakdownChart";
 
-function AIInsightsPanel() {
-  const insights = [
-    {
-      id: "1",
-      title: "Delivery optimization opportunity",
-      description: "Shifting sends for domain newsletter.acme.com to 9-11 AM EST could improve open rates by ~15% based on recipient engagement patterns.",
-      priority: "medium",
-    },
-    {
-      id: "2",
-      title: "Reputation warming complete",
-      description: "IP block 198.51.100.0/28 has completed warm-up. All 16 IPs now have reputation scores above 95. Ready for full volume.",
-      priority: "low",
-    },
-    {
-      id: "3",
-      title: "Emerging phishing campaign detected",
-      description: "Sentinel detected a new credential harvesting pattern targeting financial services domains. Filters updated automatically.",
-      priority: "high",
-    },
-    {
-      id: "4",
-      title: "ClickHouse storage forecast",
-      description: "At current growth rate, analytics storage will reach 80% capacity in 23 days. Consider scaling the cluster.",
-      priority: "medium",
-    },
-  ] as const;
-
-  const priorityColors: Record<string, string> = {
-    high: "border-l-status-error",
-    medium: "border-l-status-warning",
-    low: "border-l-status-info",
-  };
+function EngagementPanel({ stats, loading }: { readonly stats: AdminStats | null; readonly loading: boolean }) {
+  const rows = [
+    { label: "Opened", value: stats?.totals.opened ?? 0 },
+    { label: "Clicked", value: stats?.totals.clicked ?? 0 },
+    { label: "Complained", value: stats?.totals.complained ?? 0 },
+    { label: "Open Rate", value: stats ? formatRate(stats.totals.openRate) : "--", raw: true },
+    { label: "Click Rate", value: stats ? formatRate(stats.totals.clickRate) : "--", raw: true },
+  ];
 
   return (
     <Box className="rounded-xl bg-surface-secondary border border-border p-5">
-      <Box className="flex items-center gap-2 mb-4">
-        <Text variant="heading-sm" className="text-content font-semibold">AI Insights</Text>
-        <Box className="px-2 py-0.5 rounded-full bg-brand-600/10">
-          <Text variant="caption" className="text-brand-400 font-medium">Live</Text>
+      <Text variant="heading-sm" className="text-content font-semibold mb-4">Engagement</Text>
+      {loading ? (
+        <Box className="flex flex-col gap-3">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Box key={i} className="h-8 bg-surface-tertiary/50 rounded animate-pulse" />
+          ))}
         </Box>
-      </Box>
-      <Box className="flex flex-col gap-3" role="list" aria-label="AI-generated insights">
-        {insights.map((insight) => (
-          <Box
-            key={insight.id}
-            className={`border-l-2 ${priorityColors[insight.priority] ?? "border-l-border"} pl-3 py-1`}
-            role="listitem"
-          >
-            <Text variant="body-sm" className="text-content font-medium">{insight.title}</Text>
-            <Text variant="caption" className="text-content-secondary mt-0.5 leading-relaxed">
-              {insight.description}
-            </Text>
-          </Box>
-        ))}
-      </Box>
+      ) : (
+        <Box className="flex flex-col gap-2" role="list" aria-label="Engagement metrics">
+          {rows.map((row) => (
+            <Box key={row.label} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0" role="listitem">
+              <Text variant="body-sm" className="text-content">{row.label}</Text>
+              <Text variant="body-sm" className="text-content font-mono font-medium">
+                {"raw" in row && row.raw ? String(row.value) : formatNumber(row.value as number)}
+              </Text>
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 }
 
-AIInsightsPanel.displayName = "AIInsightsPanel";
+EngagementPanel.displayName = "EngagementPanel";
+
+function PlatformSummaryPanel({ stats, loading }: { readonly stats: AdminStats | null; readonly loading: boolean }) {
+  const rows = [
+    { label: "Total Sent", value: stats?.totals.sent ?? 0 },
+    { label: "Total Delivered", value: stats?.totals.delivered ?? 0 },
+    { label: "Total Bounced", value: stats?.totals.bounced ?? 0 },
+    { label: "Delivery Rate", value: stats ? formatRate(stats.totals.deliveryRate) : "--", raw: true },
+    { label: "Bounce Rate", value: stats ? formatRate(stats.totals.bounceRate) : "--", raw: true },
+  ];
+
+  return (
+    <Box className="rounded-xl bg-surface-secondary border border-border p-5">
+      <Text variant="heading-sm" className="text-content font-semibold mb-4">All-Time Totals</Text>
+      {loading ? (
+        <Box className="flex flex-col gap-3">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Box key={i} className="h-8 bg-surface-tertiary/50 rounded animate-pulse" />
+          ))}
+        </Box>
+      ) : (
+        <Box className="flex flex-col gap-2" role="list" aria-label="Platform totals">
+          {rows.map((row) => (
+            <Box key={row.label} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0" role="listitem">
+              <Text variant="body-sm" className="text-content">{row.label}</Text>
+              <Text variant="body-sm" className="text-content font-mono font-medium">
+                {"raw" in row && row.raw ? String(row.value) : formatNumber(row.value as number)}
+              </Text>
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+PlatformSummaryPanel.displayName = "PlatformSummaryPanel";

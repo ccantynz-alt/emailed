@@ -1,270 +1,269 @@
+"use client";
+
+import { useCallback } from "react";
 import { Box, Text } from "@emailed/ui";
 import { MetricCard } from "../../components/metric-card";
 import { StatusBadge } from "../../components/status-badge";
-import { ChartContainer } from "../../components/chart-container";
 import { DataTable } from "../../components/data-table";
+import { adminApi } from "../../lib/api";
+import type { AdminStats, AdminEvent } from "../../lib/api";
+import { useApi } from "../../lib/use-api";
 
-interface ThreatEvent {
-  readonly id: string;
-  readonly type: "phishing" | "spam" | "malware" | "spoofing" | "credential-harvest";
-  readonly source: string;
-  readonly target: string;
-  readonly severity: "critical" | "high" | "medium" | "low";
-  readonly action: "blocked" | "quarantined" | "flagged";
-  readonly detectedBy: string;
-  readonly timestamp: string;
+function timeAgo(isoDate: string): string {
+  const seconds = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
-const recentThreats: readonly ThreatEvent[] = [
-  { id: "t-001", type: "phishing", source: "alert@secure-bankx.ru", target: "financeapp.com users", severity: "critical", action: "blocked", detectedBy: "Sentinel AI", timestamp: "4 min ago" },
-  { id: "t-002", type: "credential-harvest", source: "support@micr0soft-auth.xyz", target: "Multiple domains", severity: "critical", action: "blocked", detectedBy: "Sentinel AI", timestamp: "12 min ago" },
-  { id: "t-003", type: "spam", source: "promo@cheap-pharma.biz", target: "emailed.dev users", severity: "low", action: "blocked", detectedBy: "Content Filter", timestamp: "18 min ago" },
-  { id: "t-004", type: "malware", source: "invoice@supplier-portal.cn", target: "acme-corp.com", severity: "critical", action: "quarantined", detectedBy: "Attachment Scanner", timestamp: "27 min ago" },
-  { id: "t-005", type: "spoofing", source: "ceo@acme-c0rp.com", target: "acme-corp.com", severity: "high", action: "blocked", detectedBy: "DMARC Check", timestamp: "42 min ago" },
-  { id: "t-006", type: "phishing", source: "verify@paypa1-secure.net", target: "Multiple domains", severity: "high", action: "blocked", detectedBy: "Sentinel AI", timestamp: "1 hr ago" },
-  { id: "t-007", type: "spam", source: "deals@mega-offers.info", target: "newsletter.io users", severity: "low", action: "blocked", detectedBy: "Content Filter", timestamp: "1.5 hr ago" },
-  { id: "t-008", type: "credential-harvest", source: "admin@g00gle-workspace.co", target: "Multiple domains", severity: "critical", action: "blocked", detectedBy: "Sentinel AI", timestamp: "2 hr ago" },
-  { id: "t-009", type: "spam", source: "noreply@casino-bonus.win", target: "emailed.dev users", severity: "low", action: "blocked", detectedBy: "Reputation Filter", timestamp: "2.5 hr ago" },
-  { id: "t-010", type: "phishing", source: "security@app1e-id.store", target: "devtools.xyz users", severity: "high", action: "blocked", detectedBy: "Sentinel AI", timestamp: "3 hr ago" },
-  { id: "t-011", type: "malware", source: "doc@shared-files.link", target: "startup-labs.co", severity: "critical", action: "quarantined", detectedBy: "Attachment Scanner", timestamp: "3.5 hr ago" },
-  { id: "t-012", type: "spoofing", source: "billing@ema1led.dev", target: "emailed.dev", severity: "high", action: "blocked", detectedBy: "DKIM Verification", timestamp: "4 hr ago" },
-] as const;
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toString();
+}
 
-const classificationStats = [
-  { category: "Legitimate", count: 2834256, percentage: 95.42, color: "bg-status-success" },
-  { category: "Spam", count: 98420, percentage: 3.31, color: "bg-status-warning" },
-  { category: "Phishing", count: 24180, percentage: 0.81, color: "bg-status-error" },
-  { category: "Malware", count: 8240, percentage: 0.28, color: "bg-brand-500" },
-  { category: "Spoofing", count: 5320, percentage: 0.18, color: "bg-content-tertiary" },
-] as const;
+function formatRate(rate: number): string {
+  return `${(rate * 100).toFixed(2)}%`;
+}
 
-const blocklistAlerts = [
-  { id: "b-1", source: "Spamhaus", type: "New phishing kit", description: "Credential harvesting targeting financial institutions via fake login portals", severity: "critical" as const, timestamp: "1 hr ago" },
-  { id: "b-2", source: "PhishTank", type: "Campaign update", description: "Known PayPal phishing campaign updated with new URL patterns", severity: "high" as const, timestamp: "3 hr ago" },
-  { id: "b-3", source: "Sentinel Intel", type: "Emerging threat", description: "AI-generated spear phishing emails detected with high linguistic quality", severity: "critical" as const, timestamp: "5 hr ago" },
-  { id: "b-4", source: "SURBL", type: "Domain reputation", description: "34 new domains added to reputation blocklist from hosting provider abuse reports", severity: "medium" as const, timestamp: "8 hr ago" },
-] as const;
+function eventTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    "email.bounced": "Bounce",
+    "email.complained": "Complaint",
+    "email.failed": "Failure",
+    "email.deferred": "Deferred",
+    "email.delivered": "Delivered",
+    "email.opened": "Opened",
+    "email.clicked": "Clicked",
+    "email.sent": "Sent",
+  };
+  return labels[type] ?? type;
+}
 
-const hourlyBlocked = [
-  480, 520, 490, 510, 530, 560, 540, 580, 520, 490, 510, 535,
-  550, 580, 620, 590, 570, 540, 510, 490, 480, 500, 520, 540,
-] as const;
-
-const threatColumns = [
+const eventColumns = [
   {
     key: "type",
     header: "Type",
     sortable: true,
-    sortValue: (row: ThreatEvent) => row.type,
-    render: (row: ThreatEvent) => {
+    sortValue: (row: AdminEvent) => row.type,
+    render: (row: AdminEvent) => {
       const typeColors: Record<string, string> = {
-        phishing: "bg-status-error/10 text-status-error",
-        spam: "bg-status-warning/10 text-status-warning",
-        malware: "bg-brand-600/10 text-brand-400",
-        spoofing: "bg-status-info/10 text-status-info",
-        "credential-harvest": "bg-status-error/10 text-status-error",
-      };
-      const labels: Record<string, string> = {
-        phishing: "Phishing",
-        spam: "Spam",
-        malware: "Malware",
-        spoofing: "Spoofing",
-        "credential-harvest": "Credential Harvest",
+        "email.bounced": "bg-status-error/10 text-status-error",
+        "email.complained": "bg-status-error/10 text-status-error",
+        "email.failed": "bg-status-warning/10 text-status-warning",
+        "email.deferred": "bg-status-warning/10 text-status-warning",
+        "email.delivered": "bg-status-success/10 text-status-success",
+        "email.opened": "bg-status-info/10 text-status-info",
+        "email.clicked": "bg-brand-600/10 text-brand-400",
       };
       return (
-        <Box className={`inline-flex rounded-full px-2 py-0.5 ${typeColors[row.type] ?? ""}`}>
-          <Text as="span" variant="caption" className="font-medium">{labels[row.type] ?? row.type}</Text>
+        <Box className={`inline-flex rounded-full px-2 py-0.5 ${typeColors[row.type] ?? "bg-content-tertiary/10 text-content-secondary"}`}>
+          <Text as="span" variant="caption" className="font-medium">{eventTypeLabel(row.type)}</Text>
         </Box>
       );
     },
   },
   {
-    key: "source",
-    header: "Source",
-    render: (row: ThreatEvent) => (
-      <Text variant="body-sm" className="text-content font-mono text-body-sm">{row.source}</Text>
+    key: "recipient",
+    header: "Recipient",
+    render: (row: AdminEvent) => (
+      <Text variant="body-sm" className="text-content font-mono text-body-sm">{row.recipient}</Text>
     ),
   },
   {
-    key: "target",
-    header: "Target",
-    render: (row: ThreatEvent) => (
-      <Text variant="body-sm" className="text-content-secondary">{row.target}</Text>
+    key: "bounceType",
+    header: "Detail",
+    render: (row: AdminEvent) => (
+      <Text variant="body-sm" className="text-content-secondary truncate max-w-[200px]" title={row.diagnosticCode ?? row.bounceType ?? ""}>
+        {row.bounceType ?? row.diagnosticCode ?? row.smtpResponse ?? "--"}
+      </Text>
     ),
   },
   {
-    key: "severity",
-    header: "Severity",
-    sortable: true,
-    sortValue: (row: ThreatEvent) => {
-      const order: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-      return order[row.severity] ?? 4;
-    },
-    render: (row: ThreatEvent) => {
-      const map = {
-        critical: { status: "critical" as const, label: "Critical" },
-        high: { status: "warning" as const, label: "High" },
-        medium: { status: "unknown" as const, label: "Medium" },
-        low: { status: "healthy" as const, label: "Low" },
-      } as const;
-      const config = map[row.severity];
-      return <StatusBadge status={config.status} label={config.label} />;
-    },
-  },
-  {
-    key: "action",
-    header: "Action",
-    render: (row: ThreatEvent) => {
-      const colors: Record<string, string> = {
-        blocked: "text-status-error",
-        quarantined: "text-status-warning",
-        flagged: "text-status-info",
-      };
-      return (
-        <Text variant="body-sm" className={`font-medium capitalize ${colors[row.action] ?? ""}`}>{row.action}</Text>
-      );
-    },
-  },
-  {
-    key: "detectedBy",
-    header: "Detected By",
-    render: (row: ThreatEvent) => (
-      <Text variant="caption" className="text-content-secondary">{row.detectedBy}</Text>
+    key: "mxHost",
+    header: "MX Host",
+    render: (row: AdminEvent) => (
+      <Text variant="caption" className="text-content-tertiary">{row.mxHost ?? row.remoteMta ?? "--"}</Text>
     ),
   },
   {
     key: "timestamp",
     header: "Time",
-    render: (row: ThreatEvent) => (
-      <Text variant="caption" className="text-content-tertiary">{row.timestamp}</Text>
+    sortable: true,
+    sortValue: (row: AdminEvent) => row.timestamp,
+    render: (row: AdminEvent) => (
+      <Text variant="caption" className="text-content-tertiary">{timeAgo(row.timestamp)}</Text>
     ),
   },
 ] as const;
 
 export default function SecurityPage() {
-  const totalBlocked24h = hourlyBlocked.reduce((sum, v) => sum + v, 0);
-  const criticalCount = recentThreats.filter((t) => t.severity === "critical").length;
-  const phishingCount = recentThreats.filter((t) => t.type === "phishing" || t.type === "credential-harvest").length;
-  const totalClassified = classificationStats.reduce((sum, c) => sum + c.count, 0);
+  const statsFetcher = useCallback(() => adminApi.getStats(), []);
+  const eventsFetcher = useCallback(() => adminApi.listEvents({ limit: 100 }), []);
+
+  const { data: stats, loading: statsLoading, error: statsError } = useApi<AdminStats>(statsFetcher);
+  const { data: events, loading: eventsLoading } = useApi<AdminEvent[]>(eventsFetcher);
+
+  const eventList = events ?? [];
+  const bounceEvents = eventList.filter((e) => e.type === "email.bounced");
+  const complaintEvents = eventList.filter((e) => e.type === "email.complained");
+  const failedEvents = eventList.filter((e) => e.type === "email.failed");
+
+  // Group bounces by category
+  const bounceCategoryCounts: Record<string, number> = {};
+  for (const e of bounceEvents) {
+    const category = e.bounceCategory ?? e.bounceType ?? "Unknown";
+    bounceCategoryCounts[category] = (bounceCategoryCounts[category] ?? 0) + 1;
+  }
+  const bounceCategories = Object.entries(bounceCategoryCounts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([category, count]) => ({ category, count }));
+
+  // Group events by type
+  const eventTypeCounts: Record<string, number> = {};
+  for (const e of eventList) {
+    eventTypeCounts[e.type] = (eventTypeCounts[e.type] ?? 0) + 1;
+  }
+  const eventTypeDistribution = Object.entries(eventTypeCounts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([type, count]) => ({
+      type,
+      label: eventTypeLabel(type),
+      count,
+      percentage: eventList.length > 0 ? (count / eventList.length) * 100 : 0,
+    }));
 
   return (
     <Box className="flex flex-col gap-8">
       <Box>
-        <Text variant="heading-lg" className="text-content font-bold">Security & Threat Intelligence</Text>
+        <Text variant="heading-lg" className="text-content font-bold">Security & Events</Text>
         <Text variant="body-sm" className="text-content-secondary mt-1">
-          Real-time threat monitoring, spam classification, and blocklist intelligence
+          Bounce analysis, complaint tracking, and event monitoring
         </Text>
       </Box>
 
+      {statsError && (
+        <Box className="rounded-xl bg-status-error/10 border border-status-error/30 p-4">
+          <Text variant="body-sm" className="text-status-error">
+            Failed to load stats: {statsError}
+          </Text>
+        </Box>
+      )}
+
       <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" role="region" aria-label="Security metrics">
         <MetricCard
-          label="Threats Blocked (24h)"
-          value={totalBlocked24h.toLocaleString()}
-          trend={{ direction: "up", value: "4.2%" }}
-          sparklineData={[...hourlyBlocked.slice(-8)]}
+          label="Total Bounced"
+          value={statsLoading ? "..." : formatNumber(stats?.totals.bounced ?? 0)}
+          description={`24h: ${formatNumber(stats?.last24h.bounced ?? 0)}`}
         />
         <MetricCard
-          label="Critical Threats"
-          value={criticalCount.toString()}
-          trend={{ direction: "down", value: "2" }}
-          description="Last 4 hours"
+          label="Bounce Rate"
+          value={statsLoading ? "..." : (stats ? formatRate(stats.totals.bounceRate) : "--")}
         />
         <MetricCard
-          label="Phishing Attempts"
-          value={phishingCount.toString()}
-          trend={{ direction: "down", value: "1" }}
-          description="Last 4 hours"
+          label="Complaints"
+          value={statsLoading ? "..." : formatNumber(stats?.totals.complained ?? 0)}
         />
         <MetricCard
-          label="Detection Rate"
-          value="99.87%"
-          trend={{ direction: "up", value: "0.02%" }}
-          description="False positive rate: 0.004%"
+          label="Failed"
+          value={statsLoading ? "..." : formatNumber(stats?.totals.failed ?? 0)}
+          description={`24h: ${formatNumber(stats?.last24h.failed ?? 0)}`}
         />
       </Box>
 
       <Box className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Box className="lg:col-span-2">
-          <ChartContainer title="Threats Blocked (Last 24h)" description="Hourly count of blocked malicious emails">
-            <Box className="flex items-end gap-0.5 h-40" role="img" aria-label="Hourly blocked threats chart">
-              {hourlyBlocked.map((count, i) => (
-                <Box
-                  key={i}
-                  className="flex-1 bg-status-error/40 hover:bg-status-error/60 rounded-t transition-colors"
-                  style={{ height: `${(count / 650) * 100}%` }}
-                  title={`Hour ${i}: ${count} blocked`}
-                />
-              ))}
-            </Box>
-          </ChartContainer>
+          <Box className="rounded-xl bg-surface-secondary border border-border p-5">
+            <Text variant="heading-sm" className="text-content font-semibold mb-4">Event Type Distribution</Text>
+            {eventsLoading ? (
+              <Box className="h-40 bg-surface-tertiary/50 rounded animate-pulse" />
+            ) : eventTypeDistribution.length === 0 ? (
+              <Text variant="body-sm" className="text-content-tertiary">No events recorded yet</Text>
+            ) : (
+              <Box className="flex flex-col gap-3" role="list" aria-label="Event type distribution">
+                {eventTypeDistribution.map((item) => {
+                  const colorMap: Record<string, string> = {
+                    "email.delivered": "bg-status-success",
+                    "email.bounced": "bg-status-error",
+                    "email.complained": "bg-status-error/60",
+                    "email.failed": "bg-status-warning",
+                    "email.deferred": "bg-brand-500",
+                    "email.opened": "bg-status-info",
+                    "email.clicked": "bg-brand-400",
+                    "email.sent": "bg-content-tertiary",
+                  };
+                  return (
+                    <Box key={item.type} role="listitem">
+                      <Box className="flex items-center justify-between mb-1">
+                        <Text variant="body-sm" className="text-content">{item.label}</Text>
+                        <Box className="flex items-center gap-2">
+                          <Text variant="caption" className="text-content-secondary font-mono">{item.count}</Text>
+                          <Text variant="caption" className="text-content-tertiary font-mono w-14 text-right">{item.percentage.toFixed(1)}%</Text>
+                        </Box>
+                      </Box>
+                      <Box className="h-1.5 bg-surface-tertiary rounded-full overflow-hidden">
+                        <Box className={`h-full rounded-full ${colorMap[item.type] ?? "bg-content-tertiary"}`} style={{ width: `${Math.min(item.percentage * 2, 100)}%` }} />
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
         </Box>
 
         <Box className="rounded-xl bg-surface-secondary border border-border p-5">
-          <Text variant="heading-sm" className="text-content font-semibold mb-4">Classification Stats (24h)</Text>
-          <Box className="flex flex-col gap-3" role="list" aria-label="Email classification statistics">
-            {classificationStats.map((stat) => (
-              <Box key={stat.category} role="listitem">
-                <Box className="flex items-center justify-between mb-1">
-                  <Text variant="body-sm" className="text-content">{stat.category}</Text>
-                  <Box className="flex items-center gap-2">
-                    <Text variant="caption" className="text-content-secondary font-mono">
-                      {stat.count >= 1000000 ? `${(stat.count / 1000000).toFixed(1)}M` : stat.count >= 1000 ? `${(stat.count / 1000).toFixed(0)}K` : stat.count}
-                    </Text>
-                    <Text variant="caption" className="text-content-tertiary font-mono w-14 text-right">{stat.percentage}%</Text>
-                  </Box>
-                </Box>
-                <Box className="h-1.5 bg-surface-tertiary rounded-full overflow-hidden">
-                  <Box className={`h-full rounded-full ${stat.color}`} style={{ width: `${Math.min(stat.percentage * 2, 100)}%` }} />
-                </Box>
-              </Box>
-            ))}
-            <Box className="pt-2 mt-1 border-t border-border/50">
-              <Box className="flex items-center justify-between">
-                <Text variant="caption" className="text-content-secondary">Total Classified</Text>
-                <Text variant="caption" className="text-content font-mono font-medium">{(totalClassified / 1000000).toFixed(1)}M</Text>
-              </Box>
+          <Text variant="heading-sm" className="text-content font-semibold mb-4">Bounce Categories</Text>
+          {eventsLoading ? (
+            <Box className="flex flex-col gap-3">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Box key={i} className="h-8 bg-surface-tertiary/50 rounded animate-pulse" />
+              ))}
             </Box>
-          </Box>
-        </Box>
-      </Box>
-
-      <Box className="rounded-xl bg-surface-secondary border border-border p-5">
-        <Text variant="heading-sm" className="text-content font-semibold mb-4">Threat Intelligence Alerts</Text>
-        <Box className="flex flex-col gap-3" role="list" aria-label="Threat intelligence alerts">
-          {blocklistAlerts.map((alert) => {
-            const severityColors: Record<string, string> = {
-              critical: "border-l-status-error",
-              high: "border-l-status-warning",
-              medium: "border-l-status-info",
-            };
-            return (
-              <Box key={alert.id} className={`border-l-2 ${severityColors[alert.severity] ?? "border-l-border"} pl-3 py-2`} role="listitem">
-                <Box className="flex items-center gap-2 mb-1">
-                  <Text variant="body-sm" className="text-content font-medium">{alert.type}</Text>
-                  <Text variant="caption" className="text-content-tertiary">from {alert.source}</Text>
-                  <Text variant="caption" className="text-content-tertiary ml-auto">{alert.timestamp}</Text>
+          ) : bounceCategories.length === 0 ? (
+            <Text variant="body-sm" className="text-content-tertiary">No bounces recorded</Text>
+          ) : (
+            <Box className="flex flex-col gap-3" role="list" aria-label="Bounce categories">
+              {bounceCategories.map((item) => (
+                <Box key={item.category} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0" role="listitem">
+                  <Text variant="body-sm" className="text-content capitalize">{item.category}</Text>
+                  <Text variant="body-sm" className="text-status-error font-mono font-medium">{item.count}</Text>
                 </Box>
-                <Text variant="body-sm" className="text-content-secondary">{alert.description}</Text>
-              </Box>
-            );
-          })}
+              ))}
+            </Box>
+          )}
         </Box>
       </Box>
 
       <Box>
-        <Text variant="heading-md" className="text-content font-semibold mb-4">Recent Threat Events</Text>
-        <DataTable
-          columns={threatColumns}
-          data={recentThreats}
-          rowKey={(row) => row.id}
-          pageSize={10}
-          filterPlaceholder="Search threats by source, target, or type..."
-          filterFn={(row, query) => {
-            const q = query.toLowerCase();
-            return row.source.toLowerCase().includes(q) || row.target.toLowerCase().includes(q) || row.type.toLowerCase().includes(q);
-          }}
-          emptyMessage="No threat events found"
-        />
+        <Text variant="heading-md" className="text-content font-semibold mb-4">Recent Events</Text>
+        {eventsLoading ? (
+          <Box className="rounded-xl bg-surface-secondary border border-border p-8 text-center">
+            <Text variant="body-sm" className="text-content-tertiary">Loading events...</Text>
+          </Box>
+        ) : (
+          <DataTable
+            columns={eventColumns}
+            data={eventList}
+            rowKey={(row) => row.id}
+            pageSize={10}
+            filterPlaceholder="Search events by recipient, type, or detail..."
+            filterFn={(row, query) => {
+              const q = query.toLowerCase();
+              return (
+                row.recipient.toLowerCase().includes(q) ||
+                row.type.toLowerCase().includes(q) ||
+                (row.bounceType?.toLowerCase().includes(q) ?? false) ||
+                (row.diagnosticCode?.toLowerCase().includes(q) ?? false)
+              );
+            }}
+            emptyMessage="No events found"
+          />
+        )}
       </Box>
     </Box>
   );
