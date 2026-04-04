@@ -17,7 +17,7 @@ export const Box: BoxComponent = forwardRef(function Box<T extends ElementType =
   { as, className, children, ...props }: BoxProps<T>,
   ref: React.Ref<Element>
 ) {
-  const Component = as || "div";
+  const Component = (as || "div") as any;
   return (
     <Component ref={ref} className={className} {...props}>
       {children}

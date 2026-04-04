@@ -205,9 +205,8 @@ const certificate = new aws.acm.Certificate("emailed-cert", {
     ...baseTags,
     Name: `emailed-${environment}-cert`,
   },
-  lifecycle: {
-    createBeforeDestroy: true,
-  },
+}, {
+  deleteBeforeReplace: true,
 });
 
 // DNS validation records

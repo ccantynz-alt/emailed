@@ -64,7 +64,7 @@ function LandingNav() {
           <Box as="a" href="/login" className="text-body-sm text-content-secondary hover:text-content transition-colors">
             <Text as="span" variant="body-sm">Sign In</Text>
           </Box>
-          <Button variant="primary" size="sm" as={"a" as unknown as undefined} href="/register">
+          <Button variant="primary" size="sm" {...{ as: "a", href: "/register" } as any}>
             Get Started
           </Button>
         </Box>

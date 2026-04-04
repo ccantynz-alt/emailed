@@ -41,7 +41,7 @@ export const EmailList = forwardRef<HTMLDivElement, EmailListProps>(function Ema
   ref
 ) {
   return (
-    <Box ref={ref} as="ul" role="list" className={`flex flex-col divide-y divide-border ${className}`} {...props}>
+    <Box ref={ref} as={"ul" as any} role="list" className={`flex flex-col divide-y divide-border ${className}`} {...props as any}>
       {emails.map((email) => (
         <EmailListRow
           key={email.id}
