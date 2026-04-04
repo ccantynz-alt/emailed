@@ -80,6 +80,11 @@ export default function DashboardLayout({
     </Box>
   );
 
+  const handleLogout = () => {
+    authApi.logout();
+    window.location.href = "/login";
+  };
+
   const footer = (
     <Box className="flex items-center gap-3">
       <Box className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
@@ -88,14 +93,27 @@ export default function DashboardLayout({
         </Text>
       </Box>
       {!collapsed && (
-        <Box className="flex-1 min-w-0">
-          <Text variant="body-sm" className="truncate font-medium">
-            {user.name}
-          </Text>
-          <Text variant="caption" className="truncate">
-            {user.email}
-          </Text>
-        </Box>
+        <>
+          <Box className="flex-1 min-w-0">
+            <Text variant="body-sm" className="truncate font-medium">
+              {user.name}
+            </Text>
+            <Text variant="caption" className="truncate">
+              {user.email}
+            </Text>
+          </Box>
+          <Box
+            as="button"
+            className="text-content-tertiary hover:text-content transition-colors p-1"
+            onClick={handleLogout}
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <Text as="span" variant="caption">
+              Sign out
+            </Text>
+          </Box>
+        </>
       )}
     </Box>
   );
