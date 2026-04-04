@@ -10,6 +10,39 @@
 
 import { SmtpServer } from "./smtp/server.js";
 import { MtaWorker } from "./worker.js";
+
+// Re-export bounce processing for use by other services (@emailed/inbound)
+export {
+  BounceProcessor,
+  DatabaseBounceProcessor,
+  parseBounceMessage,
+  parseDsn,
+  classifyBounce,
+  processBounce,
+  parseComplaint,
+  processComplaintAction,
+} from "./bounce/processor.js";
+export type {
+  DsnFields,
+  DsnMessage,
+  SuppressionEntry,
+  BounceAction,
+  ComplaintInfo,
+  ComplaintAction,
+  BounceEventRecord,
+  ComplaintEventRecord,
+} from "./bounce/processor.js";
+export {
+  isBounceNotification,
+  isComplaintReport,
+  parseArfReport,
+  extractOriginalMessageId,
+  extractBoundary,
+  splitMimeParts,
+  mapEnhancedStatusCode,
+  mapSmtpReplyCode,
+} from "./bounce/parser.js";
+export type { ArfReport, BounceClassification } from "./bounce/parser.js";
 import { getDatabase, closeConnection } from "@emailed/db";
 import { initTelemetry, shutdownTelemetry } from "@emailed/shared";
 import Redis from "ioredis";

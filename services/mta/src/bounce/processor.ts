@@ -1,13 +1,15 @@
 /**
- * @emailed/mta — Bounce Processor
+ * @emailed/mta — Bounce & Complaint Processor
  *
  * Handles DSN (Delivery Status Notification, RFC 3464) parsing, bounce
- * classification, suppression list management, and retry scheduling.
+ * classification, ARF (Abuse Reporting Format, RFC 5965) complaint
+ * processing, suppression list management, and retry scheduling.
  *
  * Key RFCs:
  *   - RFC 3464  Delivery Status Notifications
  *   - RFC 3463  Enhanced Mail System Status Codes
  *   - RFC 5321  SMTP reply codes
+ *   - RFC 5965  Abuse Reporting Format (ARF)
  */
 
 import { randomUUID } from "node:crypto";
@@ -19,6 +21,14 @@ import {
   ok,
   err,
 } from "../types.js";
+import {
+  parseArfReport,
+  isBounceNotification,
+  isComplaintReport,
+  extractOriginalMessageId,
+  mapEnhancedStatusCode,
+  type ArfReport,
+} from "./parser.js";
 
 // ─── DSN field types ────────────────────────────────────────────────────────
 
@@ -538,4 +548,279 @@ function parseBounceHeuristic(raw: string): Result<BounceInfo[]> {
       retryable: classified.retryable,
     },
   ]);
+}
+
+// ─── Complaint info ────────────────────────────────────────────────────────
+
+export interface ComplaintInfo {
+  /** The recipient who complained (the original To: address) */
+  recipient: string;
+  /** Type of complaint: abuse, fraud, virus, other */
+  feedbackType: string;
+  /** The ISP / feedback provider that sent the report */
+  feedbackProvider?: string;
+  /** Source IP of the original message */
+  sourceIp?: string;
+  /** Original message ID if extractable */
+  originalMessageId?: string;
+  /** Arrival date of the original message */
+  arrivalDate?: string;
+  /** Timestamp when the complaint was processed */
+  timestamp: Date;
+}
+
+/**
+ * Parse an ARF complaint report and extract complaint info.
+ */
+export function parseComplaint(rawMessage: string): Result<ComplaintInfo> {
+  const arfResult = parseArfReport(rawMessage);
+  if (!arfResult.ok) {
+    // Try heuristic: look for common complaint patterns
+    return parseComplaintHeuristic(rawMessage);
+  }
+
+  const arf = arfResult.value;
+
+  // We need at least a recipient to be useful
+  const recipient = arf.originalRecipient ?? arf.originalMailFrom;
+  if (!recipient) {
+    // Try to extract from original message
+    const emailMatch = rawMessage.match(/[\w.+-]+@[\w.-]+\.\w{2,}/);
+    if (!emailMatch) {
+      return err(new Error("Unable to determine complaint recipient"));
+    }
+  }
+
+  const originalMessageId = extractOriginalMessageId(rawMessage);
+
+  return ok({
+    recipient: recipient ?? "",
+    feedbackType: arf.feedbackType,
+    feedbackProvider: arf.userAgent,
+    sourceIp: arf.sourceIp,
+    originalMessageId: originalMessageId ?? undefined,
+    arrivalDate: arf.arrivalDate,
+    timestamp: new Date(),
+  });
+}
+
+/**
+ * Heuristic complaint parser for non-ARF complaint messages.
+ */
+function parseComplaintHeuristic(raw: string): Result<ComplaintInfo> {
+  // Try to find a recipient email
+  const emailMatch = raw.match(/[\w.+-]+@[\w.-]+\.\w{2,}/);
+  if (!emailMatch) {
+    return err(new Error("Unable to parse complaint: no email address found"));
+  }
+
+  const originalMessageId = extractOriginalMessageId(raw);
+
+  return ok({
+    recipient: emailMatch[0],
+    feedbackType: "abuse",
+    originalMessageId: originalMessageId ?? undefined,
+    timestamp: new Date(),
+  });
+}
+
+// ─── Complaint action ──────────────────────────────────────────────────────
+
+export type ComplaintAction =
+  | { kind: "suppress"; recipient: string; reason: "complaint"; feedbackType: string }
+  | { kind: "ignore"; reason: string };
+
+/**
+ * Decide what action to take for an ISP complaint.
+ * Complaints almost always result in immediate suppression.
+ */
+export function processComplaintAction(complaint: ComplaintInfo): ComplaintAction {
+  if (!complaint.recipient) {
+    return { kind: "ignore", reason: "No recipient found in complaint" };
+  }
+
+  return {
+    kind: "suppress",
+    recipient: complaint.recipient,
+    reason: "complaint",
+    feedbackType: complaint.feedbackType,
+  };
+}
+
+// ─── DatabaseBounceProcessor — production processor with DB integration ────
+
+export interface BounceEventRecord {
+  emailId?: string;
+  accountId?: string;
+  recipient: string;
+  bounceType: "hard" | "soft";
+  bounceCategory: string;
+  diagnosticCode?: string;
+  remoteMta?: string;
+  smtpResponse?: string;
+}
+
+export interface ComplaintEventRecord {
+  emailId?: string;
+  accountId?: string;
+  recipient: string;
+  feedbackType: string;
+  feedbackProvider?: string;
+}
+
+/**
+ * Production bounce/complaint processor that integrates with the database.
+ *
+ * This class provides the high-level `processBounceMessage` and
+ * `processComplaintMessage` methods that:
+ *   1. Parse the raw message
+ *   2. Classify the bounce/complaint
+ *   3. Return structured records for the caller to persist
+ *
+ * The actual DB writes are left to the caller (typically the inbound
+ * pipeline or a dedicated BullMQ worker) to keep this class testable
+ * without database dependencies.
+ */
+export class DatabaseBounceProcessor {
+  private readonly maxAttempts: number;
+
+  constructor(maxAttempts = 5) {
+    this.maxAttempts = maxAttempts;
+  }
+
+  /**
+   * Process a raw bounce notification and return structured records.
+   *
+   * Returns bounce event records and suppression entries for the caller
+   * to persist to the database.
+   */
+  processBounceMessage(
+    rawMessage: string,
+    currentAttemptsByRecipient?: Map<string, number>,
+  ): Result<{
+    bounceEvents: BounceEventRecord[];
+    suppressions: Array<{ address: string; reason: "bounce" }>;
+    retries: Array<{ address: string; retryAt: Date; attempt: number }>;
+    originalMessageId: string | null;
+  }> {
+    const parsed = parseBounceMessage(rawMessage);
+    if (!parsed.ok) return parsed as unknown as Result<never>;
+
+    const originalMessageId = extractOriginalMessageId(rawMessage);
+    const bounceEvents: BounceEventRecord[] = [];
+    const suppressions: Array<{ address: string; reason: "bounce" }> = [];
+    const retries: Array<{ address: string; retryAt: Date; attempt: number }> = [];
+
+    for (const info of parsed.value) {
+      const attempt = currentAttemptsByRecipient?.get(info.recipient) ?? 0;
+      const action = processBounce(info, attempt, this.maxAttempts);
+
+      // Map category to DB bounce_type enum
+      const dbBounceType: "hard" | "soft" =
+        info.category === "hard" || info.category === "block" ? "hard" : "soft";
+
+      // Map to DB bounce_category enum
+      const dbBounceCategory = mapToBounceCategory(info);
+
+      bounceEvents.push({
+        recipient: info.recipient,
+        bounceType: dbBounceType,
+        bounceCategory: dbBounceCategory,
+        diagnosticCode: info.diagnosticCode,
+        remoteMta: info.remoteMta,
+      });
+
+      if (action.kind === "suppress") {
+        suppressions.push({ address: info.recipient, reason: "bounce" });
+      } else if (action.kind === "retry") {
+        retries.push({
+          address: info.recipient,
+          retryAt: action.retryAt,
+          attempt: action.attempt,
+        });
+      }
+    }
+
+    return ok({ bounceEvents, suppressions, retries, originalMessageId });
+  }
+
+  /**
+   * Process a raw ARF complaint message and return structured records.
+   */
+  processComplaintMessage(rawMessage: string): Result<{
+    complaint: ComplaintEventRecord;
+    suppression: { address: string; reason: "complaint" } | null;
+    originalMessageId: string | null;
+  }> {
+    const parsed = parseComplaint(rawMessage);
+    if (!parsed.ok) return parsed as unknown as Result<never>;
+
+    const info = parsed.value;
+    const action = processComplaintAction(info);
+    const originalMessageId = info.originalMessageId ?? extractOriginalMessageId(rawMessage);
+
+    // Map ARF feedback type to DB feedback_type enum
+    const dbFeedbackType = mapToFeedbackType(info.feedbackType);
+
+    const complaint: ComplaintEventRecord = {
+      recipient: info.recipient,
+      feedbackType: dbFeedbackType,
+      feedbackProvider: info.feedbackProvider,
+    };
+
+    const suppression = action.kind === "suppress"
+      ? { address: action.recipient, reason: "complaint" as const }
+      : null;
+
+    return ok({ complaint, suppression, originalMessageId });
+  }
+}
+
+/**
+ * Map BounceInfo to the DB bounce_category enum values.
+ */
+function mapToBounceCategory(info: BounceInfo): string {
+  switch (info.type) {
+    case "invalid-recipient":
+      return "unknown_user";
+    case "mailbox-full":
+      return "mailbox_full";
+    case "domain-not-found":
+      return "domain_not_found";
+    case "spam-block":
+      return "spam_block";
+    case "rate-limited":
+      return "rate_limited";
+    case "content-rejected":
+      return "content_rejected";
+    case "auth-failure":
+      return "authentication_failed";
+    case "policy-violation":
+      return "policy_rejection";
+    case "connection-refused":
+    case "timeout":
+    case "network-error":
+    case "message-too-large":
+      return "protocol_error";
+    default:
+      return "other";
+  }
+}
+
+/**
+ * Map ARF feedback type string to DB feedback_type enum values.
+ */
+function mapToFeedbackType(feedbackType: string): string {
+  switch (feedbackType.toLowerCase()) {
+    case "abuse":
+      return "abuse";
+    case "fraud":
+    case "phishing":
+      return "fraud";
+    case "virus":
+    case "malware":
+      return "virus";
+    default:
+      return "other";
+  }
 }

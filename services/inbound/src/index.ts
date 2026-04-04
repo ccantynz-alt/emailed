@@ -5,6 +5,7 @@ import { MailboxRouter } from "./routing/router.js";
 import { InMemoryEmailStore } from "./storage/store.js";
 import { PostgresEmailStore } from "./storage/postgres-store.js";
 import { createHttpInbound } from "./http-inbound.js";
+import { BounceComplaintHandler } from "./bounce-handler.js";
 import {
   initTelemetry,
   shutdownTelemetry,
@@ -71,6 +72,7 @@ const router = new MailboxRouter();
 const store = process.env["DATABASE_URL"]
   ? new PostgresEmailStore()
   : new InMemoryEmailStore();
+const bounceHandler = new BounceComplaintHandler();
 
 async function handleInboundMessage(
   session: SmtpSession,
@@ -78,6 +80,24 @@ async function handleInboundMessage(
   rawData: Uint8Array,
 ): Promise<void> {
   const startTime = Date.now();
+  const rawString = new TextDecoder().decode(rawData);
+
+  // 0. Check if this is a bounce notification or complaint report
+  //    Route these to the bounce/complaint processor instead of regular delivery.
+  const bounceResult = await bounceHandler.handleIfBounceOrComplaint(
+    rawString,
+    envelope,
+  );
+  if (bounceResult.handled) {
+    const elapsed = Date.now() - startTime;
+    const senderDomain = (envelope.mailFrom ?? "").split("@")[1] ?? "unknown";
+    recordEmailReceived(senderDomain, "accepted");
+    console.log(
+      `[Inbound] Processed ${bounceResult.type} notification from ${envelope.mailFrom} in ${elapsed}ms` +
+        (bounceResult.recipients.length > 0 ? ` (recipients: ${bounceResult.recipients.join(", ")})` : ""),
+    );
+    return;
+  }
 
   // 1. Parse the MIME message
   const parsed = await parser.parse(rawData);

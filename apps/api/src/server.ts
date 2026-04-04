@@ -32,6 +32,7 @@ import { domains } from "./routes/domains.js";
 import { webhooks } from "./routes/webhooks.js";
 import { analytics } from "./routes/analytics.js";
 import { suppressions } from "./routes/suppressions.js";
+import { bounces } from "./routes/bounces.js";
 import { tracking } from "./routes/tracking.js";
 import { apiKeysRouter } from "./routes/api-keys.js";
 import { account } from "./routes/account.js";
@@ -132,6 +133,9 @@ app.use("/v1/webhooks/*", authMiddleware, writeRateLimit);
 app.use("/v1/analytics/*", authMiddleware, readRateLimit);
 // Suppressions: write-level limits (200 req/min)
 app.use("/v1/suppressions/*", authMiddleware, writeRateLimit);
+// Bounces: read-level limits (600 req/min)
+app.use("/v1/bounces/*", authMiddleware, readRateLimit);
+app.use("/v1/bounces", authMiddleware, readRateLimit);
 // API keys management: write-level limits (200 req/min)
 app.use("/v1/api-keys/*", authMiddleware, writeRateLimit);
 // Account management: write-level limits (200 req/min)
@@ -153,6 +157,7 @@ app.route("/v1/domains", domains);
 app.route("/v1/webhooks", webhooks);
 app.route("/v1/analytics", analytics);
 app.route("/v1/suppressions", suppressions);
+app.route("/v1/bounces", bounces);
 app.route("/v1/api-keys", apiKeysRouter);
 app.route("/v1/account", account);
 app.route("/v1/billing", billing);
