@@ -1,0 +1,83 @@
+name: Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      dry_run:
+        description: "Dry run (log SQL without executing)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: db-migrate-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.2.0"
+
+jobs:
+  migrate:
+    name: Migrate — ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: bun-deps-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-deps-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build packages
+        run: bun run build
+
+      - name: Run migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          echo "Running database migration against ${{ inputs.environment }}..."
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN — logging SQL only"
+            DRIZZLE_LOG=true bun run db:migrate 2>&1 | tee migration-output.txt || true
+            echo "Dry run complete. Review the output above."
+          else
+            bun run db:migrate
+            echo "Migration completed successfully."
+          fi
+
+      - name: Upload migration output
+        if: inputs.dry_run
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-output-${{ inputs.environment }}
+          path: migration-output.txt
+          retention-days: 30
+          if-no-files-found: ignore

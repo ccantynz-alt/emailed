@@ -1,0 +1,79 @@
+version: 2
+
+updates:
+  # Root and workspace npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "ccantynz-alt"
+    labels:
+      - "dependencies"
+      - "automated"
+    groups:
+      typescript:
+        patterns:
+          - "typescript"
+          - "@types/*"
+          - "bun-types"
+      turbo:
+        patterns:
+          - "turbo"
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      linting:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "prettier"
+      radix:
+        patterns:
+          - "@radix-ui/*"
+      next:
+        patterns:
+          - "next"
+          - "@next/*"
+      drizzle:
+        patterns:
+          - "drizzle-orm"
+          - "drizzle-kit"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "ccantynz-alt"
+    labels:
+      - "dependencies"
+      - "ci"
+      - "automated"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/infrastructure/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "ccantynz-alt"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "automated"

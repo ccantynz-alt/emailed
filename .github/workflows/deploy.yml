@@ -3,129 +3,215 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      skip_staging:
+        description: "Skip staging (production hotfix)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  id-token: write
-  contents: read
-
 env:
-  AWS_REGION: us-east-1
-  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  BUN_VERSION: "1.2.0"
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
+  # --------------------------------------------------------------------------
+  # Build and push all service images to GHCR
+  # --------------------------------------------------------------------------
   build-images:
-    name: Build ${{ matrix.image }}
+    name: Build — ${{ matrix.service }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        image: [web, api, mta]
-        include:
-          - image: web
-            context: ./apps/web
-            dockerfile: ./infrastructure/docker/web.Dockerfile
-          - image: api
-            context: ./apps/api
-            dockerfile: ./infrastructure/docker/api.Dockerfile
-          - image: mta
-            context: ./services/mta
-            dockerfile: ./infrastructure/docker/mta.Dockerfile
-    outputs:
-      web-tag: ${{ steps.meta.outputs.tags }}
-      api-tag: ${{ steps.meta.outputs.tags }}
-      mta-tag: ${{ steps.meta.outputs.tags }}
+        service: [web, api, admin, mta, inbound, jmap, reputation]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Login to Amazon ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.ECR_REGISTRY }}/emailed-${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
           tags: |
             type=sha,prefix=
             type=raw,value=latest
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: infrastructure/docker/Dockerfile.${{ matrix.service }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=deploy-${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=deploy-${{ matrix.service }}
 
+  # --------------------------------------------------------------------------
+  # Deploy to staging
+  # --------------------------------------------------------------------------
   deploy-staging:
     name: Deploy to Staging
     needs: build-images
+    if: >-
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'production' && !inputs.skip_staging)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: staging
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          version: "v1.30.0"
 
-      - name: Deploy to staging
+      - name: Configure kubeconfig
         run: |
-          echo "Deploying to staging with image tag: ${{ github.sha }}"
-          # Replace with actual deployment command, e.g.:
-          # kubectl set image deployment/web web=$ECR_REGISTRY/emailed-web:${{ github.sha }} --namespace=staging
-          # kubectl set image deployment/api api=$ECR_REGISTRY/emailed-api:${{ github.sha }} --namespace=staging
-          # kubectl set image deployment/mta mta=$ECR_REGISTRY/emailed-mta:${{ github.sha }} --namespace=staging
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
 
-      - name: Verify staging deployment
+      - name: Deploy services to staging
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          NAMESPACE: staging
         run: |
-          echo "Running staging health checks..."
-          # Replace with actual health check commands
+          set -euo pipefail
+          SERVICES=(web api admin mta inbound jmap reputation)
+          for svc in "${SERVICES[@]}"; do
+            IMAGE="${REGISTRY}/${IMAGE_PREFIX}/${svc}:${IMAGE_TAG}"
+            echo "Deploying ${svc} → ${IMAGE}"
+            kubectl set image "deployment/${svc}" \
+              "${svc}=${IMAGE}" \
+              --namespace="${NAMESPACE}" \
+              --record
+          done
 
+      - name: Wait for rollouts
+        env:
+          NAMESPACE: staging
+        run: |
+          set -euo pipefail
+          SERVICES=(web api admin mta inbound jmap reputation)
+          for svc in "${SERVICES[@]}"; do
+            echo "Waiting for ${svc} rollout..."
+            kubectl rollout status "deployment/${svc}" \
+              --namespace="${NAMESPACE}" \
+              --timeout=300s
+          done
+
+      - name: Run smoke tests
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+        run: |
+          set -euo pipefail
+          echo "Running staging smoke tests..."
+          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${STAGING_API_URL}/health" || true)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Health check failed with status ${HTTP_STATUS}"
+            exit 1
+          fi
+          echo "Staging smoke tests passed."
+
+  # --------------------------------------------------------------------------
+  # Deploy to production (requires manual approval via GitHub environment)
+  # --------------------------------------------------------------------------
   deploy-production:
     name: Deploy to Production
     needs: deploy-staging
+    if: >-
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          version: "v1.30.0"
 
-      - name: Deploy to production
+      - name: Configure kubeconfig
         run: |
-          echo "Deploying to production with image tag: ${{ github.sha }}"
-          # Replace with actual deployment command, e.g.:
-          # kubectl set image deployment/web web=$ECR_REGISTRY/emailed-web:${{ github.sha }} --namespace=production
-          # kubectl set image deployment/api api=$ECR_REGISTRY/emailed-api:${{ github.sha }} --namespace=production
-          # kubectl set image deployment/mta mta=$ECR_REGISTRY/emailed-mta:${{ github.sha }} --namespace=production
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
 
-      - name: Verify production deployment
+      - name: Deploy services to production
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          NAMESPACE: production
         run: |
+          set -euo pipefail
+          SERVICES=(web api admin mta inbound jmap reputation)
+          for svc in "${SERVICES[@]}"; do
+            IMAGE="${REGISTRY}/${IMAGE_PREFIX}/${svc}:${IMAGE_TAG}"
+            echo "Deploying ${svc} → ${IMAGE}"
+            kubectl set image "deployment/${svc}" \
+              "${svc}=${IMAGE}" \
+              --namespace="${NAMESPACE}" \
+              --record
+          done
+
+      - name: Wait for rollouts
+        env:
+          NAMESPACE: production
+        run: |
+          set -euo pipefail
+          SERVICES=(web api admin mta inbound jmap reputation)
+          for svc in "${SERVICES[@]}"; do
+            echo "Waiting for ${svc} rollout..."
+            kubectl rollout status "deployment/${svc}" \
+              --namespace="${NAMESPACE}" \
+              --timeout=300s
+          done
+
+      - name: Run production health checks
+        env:
+          PRODUCTION_API_URL: ${{ vars.PRODUCTION_API_URL }}
+        run: |
+          set -euo pipefail
           echo "Running production health checks..."
-          # Replace with actual health check commands
+          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${PRODUCTION_API_URL}/health" || true)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Health check failed with status ${HTTP_STATUS}"
+            exit 1
+          fi
+          echo "Production health checks passed."
