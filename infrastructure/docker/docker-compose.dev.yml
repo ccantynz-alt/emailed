@@ -1,7 +1,9 @@
-version: "3.9"
-
-# Development overrides — only infrastructure services
-# App services run locally via `bun run dev`
+# Development overrides — only infrastructure services.
+# App services run locally via `bun run dev`.
+#
+# Usage:
+#   docker compose -f infrastructure/docker/docker-compose.dev.yml up -d
+#   bun run dev
 
 services:
   postgres:
@@ -14,21 +16,39 @@ services:
       - "5432:5432"
     volumes:
       - postgres_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emailed -d emailed"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   redis:
     image: redis:7-alpine
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   clickhouse:
     image: clickhouse/clickhouse-server:24-alpine
+    environment:
+      CLICKHOUSE_DB: emailed_analytics
+      CLICKHOUSE_USER: emailed
+      CLICKHOUSE_PASSWORD: dev_password
     ports:
       - "8123:8123"
+      - "9000:9000"
 
   meilisearch:
     image: getmeili/meilisearch:v1.11
     environment:
       MEILI_MASTER_KEY: dev_master_key
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: "true"
     ports:
       - "7700:7700"
 

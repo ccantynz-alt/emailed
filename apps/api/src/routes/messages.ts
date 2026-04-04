@@ -143,6 +143,13 @@ function buildRawMessage(
     lines.push(`Reply-To: ${replyStr}`);
   }
 
+  // List-Unsubscribe (RFC 8058) — required by Gmail/Yahoo for bulk senders
+  if (emailId) {
+    const unsubUrl = `${API_BASE_URL}/t/${emailId}/unsubscribe`;
+    lines.push(`List-Unsubscribe: <${unsubUrl}>`);
+    lines.push("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
+  }
+
   // Custom headers
   if (input.headers) {
     for (const [key, value] of Object.entries(input.headers)) {

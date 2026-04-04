@@ -214,4 +214,54 @@ tracking.get("/:emailId/click", async (c) => {
   return c.redirect(targetUrl, 302);
 });
 
+// ─── One-Click Unsubscribe (RFC 8058) ──────────────────────────────────────
+
+tracking.post("/:emailId/unsubscribe", async (c) => {
+  const emailId = c.req.param("emailId");
+  const db = getDatabase();
+
+  // Look up the email to find the sender domain
+  const [emailRecord] = await db
+    .select({
+      id: emails.id,
+      fromAddress: emails.fromAddress,
+      accountId: emails.accountId,
+    })
+    .from(emails)
+    .where(eq(emails.id, emailId))
+    .limit(1);
+
+  if (!emailRecord) {
+    return c.text("Not found", 404);
+  }
+
+  // Record unsubscribe event
+  recordEvent(emailId, "email.unsubscribed", {
+    ipAddress:
+      c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ??
+      c.req.header("X-Real-IP") ??
+      "",
+  }).catch(() => {});
+
+  return c.text("Unsubscribed", 200);
+});
+
+// GET version for browser-based unsubscribe links
+tracking.get("/:emailId/unsubscribe", async (c) => {
+  const emailId = c.req.param("emailId");
+
+  // Simple confirmation page
+  return c.html(`<!DOCTYPE html>
+<html><head><title>Unsubscribed</title></head>
+<body style="font-family:sans-serif;text-align:center;padding:60px">
+<h1>You have been unsubscribed</h1>
+<p>You will no longer receive emails from this sender.</p>
+<form method="POST" action="/t/${emailId}/unsubscribe">
+<button type="submit" style="padding:12px 24px;font-size:16px;cursor:pointer">
+Confirm Unsubscribe
+</button>
+</form>
+</body></html>`);
+});
+
 export { tracking, recordEvent };
