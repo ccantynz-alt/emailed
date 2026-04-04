@@ -20,11 +20,7 @@ export default function RegisterPage() {
 
         <Card>
           <CardContent>
-            <Box className="space-y-6">
-              <PasskeyRegistration />
-              <RegistrationDivider />
-              <EmailRegistration />
-            </Box>
+            <EmailRegistration />
           </CardContent>
         </Card>
 
@@ -51,36 +47,6 @@ export default function RegisterPage() {
     </Box>
   );
 }
-
-function PasskeyRegistration() {
-  return (
-    <Box className="space-y-3">
-      <Text variant="label">Fastest way to get started</Text>
-      <Button variant="primary" size="lg" className="w-full">
-        Register with Passkey
-      </Button>
-      <Text variant="caption" className="text-center">
-        Create a passkey using your device biometrics. No password needed -- ever.
-      </Text>
-    </Box>
-  );
-}
-
-PasskeyRegistration.displayName = "PasskeyRegistration";
-
-function RegistrationDivider() {
-  return (
-    <Box className="flex items-center gap-4">
-      <Box className="flex-1 h-px bg-border" />
-      <Text variant="caption" muted>
-        or register with email
-      </Text>
-      <Box className="flex-1 h-px bg-border" />
-    </Box>
-  );
-}
-
-RegistrationDivider.displayName = "RegistrationDivider";
 
 function EmailRegistration() {
   const [firstName, setFirstName] = useState("");
@@ -116,9 +82,9 @@ function EmailRegistration() {
   return (
     <Box as="form" className="space-y-4" onSubmit={handleSubmit}>
       {error && (
-        <div className="p-3 rounded bg-red-100 text-red-800 text-sm">
+        <Box className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
           {error}
-        </div>
+        </Box>
       )}
       <Box className="grid grid-cols-2 gap-4">
         <Input
@@ -156,7 +122,7 @@ function EmailRegistration() {
         onChange={(e) => setPassword(e.target.value)}
       />
       <Button
-        variant="secondary"
+        variant="primary"
         size="lg"
         className="w-full"
         type="submit"

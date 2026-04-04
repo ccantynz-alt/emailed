@@ -158,6 +158,16 @@ function AccountOverview({ account, loading }: { account: AccountData | null; lo
           </Box>
         </Box>
       </CardContent>
+      <CardFooter>
+        <Box
+          as="a"
+          href="/billing"
+        >
+          <Button variant="secondary" size="sm">
+            Manage Billing
+          </Button>
+        </Box>
+      </CardFooter>
     </Card>
   );
 }

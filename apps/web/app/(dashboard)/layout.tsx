@@ -20,6 +20,7 @@ const navigationSections: SidebarSection[] = [
       { id: "webhooks", label: "Webhooks", href: "/webhooks" },
       { id: "api-keys", label: "API Keys", href: "/api-keys" },
       { id: "analytics", label: "Analytics", href: "/analytics" },
+      { id: "billing", label: "Billing", href: "/billing" },
       { id: "settings", label: "Settings", href: "/settings" },
     ],
   },

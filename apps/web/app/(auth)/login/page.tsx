@@ -21,13 +21,9 @@ export default function LoginPage() {
 
         <Card>
           <CardContent>
-            <Box className="space-y-6">
-              <PasskeyLogin />
-              <Divider />
-              <Suspense fallback={null}>
-                <EmailLogin />
-              </Suspense>
-            </Box>
+            <Suspense fallback={null}>
+              <EmailLogin />
+            </Suspense>
           </CardContent>
         </Card>
 
@@ -46,36 +42,6 @@ export default function LoginPage() {
   );
 }
 
-function PasskeyLogin() {
-  return (
-    <Box className="space-y-3">
-      <Text variant="label">Recommended</Text>
-      <Button variant="primary" size="lg" className="w-full">
-        Sign in with Passkey
-      </Button>
-      <Text variant="caption" className="text-center">
-        Use your fingerprint, face, or security key for instant secure access.
-      </Text>
-    </Box>
-  );
-}
-
-PasskeyLogin.displayName = "PasskeyLogin";
-
-function Divider() {
-  return (
-    <Box className="flex items-center gap-4">
-      <Box className="flex-1 h-px bg-border" />
-      <Text variant="caption" muted>
-        or continue with email
-      </Text>
-      <Box className="flex-1 h-px bg-border" />
-    </Box>
-  );
-}
-
-Divider.displayName = "Divider";
-
 function EmailLogin() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -92,7 +58,6 @@ function EmailLogin() {
 
     try {
       await authApi.login(email, password);
-      // Redirect to returnTo or default to inbox
       const returnTo = searchParams.get("returnTo") || "/inbox";
       window.location.href = returnTo;
     } catch (err) {
@@ -105,9 +70,9 @@ function EmailLogin() {
   return (
     <Box as="form" className="space-y-4" onSubmit={handleSubmit}>
       {error && (
-        <div className="p-3 rounded bg-red-100 text-red-800 text-sm">
+        <Box className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
           {error}
-        </div>
+        </Box>
       )}
       <Input
         label="Email address"
@@ -139,13 +104,13 @@ function EmailLogin() {
         </Box>
       </Box>
       <Button
-        variant="secondary"
+        variant="primary"
         size="lg"
         className="w-full"
         type="submit"
         disabled={loading || !email || !password}
       >
-        {loading ? "Signing in..." : "Sign in with Email"}
+        {loading ? "Signing in..." : "Sign in"}
       </Button>
     </Box>
   );

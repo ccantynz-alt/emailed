@@ -454,6 +454,59 @@ export const accountApi = {
   },
 };
 
+// ─── Billing ──────────────────────────────────────────────────────────────
+
+export interface BillingPlan {
+  planId: string;
+  name: string;
+  limits: {
+    emailsPerMonth: number;
+    domains: number;
+    webhooks: number;
+  };
+  usage: {
+    emailsSent: number;
+    percentUsed: number;
+  };
+  periodStartedAt: string;
+}
+
+export interface BillingUsage {
+  emailsSent: number;
+  emailsLimit: number;
+  percentUsed: number;
+  periodStartedAt: string;
+  planTier: string;
+  limitExceeded: boolean;
+}
+
+export const billingApi = {
+  getPlan() {
+    return apiFetch<{ data: BillingPlan }>("/v1/billing/plan");
+  },
+
+  getUsage() {
+    return apiFetch<{ data: BillingUsage }>("/v1/billing/usage");
+  },
+
+  createCheckout(planId: string, successUrl: string, cancelUrl: string) {
+    return apiFetch<{ data: { sessionId: string; url: string } }>(
+      "/v1/billing/checkout",
+      {
+        method: "POST",
+        body: JSON.stringify({ planId, successUrl, cancelUrl }),
+      },
+    );
+  },
+
+  createPortal(returnUrl: string) {
+    return apiFetch<{ data: { url: string } }>("/v1/billing/portal", {
+      method: "POST",
+      body: JSON.stringify({ returnUrl }),
+    });
+  },
+};
+
 // ─── Templates ────────────────────────────────────────────────────────────
 
 export interface EmailTemplate {
@@ -512,21 +565,31 @@ export const templatesApi = {
 
 // ─── Suppressions ──────────────────────────────────────────────────────────
 
+export interface Suppression {
+  id: string;
+  email: string;
+  domain: string;
+  reason: "bounce" | "complaint" | "unsubscribe" | "manual";
+  source: string | null;
+  createdAt: string;
+}
+
 export const suppressionsApi = {
   add(payload: { email: string; domain: string; reason?: string }) {
-    return apiFetch<{ data: unknown }>("/v1/suppressions", {
+    return apiFetch<{ data: Suppression }>("/v1/suppressions", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
 
-  list(params?: { domain?: string; reason?: string; cursor?: string }) {
+  list(params?: { domain?: string; reason?: string; cursor?: string; search?: string }) {
     const qs = new URLSearchParams();
     if (params?.domain) qs.set("domain", params.domain);
     if (params?.reason) qs.set("reason", params.reason);
     if (params?.cursor) qs.set("cursor", params.cursor);
+    if (params?.search) qs.set("search", params.search);
     const query = qs.toString();
-    return apiFetch<PaginatedResponse<unknown>>(
+    return apiFetch<PaginatedResponse<Suppression>>(
       `/v1/suppressions${query ? `?${query}` : ""}`,
     );
   },
@@ -535,5 +598,72 @@ export const suppressionsApi = {
     return apiFetch<{ deleted: boolean }>(`/v1/suppressions/${id}`, {
       method: "DELETE",
     });
+  },
+
+  check(email: string) {
+    return apiFetch<{ data: { suppressed: boolean; entry: Suppression | null } }>(
+      `/v1/suppressions/check?email=${encodeURIComponent(email)}`,
+    );
+  },
+
+  importCsv(csvContent: string) {
+    return apiFetch<{ data: { imported: number; skipped: number; errors: string[] } }>(
+      "/v1/suppressions/import",
+      {
+        method: "POST",
+        body: JSON.stringify({ csv: csvContent }),
+      },
+    );
+  },
+};
+
+// ─── Bounces ──────────────────────────────────────────────────────────────
+
+export interface Bounce {
+  id: string;
+  recipient: string;
+  type: "hard" | "soft";
+  category: string;
+  diagnosticCode: string | null;
+  mxHost: string | null;
+  messageId: string | null;
+  createdAt: string;
+}
+
+export interface BounceStats {
+  total: number;
+  hard: number;
+  soft: number;
+  complaintRate: number;
+  bounceRate: number;
+  trending: Array<{
+    date: string;
+    hard: number;
+    soft: number;
+  }>;
+}
+
+export const bouncesApi = {
+  list(params?: { type?: string; from?: string; to?: string; cursor?: string; limit?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.type) qs.set("type", params.type);
+    if (params?.from) qs.set("from", params.from);
+    if (params?.to) qs.set("to", params.to);
+    if (params?.cursor) qs.set("cursor", params.cursor);
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return apiFetch<PaginatedResponse<Bounce>>(
+      `/v1/bounces${query ? `?${query}` : ""}`,
+    );
+  },
+
+  stats(params?: { from?: string; to?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.from) qs.set("from", params.from);
+    if (params?.to) qs.set("to", params.to);
+    const query = qs.toString();
+    return apiFetch<{ data: BounceStats }>(
+      `/v1/bounces/stats${query ? `?${query}` : ""}`,
+    );
   },
 };
