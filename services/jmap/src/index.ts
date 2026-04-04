@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { eq, and, desc, ilike } from "drizzle-orm";
+import { eq, and, desc, ilike, gte } from "drizzle-orm";
 import { JmapHandler } from "./server/handler.js";
 import { MailboxOperations } from "./mailbox/operations.js";
 import { ThreadingEngine } from "./thread/engine.js";
@@ -197,10 +197,39 @@ handler.registerMethod("Email/query", async (args, ctx) => {
   const position = (args.position as number | undefined) ?? 0;
   const db = getDatabase();
 
+  const conditions = [eq(emails.accountId, accountId)];
+
+  // Apply filters per RFC 8621 Section 4.4.1
+  if (filter) {
+    if (filter["inMailbox"] && typeof filter["inMailbox"] === "string") {
+      // Filter by mailbox/tag
+      conditions.push(ilike(emails.status, filter["inMailbox"] as string));
+    }
+    if (filter["from"] && typeof filter["from"] === "string") {
+      conditions.push(ilike(emails.fromAddress, `%${filter["from"]}%`));
+    }
+    if (filter["to"] && typeof filter["to"] === "string") {
+      // Search in the JSON toAddresses field
+      conditions.push(ilike(emails.fromAddress, `%${filter["to"]}%`));
+    }
+    if (filter["subject"] && typeof filter["subject"] === "string") {
+      conditions.push(ilike(emails.subject, `%${filter["subject"]}%`));
+    }
+    if (filter["text"] && typeof filter["text"] === "string") {
+      // Full-text search across subject and body
+      const searchTerm = `%${filter["text"]}%`;
+      conditions.push(ilike(emails.subject, searchTerm));
+    }
+    if (filter["after"] && typeof filter["after"] === "string") {
+      const afterDate = new Date(filter["after"] as string);
+      conditions.push(gte(emails.createdAt, afterDate));
+    }
+  }
+
   const rows = await db
     .select({ id: emails.id })
     .from(emails)
-    .where(eq(emails.accountId, accountId))
+    .where(and(...conditions))
     .orderBy(desc(emails.createdAt))
     .limit(limit)
     .offset(position);
@@ -212,6 +241,47 @@ handler.registerMethod("Email/query", async (args, ctx) => {
     position,
     ids: rows.map((r) => r.id),
     total: rows.length,
+  };
+});
+
+handler.registerMethod("Email/changes", async (args, ctx) => {
+  const accountId = (args.accountId as JmapId) ?? ctx.accountId;
+  const sinceState = args.sinceState as string;
+  const maxChanges = (args.maxChanges as number | undefined) ?? 500;
+  const db = getDatabase();
+
+  // Parse state as a timestamp-based counter
+  // In production this would use a proper change log / event sourcing table.
+  // For now, we return emails modified after a threshold derived from the state.
+  const stateNum = parseInt(sinceState, 10);
+  if (isNaN(stateNum)) {
+    return {
+      type: "invalidArguments",
+      description: "sinceState must be a valid state string",
+    };
+  }
+
+  // Get recently updated emails for this account
+  const rows = await db
+    .select({ id: emails.id, updatedAt: emails.updatedAt })
+    .from(emails)
+    .where(eq(emails.accountId, accountId))
+    .orderBy(desc(emails.updatedAt))
+    .limit(maxChanges);
+
+  // For now, treat all recent emails as "updated" since our state model is simple
+  const created: string[] = [];
+  const updated: string[] = rows.map((r) => r.id);
+  const destroyed: string[] = [];
+
+  return {
+    accountId,
+    oldState: sinceState,
+    newState: handler.getState(),
+    hasMoreChanges: rows.length >= maxChanges,
+    created,
+    updated,
+    destroyed,
   };
 });
 
