@@ -331,6 +331,10 @@ vi.mock("../src/middleware/rate-limit.js", () => {
   };
 });
 
+// Template engine — use the real implementation (pure functions, no IO)
+// But mock the type import it uses from @emailed/db
+vi.mock("@emailed/db/src/schema/templates.js", () => ({}));
+
 // ─── Reset mock DB state before each test ──────────────────────────────────
 
 beforeEach(() => {

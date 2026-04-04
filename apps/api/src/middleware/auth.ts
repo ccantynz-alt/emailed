@@ -215,11 +215,42 @@ async function validateBearerToken(
     if (payload.exp && payload.exp < now) return null;
     if (!payload.sub) return null;
 
+    // If explicit scopes are provided in the token, use them
+    if (payload.scope) {
+      return {
+        accountId: payload.sub as string,
+        keyId: (payload.jti as string) ?? `oauth_${Date.now()}`,
+        tier: normaliseTier(payload.tier as string),
+        scopes: (payload.scope as string).split(" "),
+      };
+    }
+
+    // For session JWTs from login/register (no explicit scope field),
+    // derive scopes from the user's role. Owner/admin get full access.
+    const role = payload.role as string | undefined;
+    const allScopes = [
+      "messages:send",
+      "messages:read",
+      "domains:manage",
+      "api_keys:manage",
+      "webhooks:manage",
+      "analytics:read",
+      "account:manage",
+      "team:manage",
+      "templates:manage",
+    ];
+
+    // Members get a restricted set; owners/admins get everything
+    const scopes =
+      role === "member"
+        ? ["messages:send", "messages:read", "analytics:read"]
+        : allScopes;
+
     return {
       accountId: payload.sub as string,
-      keyId: (payload.jti as string) ?? `oauth_${Date.now()}`,
+      keyId: (payload.jti as string) ?? `session_${payload.userId ?? Date.now()}`,
       tier: normaliseTier(payload.tier as string),
-      scopes: (payload.scope as string)?.split(" ") ?? [],
+      scopes,
     };
   } catch {
     return null;

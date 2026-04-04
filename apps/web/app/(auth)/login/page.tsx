@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Box, Text, Button, Input, Card, CardContent } from "@emailed/ui";
 import { authApi } from "../../../lib/api";
 
@@ -74,6 +75,7 @@ function Divider() {
 Divider.displayName = "Divider";
 
 function EmailLogin() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -88,8 +90,9 @@ function EmailLogin() {
 
     try {
       await authApi.login(email, password);
-      // Redirect to dashboard
-      window.location.href = "/inbox";
+      // Redirect to returnTo or default to inbox
+      const returnTo = searchParams.get("returnTo") || "/inbox";
+      window.location.href = returnTo;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
