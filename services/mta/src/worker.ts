@@ -15,7 +15,7 @@
 
 import { Worker, type Job } from "bullmq";
 import { eq, and } from "drizzle-orm";
-import { getDatabase, emails, deliveryResults, domains } from "@emailed/db";
+import { getDatabase, emails, deliveryResults, domains, suppressionLists } from "@emailed/db";
 import { signMessage, addSignatureToMessage } from "./dkim/signer.js";
 import { SmtpClient } from "./smtp/client.js";
 import { DeliveryOptimizer } from "./delivery/optimizer.js";
@@ -144,6 +144,7 @@ export class MtaWorker {
     // ── 2. Fetch DKIM signing key for the sender domain ─────────────────
     const [domainRecord] = await db
       .select({
+        id: domains.id,
         dkimSelector: domains.dkimSelector,
         dkimPrivateKey: domains.dkimPrivateKey,
         domain: domains.domain,
@@ -195,6 +196,19 @@ export class MtaWorker {
       );
     }
 
+    // ── 3b. Check suppression list — skip recipients who have bounced/complained
+    const suppressedSet = new Set<string>();
+    if (domainRecord) {
+      const suppressed = await db
+        .select({ email: suppressionLists.email })
+        .from(suppressionLists)
+        .where(eq(suppressionLists.domainId, domainRecord.id));
+
+      for (const s of suppressed) {
+        suppressedSet.add(s.email.toLowerCase());
+      }
+    }
+
     // ── 4. Deliver to each recipient ────────────────────────────────────
     //   We track per-recipient outcomes. If ALL recipients bounce, the
     //   email is marked bounced. If any are deferred, we throw so BullMQ
@@ -206,6 +220,27 @@ export class MtaWorker {
     const errors: string[] = [];
 
     for (const recipient of email.to) {
+      // Skip suppressed recipients
+      if (suppressedSet.has(recipient.toLowerCase())) {
+        console.log(`[mta-worker] Skipping suppressed recipient: ${recipient}`);
+
+        await db
+          .update(deliveryResults)
+          .set({
+            status: "dropped",
+            remoteResponse: "Recipient is on the suppression list",
+            attemptCount: 1,
+            lastAttemptAt: new Date(),
+          })
+          .where(
+            and(
+              eq(deliveryResults.emailId, email.id),
+              eq(deliveryResults.recipientAddress, recipient),
+            ),
+          );
+
+        continue;
+      }
       const client = new SmtpClient({
         localHostname: this.config.localHostname,
         opportunisticTls: true,
