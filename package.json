@@ -16,7 +16,10 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:migrate": "bun run --cwd packages/db db:migrate",
+    "db:seed": "bun run scripts/seed.ts",
+    "db:studio": "bun run --cwd packages/db drizzle-kit studio"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
