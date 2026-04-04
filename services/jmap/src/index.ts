@@ -215,6 +215,94 @@ handler.registerMethod("Email/query", async (args, ctx) => {
   };
 });
 
+handler.registerMethod("Email/set", async (args, ctx) => {
+  const accountId = (args.accountId as JmapId) ?? ctx.accountId;
+  const db = getDatabase();
+  const oldState = handler.getState();
+
+  const ifInState = args.ifInState as string | undefined;
+  if (ifInState && ifInState !== oldState) {
+    return {
+      type: "stateMismatch",
+    };
+  }
+
+  const created: Record<string, unknown> = {};
+  const updated: Record<string, unknown> = {};
+  const destroyed: string[] = [];
+  const notCreated: Record<string, unknown> = {};
+  const notUpdated: Record<string, unknown> = {};
+  const notDestroyed: Record<string, unknown> = {};
+
+  // Handle updates (e.g., moving emails, changing keywords/flags)
+  const updateMap = args.update as Record<string, Record<string, unknown>> | undefined;
+  if (updateMap) {
+    for (const [id, changes] of Object.entries(updateMap)) {
+      try {
+        const updateFields: Record<string, unknown> = { updatedAt: new Date() };
+
+        // Handle keyword changes (read/flagged/etc)
+        if ("keywords" in changes) {
+          const keywords = changes["keywords"] as Record<string, boolean>;
+          updateFields.metadata = { keywords };
+        }
+
+        // Handle mailbox changes
+        if ("mailboxIds" in changes) {
+          const mailboxIds = changes["mailboxIds"] as Record<string, boolean>;
+          const tags = Object.keys(mailboxIds).filter((k) => mailboxIds[k]);
+          updateFields.tags = tags;
+        }
+
+        await db
+          .update(emails)
+          .set(updateFields)
+          .where(and(eq(emails.id, id), eq(emails.accountId, accountId)));
+
+        updated[id] = null;
+      } catch (err) {
+        notUpdated[id] = {
+          type: "serverFail",
+          description: err instanceof Error ? err.message : "Update failed",
+        };
+      }
+    }
+  }
+
+  // Handle destroys (delete emails)
+  const destroyIds = args.destroy as JmapId[] | undefined;
+  if (destroyIds) {
+    for (const id of destroyIds) {
+      try {
+        await db
+          .delete(emails)
+          .where(and(eq(emails.id, id), eq(emails.accountId, accountId)));
+
+        destroyed.push(id);
+      } catch (err) {
+        notDestroyed[id] = {
+          type: "serverFail",
+          description: err instanceof Error ? err.message : "Delete failed",
+        };
+      }
+    }
+  }
+
+  const newState = handler.advanceState();
+
+  return {
+    accountId,
+    oldState,
+    newState,
+    created: Object.keys(created).length > 0 ? created : null,
+    updated: Object.keys(updated).length > 0 ? updated : null,
+    destroyed: destroyed.length > 0 ? destroyed : null,
+    notCreated: Object.keys(notCreated).length > 0 ? notCreated : null,
+    notUpdated: Object.keys(notUpdated).length > 0 ? notUpdated : null,
+    notDestroyed: Object.keys(notDestroyed).length > 0 ? notDestroyed : null,
+  };
+});
+
 handler.registerMethod("Thread/get", async (args, ctx) => {
   const accountId = (args.accountId as JmapId) ?? ctx.accountId;
   const ids = args.ids as JmapId[] | null;
