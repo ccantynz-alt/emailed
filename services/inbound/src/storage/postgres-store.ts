@@ -4,7 +4,7 @@
  */
 
 import { eq, and, desc, sql } from "drizzle-orm";
-import { getDatabase, emails, attachments } from "@emailed/db";
+import { getDatabase, emails, attachments, domains } from "@emailed/db";
 import type {
   ParsedEmail,
   StoredEmail,
@@ -30,6 +30,63 @@ function generateSnippet(
   return source.trim().slice(0, maxLength);
 }
 
+/**
+ * Resolve the `domains.id` primary key for a given domain name.
+ * Falls back to the domain name string if not found (for development
+ * environments without seeded domain rows).
+ */
+async function resolveDomainId(
+  db: ReturnType<typeof getDatabase>,
+  domainName: string,
+  accountId: string,
+): Promise<string> {
+  try {
+    const [row] = await db
+      .select({ id: domains.id })
+      .from(domains)
+      .where(and(eq(domains.domain, domainName), eq(domains.accountId, accountId)))
+      .limit(1);
+
+    if (row) return row.id;
+
+    // Try without accountId filter (the domain may belong to a different account
+    // that shares the platform).
+    const [anyRow] = await db
+      .select({ id: domains.id })
+      .from(domains)
+      .where(eq(domains.domain, domainName))
+      .limit(1);
+
+    if (anyRow) return anyRow.id;
+  } catch (e) {
+    console.warn(`[PostgresEmailStore] Domain lookup failed for ${domainName}:`, e);
+  }
+
+  // Auto-create the domain record so the FK constraint is satisfied.
+  const domainId = generateId();
+  try {
+    await db.insert(domains).values({
+      id: domainId,
+      accountId,
+      domain: domainName,
+      verificationStatus: "pending",
+      isActive: true,
+    });
+    return domainId;
+  } catch {
+    // Race condition or other error — try one more lookup
+    const [row] = await db
+      .select({ id: domains.id })
+      .from(domains)
+      .where(eq(domains.domain, domainName))
+      .limit(1);
+    if (row) return row.id;
+  }
+
+  // Last resort: return generated id (insert may fail if FK enforced)
+  return domainId;
+}
+
 export class PostgresEmailStore implements EmailStore {
   async store(
     email: ParsedEmail,
@@ -50,14 +107,15 @@ export class PostgresEmailStore implements EmailStore {
     const fromAddress = fromAddr?.address ?? "unknown@unknown";
     const fromName = fromAddr?.name ?? null;
 
-    // Derive domainId from the recipient's resolved address domain
+    // Resolve the domainId FK from the recipient's domain name
     const recipientDomain = recipient.resolvedAddress.split("@")[1] ?? "unknown";
+    const domainId = await resolveDomainId(db, recipientDomain, recipient.accountId);
 
     // Persist to the emails table
     await db.insert(emails).values({
       id,
       accountId: recipient.accountId,
-      domainId: recipientDomain,
+      domainId,
       messageId: email.messageId ?? `<${id}@inbound>`,
       fromAddress,
       fromName,

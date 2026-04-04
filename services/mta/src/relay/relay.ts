@@ -30,23 +30,23 @@ export interface RelayConfig {
   /** MailChannels HTTP API */
   mailchannels?: {
     apiKey: string;
-    endpoint?: string;
+    endpoint?: string | undefined;
   };
   /** Generic SMTP relay */
   smtp?: {
     host: string;
     port: number;
-    username?: string;
-    password?: string;
-    tls?: boolean;
+    username?: string | undefined;
+    password?: string | undefined;
+    tls?: boolean | undefined;
   };
 }
 
 export interface RelaySendResult {
   success: boolean;
-  messageId?: string;
-  response?: string;
-  error?: string;
+  messageId?: string | undefined;
+  response?: string | undefined;
+  error?: string | undefined;
 }
 
 // ─── Environment-based config builder ───────────────────────────────────────
@@ -488,7 +488,7 @@ async function sendViaSmtpRelay(
             resolve(sock);
           },
         );
-        sock.once("error", (e) => {
+        sock.once("error", (e: Error) => {
           clearTimeout(timer);
           reject(e);
         });
