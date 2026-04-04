@@ -8,7 +8,7 @@
  */
 
 import { Hono } from "hono";
-import { getDatabase } from "@emailed/db/client/connection.js";
+import { getDatabase } from "@emailed/db";
 import { sql } from "drizzle-orm";
 import Redis from "ioredis";
 import { Queue } from "bullmq";

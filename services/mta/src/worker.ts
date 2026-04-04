@@ -15,9 +15,7 @@
 
 import { Worker, type Job } from "bullmq";
 import { eq, and } from "drizzle-orm";
-import { getDatabase } from "@emailed/db/client/connection.js";
-import { emails, deliveryResults } from "@emailed/db/schema/emails.js";
-import { domains } from "@emailed/db/schema/domains.js";
+import { getDatabase, emails, deliveryResults, domains } from "@emailed/db";
 import { signMessage, addSignatureToMessage } from "./dkim/signer.js";
 import { SmtpClient } from "./smtp/client.js";
 import { DeliveryOptimizer } from "./delivery/optimizer.js";

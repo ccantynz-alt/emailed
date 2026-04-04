@@ -10,10 +10,7 @@
 
 import { SmtpServer } from "./smtp/server.js";
 import { MtaWorker } from "./worker.js";
-import {
-  getDatabase,
-  closeConnection,
-} from "@emailed/db/client/connection.js";
+import { getDatabase, closeConnection } from "@emailed/db";
 import Redis from "ioredis";
 
 // ─── Configuration ──────────────────────────────────────────────────────────

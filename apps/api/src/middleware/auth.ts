@@ -13,8 +13,7 @@
 import { createMiddleware } from "hono/factory";
 import type { Context } from "hono";
 import { eq } from "drizzle-orm";
-import { getDatabase } from "@emailed/db/client/connection.js";
-import { apiKeys } from "@emailed/db/schema/api-keys.js";
+import { getDatabase, apiKeys } from "@emailed/db";
 import type { PlanTier } from "../types.js";
 
 // ─── Auth context attached to every authenticated request ───────────────────

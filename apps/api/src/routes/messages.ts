@@ -24,9 +24,7 @@ import type {
   PaginationParams,
   PaginatedResponse,
 } from "../types.js";
-import { getDatabase } from "@emailed/db/client/connection.js";
-import { emails, deliveryResults } from "@emailed/db/schema/emails.js";
-import { domains } from "@emailed/db/schema/domains.js";
+import { getDatabase, emails, deliveryResults, domains } from "@emailed/db";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 

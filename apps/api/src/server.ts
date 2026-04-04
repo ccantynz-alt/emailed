@@ -23,7 +23,7 @@ import { domains } from "./routes/domains.js";
 import { webhooks } from "./routes/webhooks.js";
 import { analytics } from "./routes/analytics.js";
 import { health } from "./routes/health.js";
-import { closeConnection } from "@emailed/db/client/connection.js";
+import { closeConnection } from "@emailed/db";
 
 // ─── Create the Hono app ───────────────────────────────────────────────────
 
@@ -133,7 +133,7 @@ app.onError((err, c) => {
 
 // ─── Server startup ─────────────────────────────────────────────────────────
 
-const port = parseInt(process.env["PORT"] ?? "3000", 10);
+const port = parseInt(process.env["PORT"] ?? "3001", 10);
 
 console.log("=".repeat(60));
 console.log("  Emailed API — Starting");
