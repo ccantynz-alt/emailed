@@ -13,7 +13,7 @@
 import { createMiddleware } from "hono/factory";
 import type { Context } from "hono";
 import { eq } from "drizzle-orm";
-import { getDatabase, apiKeys } from "@emailed/db";
+import { getDatabase, apiKeys, accounts } from "@emailed/db";
 import type { PlanTier } from "../types.js";
 
 // ─── Auth context attached to every authenticated request ───────────────────
@@ -142,10 +142,26 @@ async function resolveApiKeyFromDb(
         )
       : [];
 
+    // Look up account to get the real plan tier
+    let tier: PlanTier = "starter";
+    try {
+      const [account] = await db
+        .select({ planTier: accounts.planTier })
+        .from(accounts)
+        .where(eq(accounts.id, record.accountId))
+        .limit(1);
+      if (account) {
+        tier = normaliseTier(account.planTier);
+      }
+    } catch {
+      // Fall back to a safe default if the account lookup fails
+      tier = normaliseTier(record.environment === "test" ? "starter" : "pro");
+    }
+
     return {
       accountId: record.accountId,
       keyId: record.id,
-      tier: normaliseTier(record.environment === "test" ? "starter" : "pro"),
+      tier,
       scopes,
     };
   } catch (error) {
