@@ -234,6 +234,24 @@ async function handleSend(c: Context) {
     );
   }
 
+  // ── 1b. Check warm-up sending limits ──────────────────────────────
+  const warmupOrchestrator = getWarmupOrchestrator();
+  const warmupCheck = await warmupOrchestrator.canSend(domainRecord.id);
+
+  if (!warmupCheck.allowed) {
+    return c.json(
+      {
+        error: {
+          type: "rate_limit",
+          message: warmupCheck.reason ?? "Domain warm-up sending limit reached",
+          code: "warmup_limit_reached",
+          retryAfter: warmupCheck.retryAfter?.toISOString() ?? null,
+        },
+      },
+      429,
+    );
+  }
+
   // ── 2. Build the raw RFC-5322 message ─────────────────────────────
   const rawMessage = buildRawMessage(input, messageId, id);
 
@@ -335,6 +353,9 @@ async function handleSend(c: Context) {
       ...(delay !== undefined ? { delay } : {}),
     },
   );
+
+  // ── 6b. Record send against warm-up counter (fire-and-forget) ────
+  warmupOrchestrator.recordSend(domainRecord.id).catch(() => {});
 
   // ── 7. Index in Meilisearch (fire-and-forget) ────────────────────
   indexEmail({

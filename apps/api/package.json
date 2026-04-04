@@ -19,6 +19,7 @@
     "@emailed/db": "workspace:*",
     "@emailed/crypto": "workspace:*",
     "@emailed/dns": "workspace:*",
+    "@emailed/reputation": "workspace:*",
     "hono": "^4.6.0",
     "zod": "^3.23.0",
     "@hono/zod-validator": "^0.4.0",
