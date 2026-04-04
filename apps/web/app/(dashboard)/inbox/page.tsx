@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Text,
@@ -12,120 +12,163 @@ import {
   type EmailListItem,
   type EmailMessage,
 } from "@emailed/ui";
+import { messagesApi, type Message, type MessageDetail } from "../../../lib/api";
 
-const sampleEmails: EmailListItem[] = [
-  {
-    id: "1",
-    sender: { name: "Alice Chen", email: "alice@example.com" },
-    subject: "Q2 Product Roadmap Review",
-    preview: "Hi team, I've attached the updated roadmap for Q2. Please review the timeline changes...",
-    timestamp: "10:32 AM",
-    read: false,
-    starred: true,
-    priority: "high",
-    threadCount: 4,
-    hasAttachments: true,
-  },
-  {
-    id: "2",
-    sender: { name: "GitHub", email: "notifications@github.com" },
-    subject: "[emailed/api] PR #142: Add rate limiting middleware",
-    preview: "mergify bot merged pull request #142. 12 files changed, 847 insertions...",
-    timestamp: "9:15 AM",
-    read: false,
-    starred: false,
-    priority: "normal",
-  },
-  {
-    id: "3",
-    sender: { name: "David Park", email: "david@emailed.dev" },
-    subject: "DNS verification issue on client domain",
-    preview: "Hey, one of our enterprise clients is having trouble with DKIM verification...",
-    timestamp: "Yesterday",
-    read: true,
-    starred: false,
-    priority: "high",
-    threadCount: 7,
-  },
-  {
-    id: "4",
-    sender: { name: "Stripe", email: "receipts@stripe.com" },
-    subject: "Your invoice for March 2026",
-    preview: "Your March invoice is ready. Amount due: $2,450.00. View your invoice...",
-    timestamp: "Yesterday",
-    read: true,
-    starred: false,
-    priority: "low",
-    hasAttachments: true,
-  },
-  {
-    id: "5",
-    sender: { name: "Maria Santos", email: "maria@partner.io" },
-    subject: "Partnership proposal - Email API integration",
-    preview: "Hi, we'd love to explore a partnership opportunity. Our platform serves...",
-    timestamp: "Mar 31",
-    read: true,
-    starred: true,
-    priority: "normal",
-  },
-];
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-const sampleEmailDetail: EmailMessage = {
-  id: "1",
-  sender: { name: "Alice Chen", email: "alice@example.com" },
-  recipients: [
-    { name: "Team", email: "team@emailed.dev" },
-  ],
-  subject: "Q2 Product Roadmap Review",
-  timestamp: "April 3, 2026 at 10:32 AM",
-  bodyParts: [
-    { type: "paragraph", content: "Hi team," },
-    {
-      type: "paragraph",
-      content:
-        "I've attached the updated roadmap for Q2. There are a few key timeline changes I want to highlight before our sync tomorrow.",
+  if (diffDays === 0) {
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) {
+    return date.toLocaleDateString(undefined, { weekday: "short" });
+  }
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function toEmailListItem(msg: Message): EmailListItem {
+  return {
+    id: msg.id,
+    sender: {
+      name: msg.from.name ?? msg.from.email,
+      email: msg.from.email,
     },
-    { type: "heading", level: 2, content: "Key Changes" },
-    {
-      type: "list",
-      ordered: false,
-      items: [
-        "AI compose assistant moved up to April (was May)",
-        "Domain analytics dashboard pushed to late May",
-        "New: Passkey authentication added for June",
-      ],
+    subject: msg.subject || "(no subject)",
+    preview: msg.preview || "",
+    timestamp: formatTimestamp(msg.createdAt),
+    read: msg.status === "delivered" || msg.status === "sent",
+    starred: false,
+    priority: "normal" as const,
+    hasAttachments: msg.hasAttachments,
+  };
+}
+
+function textToBodyParts(text: string): EmailMessage["bodyParts"] {
+  return text
+    .split(/\n\n+/)
+    .filter(Boolean)
+    .map((para) => ({ type: "paragraph" as const, content: para }));
+}
+
+function htmlToBodyParts(html: string): EmailMessage["bodyParts"] {
+  // Simple HTML-to-structured conversion: strip tags for paragraph display
+  const text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .trim();
+  return textToBodyParts(text);
+}
+
+function toEmailMessage(detail: MessageDetail): EmailMessage {
+  const bodyParts = detail.textBody
+    ? textToBodyParts(detail.textBody)
+    : detail.htmlBody
+      ? htmlToBodyParts(detail.htmlBody)
+      : [{ type: "paragraph" as const, content: "(no content)" }];
+
+  return {
+    id: detail.id,
+    sender: {
+      name: detail.from.name ?? detail.from.email,
+      email: detail.from.email,
     },
-    {
-      type: "paragraph",
-      content:
-        "Let me know if you have any concerns or if the new timeline conflicts with other priorities. We can discuss in detail tomorrow.",
-    },
-    { type: "paragraph", content: "Best,\nAlice" },
-  ],
-  attachments: [
-    { id: "a1", name: "Q2-Roadmap-v3.pdf", size: "2.4 MB", type: "application/pdf" },
-    { id: "a2", name: "timeline-changes.xlsx", size: "156 KB", type: "application/xlsx" },
-  ],
-};
+    recipients: (detail.to ?? []).map((r) => ({
+      name: r.name ?? r.email,
+      email: r.email,
+    })),
+    cc: (detail.cc ?? []).map((r) => ({
+      name: r.name ?? r.email,
+      email: r.email,
+    })),
+    subject: detail.subject || "(no subject)",
+    timestamp: new Date(detail.createdAt).toLocaleString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+    bodyParts,
+    attachments: [],
+  };
+}
 
 export default function InboxPage() {
-  const [selectedEmailId, setSelectedEmailId] = useState<string | undefined>("1");
-  const [emails, setEmails] = useState(sampleEmails);
+  const [emailItems, setEmailItems] = useState<EmailListItem[]>([]);
+  const [selectedEmailId, setSelectedEmailId] = useState<string | undefined>();
+  const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "unread" | "starred">("all");
+
+  const fetchEmails = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await messagesApi.list({ limit: 50 });
+      const items = res.data.map(toEmailListItem);
+      setEmailItems(items);
+      if (items.length > 0 && !selectedEmailId) {
+        setSelectedEmailId(items[0]!.id);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load emails");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchDetail = useCallback(async (id: string) => {
+    try {
+      setDetailLoading(true);
+      const res = await messagesApi.get(id);
+      setSelectedEmail(toEmailMessage(res.data));
+    } catch {
+      setSelectedEmail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEmails();
+  }, [fetchEmails]);
+
+  useEffect(() => {
+    if (selectedEmailId) {
+      fetchDetail(selectedEmailId);
+    }
+  }, [selectedEmailId, fetchDetail]);
 
   const handleSelect = (email: EmailListItem) => {
     setSelectedEmailId(email.id);
-    setEmails((prev) =>
-      prev.map((e) => (e.id === email.id ? { ...e, read: true } : e))
+    setEmailItems((prev) =>
+      prev.map((e) => (e.id === email.id ? { ...e, read: true } : e)),
     );
   };
 
   const handleStar = (email: EmailListItem) => {
-    setEmails((prev) =>
-      prev.map((e) => (e.id === email.id ? { ...e, starred: !e.starred } : e))
+    setEmailItems((prev) =>
+      prev.map((e) => (e.id === email.id ? { ...e, starred: !e.starred } : e)),
     );
   };
 
-  const selectedEmail = selectedEmailId === "1" ? sampleEmailDetail : null;
+  const filteredEmails = emailItems.filter((e) => {
+    if (filter === "unread") return !e.read;
+    if (filter === "starred") return e.starred;
+    return true;
+  });
 
   const searchHeader = (
     <Box className="flex items-center gap-4 w-full">
@@ -136,21 +179,53 @@ export default function InboxPage() {
         className="max-w-md"
       />
       <Box className="flex items-center gap-2 ml-auto">
-        <Button variant="ghost" size="sm">
+        <Button
+          variant={filter === "all" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setFilter("all")}
+        >
           All
         </Button>
-        <Button variant="ghost" size="sm">
+        <Button
+          variant={filter === "unread" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setFilter("unread")}
+        >
           Unread
         </Button>
-        <Button variant="ghost" size="sm">
+        <Button
+          variant={filter === "starred" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setFilter("starred")}
+        >
           Starred
-        </Button>
-        <Button variant="ghost" size="sm">
-          Priority
         </Button>
       </Box>
     </Box>
   );
+
+  if (loading) {
+    return (
+      <PageLayout header={searchHeader} fullWidth>
+        <Box className="flex items-center justify-center h-full">
+          <Text variant="body-md" muted>Loading emails...</Text>
+        </Box>
+      </PageLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageLayout header={searchHeader} fullWidth>
+        <Box className="flex flex-col items-center justify-center h-full gap-4">
+          <Text variant="body-md" muted>{error}</Text>
+          <Button variant="secondary" size="sm" onClick={fetchEmails}>
+            Retry
+          </Button>
+        </Box>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout header={searchHeader} fullWidth>
@@ -158,25 +233,39 @@ export default function InboxPage() {
         <Box className="w-96 border-r border-border overflow-y-auto flex-shrink-0">
           <Box className="px-4 py-2 border-b border-border bg-surface-secondary">
             <Text variant="body-sm" muted>
-              {emails.filter((e) => !e.read).length} unread of {emails.length} emails
+              {filteredEmails.filter((e) => !e.read).length} unread of {filteredEmails.length} emails
             </Text>
           </Box>
-          <EmailList
-            emails={emails}
-            selectedId={selectedEmailId}
-            onSelect={handleSelect}
-            onStar={handleStar}
-          />
+          {filteredEmails.length === 0 ? (
+            <Box className="flex items-center justify-center p-8">
+              <Text variant="body-sm" muted>
+                {filter === "all" ? "No emails yet" : `No ${filter} emails`}
+              </Text>
+            </Box>
+          ) : (
+            <EmailList
+              emails={filteredEmails}
+              selectedId={selectedEmailId}
+              onSelect={handleSelect}
+              onStar={handleStar}
+            />
+          )}
         </Box>
         <Box className="flex-1 min-w-0">
-          <EmailViewer
-            email={selectedEmail}
-            onReply={() => {}}
-            onReplyAll={() => {}}
-            onForward={() => {}}
-            onArchive={() => {}}
-            onDelete={() => {}}
-          />
+          {detailLoading ? (
+            <Box className="flex items-center justify-center h-full">
+              <Text variant="body-md" muted>Loading...</Text>
+            </Box>
+          ) : (
+            <EmailViewer
+              email={selectedEmail}
+              onReply={() => {}}
+              onReplyAll={() => {}}
+              onForward={() => {}}
+              onArchive={() => {}}
+              onDelete={() => {}}
+            />
+          )}
         </Box>
       </Box>
     </PageLayout>

@@ -36,14 +36,18 @@ export interface Message {
   to: EmailAddress[];
   cc?: EmailAddress[];
   subject: string;
+  preview: string;
   status: string;
   tags: string[];
+  hasAttachments: boolean;
   createdAt: string;
   updatedAt: string;
   sentAt: string | null;
 }
 
 export interface MessageDetail extends Message {
+  textBody: string | null;
+  htmlBody: string | null;
   deliveryResults: {
     recipient: string;
     status: string;
