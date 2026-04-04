@@ -38,23 +38,32 @@
 - If something can't be fully built yet (e.g., needs external credentials), build everything around it and make the integration point clean and obvious.
 
 ### Build Checklist (circle back to this every iteration):
-- [ ] Sending pipeline: API → queue → MTA → relay → delivery ✅
-- [ ] Inbound pipeline: SMTP/HTTP → parse → filter → route → store ✅
-- [ ] SPF/DMARC/DKIM validation on inbound ✅ (DKIM verification in progress)
-- [ ] Webhook delivery with retries and audit trail (in progress)
-- [ ] Full-text search via Meilisearch (in progress)
-- [ ] Admin dashboard wired to real API data ✅
-- [ ] Database migrations and seed for Neon Postgres ✅
-- [ ] Managed relay support (SES/MailChannels/SMTP) ✅
-- [ ] JMAP service with auth and full Email methods ✅
-- [ ] Stripe billing integration
-- [ ] AI spam/content classification (Claude API integration)
-- [ ] IP warm-up orchestrator
-- [ ] Domain auto-configuration (SPF/DKIM/DMARC DNS automation)
-- [ ] SDK published with working examples
-- [ ] Monitoring and alerting (OpenTelemetry)
-- [ ] Rate limiting on all public endpoints
-- [ ] IMAP4rev2 bridge for legacy clients
+- [x] Sending pipeline: API → queue → MTA → relay → delivery
+- [x] Inbound pipeline: SMTP/HTTP → parse → filter → route → store
+- [x] SPF/DMARC/DKIM validation on inbound (full RFC 6376/7208/7489)
+- [x] Webhook delivery with retries and audit trail (BullMQ + webhook_deliveries)
+- [x] Full-text search via Meilisearch (indexed on ingest + search API)
+- [x] Admin dashboard wired to real API data (all 7 pages)
+- [x] Database migrations and seed for Neon Postgres
+- [x] Managed relay support (SES/MailChannels/SMTP)
+- [x] JMAP service with auth and full Email methods
+- [x] Stripe billing integration (checkout, portal, usage enforcement)
+- [x] AI spam/content classification (Claude API with LRU cache + fallback)
+- [x] IP warm-up orchestrator (adaptive schedules, bounce monitoring)
+- [x] Domain auto-configuration (SPF/DKIM/DMARC DNS automation + key rotation)
+- [x] SDK published with working examples (send, domains, webhooks)
+- [x] Monitoring and alerting (OpenTelemetry traces + metrics + middleware)
+- [x] Rate limiting on all public endpoints (Redis sliding window + fallback)
+- [ ] IMAP4rev2 bridge for legacy clients (in progress — parser + formatter done)
+- [ ] Docker/Kubernetes deployment configs
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] API documentation (OpenAPI specs)
+- [ ] End-to-end integration tests
+- [ ] Suppression list management API
+- [ ] Email template system (stored templates with variable substitution)
+- [ ] Bounce/complaint feedback loop processing
+- [ ] Communication Intelligence Graph (relationship tracking)
+- [ ] Voice Synthesis Engine (writing style learning)
 
 ## Vision
 
