@@ -92,14 +92,18 @@ export type EmailedConfig = ClientConfig | SimpleClientConfig;
  */
 function normaliseConfig(config: EmailedConfig): ClientConfig {
   if ("apiKey" in config) {
-    return {
+    const result: ClientConfig = {
       auth: { type: "apiKey", key: config.apiKey },
-      baseUrl: config.baseUrl,
-      timeout: config.timeout,
-      maxRetries: config.maxRetries,
-      headers: config.headers,
-      debug: config.debug,
     };
+    // Only include optional fields when they are explicitly provided,
+    // satisfying exactOptionalPropertyTypes.
+    const out = result as unknown as Record<string, unknown>;
+    if (config.baseUrl !== undefined) out.baseUrl = config.baseUrl;
+    if (config.timeout !== undefined) out.timeout = config.timeout;
+    if (config.maxRetries !== undefined) out.maxRetries = config.maxRetries;
+    if (config.headers !== undefined) out.headers = config.headers;
+    if (config.debug !== undefined) out.debug = config.debug;
+    return result;
   }
   return config;
 }
