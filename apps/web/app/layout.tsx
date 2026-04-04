@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThemeProvider, Box } from "@emailed/ui";
+import { Toaster } from "../components/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +17,9 @@ export default function RootLayout({
     <Box as="html" lang="en" className="h-full antialiased">
       <Box as="body" className="h-full bg-surface text-content font-sans">
         <ThemeProvider mode="light">
-          {children}
+          <Toaster>
+            {children}
+          </Toaster>
         </ThemeProvider>
       </Box>
     </Box>

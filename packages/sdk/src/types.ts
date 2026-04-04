@@ -446,6 +446,155 @@ export interface DomainDnsRecord {
   readonly lastCheckedAt: string | null;
 }
 
+// ─── Template Types ─────────────────────────────────────────────────────────
+
+/** A stored email template. */
+export interface Template {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly category: string | null;
+  readonly subject: string;
+  readonly htmlBody: string | null;
+  readonly textBody: string | null;
+  readonly variables: readonly string[];
+  readonly version: number;
+  readonly isActive: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+/** Parameters for creating a template. */
+export interface CreateTemplateParams {
+  readonly name: string;
+  readonly subject: string;
+  readonly htmlBody?: string;
+  readonly textBody?: string;
+  readonly description?: string;
+  readonly category?: string;
+}
+
+/** Parameters for updating a template. */
+export interface UpdateTemplateParams {
+  readonly name?: string;
+  readonly subject?: string;
+  readonly htmlBody?: string | null;
+  readonly textBody?: string | null;
+  readonly description?: string | null;
+  readonly category?: string | null;
+}
+
+/** Parameters for previewing a rendered template. */
+export interface PreviewTemplateParams {
+  readonly variables?: Readonly<Record<string, unknown>>;
+}
+
+/** Result of rendering a template preview. */
+export interface TemplatePreview {
+  readonly subject: string;
+  readonly html: string | null;
+  readonly text: string | null;
+  readonly warnings: readonly string[];
+}
+
+/** Parameters for sending an email using a template. */
+export interface SendFromTemplateParams {
+  readonly from: SdkEmailAddress;
+  readonly to: readonly SdkEmailAddress[];
+  readonly cc?: readonly SdkEmailAddress[];
+  readonly bcc?: readonly SdkEmailAddress[];
+  readonly variables?: Readonly<Record<string, unknown>>;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly tags?: readonly string[];
+  readonly scheduledAt?: string;
+}
+
+/** Result of sending an email from a template. */
+export interface TemplateSendResult {
+  readonly id: string;
+  readonly messageId: string;
+  readonly templateId: string;
+  readonly status: string;
+  readonly renderedSubject: string;
+  readonly warnings: readonly string[];
+}
+
+/** Parameters for listing templates. */
+export interface TemplateListParams extends PaginationParams {
+  readonly category?: string;
+}
+
+// ─── Suppression Types ──────────────────────────────────────────────────────
+
+/** Reason an address was suppressed. */
+export type SuppressionReason = "bounce" | "complaint" | "unsubscribe" | "manual";
+
+/** A suppressed email address. */
+export interface Suppression {
+  readonly id: string;
+  readonly email: string;
+  readonly domain: string;
+  readonly reason: string;
+  readonly createdAt: string;
+}
+
+/** Parameters for adding a single suppression. */
+export interface AddSuppressionParams {
+  readonly email: string;
+  readonly domain: string;
+  readonly reason: SuppressionReason;
+}
+
+/** Parameters for batch-adding suppressions. */
+export interface BatchAddSuppressionsParams {
+  readonly suppressions: readonly AddSuppressionParams[];
+}
+
+/** Parameters for checking if addresses are suppressed. */
+export interface CheckSuppressionsParams {
+  readonly emails: readonly string[];
+  readonly domain: string;
+}
+
+/** Result of checking a single address against the suppression list. */
+export interface SuppressionCheckResult {
+  readonly email: string;
+  readonly suppressed: boolean;
+  readonly reason: string | null;
+  readonly createdAt: string | null;
+}
+
+/** Parameters for bulk-importing suppressions. */
+export interface ImportSuppressionsParams {
+  readonly domain: string;
+  readonly reason: SuppressionReason;
+  readonly entries: readonly { readonly email: string; readonly reason?: SuppressionReason }[];
+}
+
+/** Result of a bulk suppression import. */
+export interface SuppressionImportResult {
+  readonly requested: number;
+  readonly imported: number;
+  readonly domain: string;
+  readonly reason: string;
+}
+
+/** Parameters for listing suppressions. */
+export interface SuppressionListParams extends PaginationParams {
+  readonly domain?: string;
+  readonly reason?: SuppressionReason;
+  readonly search?: string;
+  readonly createdAfter?: string;
+  readonly createdBefore?: string;
+}
+
+/** Cursor-based paginated list (used by templates and suppressions). */
+export interface CursorPaginatedList<T> {
+  readonly data: readonly T[];
+  readonly cursor: string | null;
+  readonly hasMore: boolean;
+}
+
 // ─── Error Types ─────────────────────────────────────────────────────────────
 
 /** Structured API error returned by the Emailed API. */
