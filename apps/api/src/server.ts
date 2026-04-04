@@ -26,6 +26,7 @@ import { suppressions } from "./routes/suppressions.js";
 import { tracking } from "./routes/tracking.js";
 import { apiKeysRouter } from "./routes/api-keys.js";
 import { account } from "./routes/account.js";
+import { auth } from "./routes/auth.js";
 import { health } from "./routes/health.js";
 import { closeConnection } from "@emailed/db";
 
@@ -84,6 +85,9 @@ app.get("/health", (c) => {
 
 // Deep health check with dependency verification (also no auth)
 app.route("/v1/health", health);
+
+// Auth endpoints (no API key auth required)
+app.route("/v1/auth", auth);
 
 // Tracking endpoints (no auth — embedded in emails)
 app.route("/t", tracking);

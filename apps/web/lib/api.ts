@@ -111,6 +111,82 @@ export interface Account {
   createdAt: string;
 }
 
+// ─── Auth ──────────────────────────────────────────────────────────────────
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    accountId: string;
+  };
+}
+
+export const authApi = {
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as ApiError | null;
+      throw new Error(err?.error?.message ?? "Login failed");
+    }
+
+    const data = (await res.json()) as { data: AuthResponse };
+
+    // Store token
+    if (typeof window !== "undefined") {
+      localStorage.setItem("emailed_api_key", data.data.token);
+      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+    }
+
+    return data.data;
+  },
+
+  async register(payload: {
+    email: string;
+    password: string;
+    name: string;
+    accountName?: string;
+  }): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as ApiError | null;
+      throw new Error(err?.error?.message ?? "Registration failed");
+    }
+
+    const data = (await res.json()) as { data: AuthResponse };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("emailed_api_key", data.data.token);
+      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+    }
+
+    return data.data;
+  },
+
+  logout() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("emailed_api_key");
+      document.cookie = "emailed_session=; path=/; max-age=0";
+    }
+  },
+
+  async me() {
+    return apiFetch<{ data: AuthResponse["user"] }>("/v1/auth/me");
+  },
+};
+
 // ─── Core fetch wrapper ────────────────────────────────────────────────────
 
 async function apiFetch<T>(
