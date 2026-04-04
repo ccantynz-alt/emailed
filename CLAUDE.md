@@ -18,7 +18,7 @@
 ## LIVE STATUS — READ THIS FIRST
 
 **Last updated: 2026-04-04**
-**Overall: ~95% complete. All core features done. Bounces page + SDK docs in progress.**
+**Overall: ~98% complete. All pages, APIs, and services done. SDK README in progress.**
 
 ### Backend Services (API + Workers)
 | Service | Status | Notes |
@@ -56,7 +56,7 @@
 | API Keys `/api-keys` | ✅ DONE | Create, revoke, copy |
 | Billing `/billing` | ✅ DONE | Plan cards, usage meter, Stripe checkout + portal |
 | Suppressions `/suppressions` | ✅ DONE | List, add, remove, import, search |
-| Bounces `/bounces` | ⏳ BUILDING | Agent working on it now |
+| Bounces `/bounces` | ✅ DONE | Stats cards, recent list, trending chart, filters |
 
 ### Admin Dashboard (apps/admin, port 3002)
 | Page | Status |
