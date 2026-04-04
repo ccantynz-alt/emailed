@@ -11,6 +11,7 @@
 import { SmtpServer } from "./smtp/server.js";
 import { MtaWorker } from "./worker.js";
 import { getDatabase, closeConnection } from "@emailed/db";
+import { initTelemetry, shutdownTelemetry } from "@emailed/shared";
 import Redis from "ioredis";
 
 // ─── Configuration ──────────────────────────────────────────────────────────

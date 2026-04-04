@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@emailed/shared": "workspace:*",
+    "@emailed/db": "workspace:*",
+    "drizzle-orm": "^0.38.0",
     "pino": "^9.0.0"
   },
   "devDependencies": {

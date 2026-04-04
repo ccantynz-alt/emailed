@@ -142,3 +142,30 @@ export type {
   EmailSearchHit,
   EmailSearchResult,
 } from "./search/meilisearch.js";
+
+// Telemetry
+export {
+  initTelemetry,
+  shutdownTelemetry,
+  getTracer,
+  getMeter,
+  recordEmailSent,
+  recordEmailSendDuration,
+  recordEmailReceived,
+  recordEmailFilterDuration,
+  recordApiRequest,
+  recordActiveConnection,
+  recordQueueDepth,
+  recordWebhookDelivery,
+  SpanStatusCode,
+  SpanKind,
+} from "./telemetry/index.js";
+export type {
+  Span,
+  Tracer,
+  Meter,
+  Counter,
+  Histogram,
+} from "./telemetry/index.js";
+
+export { telemetryMiddleware } from "./telemetry/middleware.js";
