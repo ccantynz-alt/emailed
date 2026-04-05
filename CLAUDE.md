@@ -54,16 +54,22 @@
 - [x] SDK published with working examples (send, domains, webhooks)
 - [x] Monitoring and alerting (OpenTelemetry traces + metrics + middleware)
 - [x] Rate limiting on all public endpoints (Redis sliding window + fallback)
-- [ ] IMAP4rev2 bridge for legacy clients (in progress — parser + formatter done)
-- [ ] Docker/Kubernetes deployment configs
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] API documentation (OpenAPI specs)
-- [ ] End-to-end integration tests
-- [ ] Suppression list management API
-- [ ] Email template system (stored templates with variable substitution)
-- [ ] Bounce/complaint feedback loop processing
-- [ ] Communication Intelligence Graph (relationship tracking)
-- [ ] Voice Synthesis Engine (writing style learning)
+- [x] IMAP4rev2 bridge for legacy clients (full server + parser + handlers + storage adapter)
+- [x] Docker/Kubernetes deployment configs (Dockerfiles, docker-compose, K8s manifests with HPA)
+- [x] CI/CD pipeline (GitHub Actions: lint, test, build, deploy to staging + production)
+- [x] API documentation (OpenAPI 3.1 spec — all endpoints documented)
+- [x] End-to-end integration tests (vitest E2E suite across all API endpoints)
+- [x] Suppression list management API (CRUD + filtering + bounce auto-suppression)
+- [x] Email template system (DB schema, CRUD API, rendering engine with {{variables}}, conditionals, loops)
+- [x] Bounce/complaint feedback loop processing (RFC 3464 DSN parser, classification, auto-suppression)
+- [x] Communication Intelligence Graph (relationship scoring, follow-up reminders, decay factor)
+- [x] Voice Synthesis Engine (VoiceProfileBuilder + ComposeAssistant + Claude API integration + API routes)
+- [x] Grammar Agent (real-time grammar/spelling/tone correction, email etiquette checks, 30+ languages, FREE)
+- [x] Advanced Dictation Engine (email-aware voice commands, multi-language, AI polish)
+- [x] Smart Inbox (AI classification, Screener, commitments tracker, follow-up nudges)
+- [x] Email Recall (link-based viewing, revoke access, self-destruct timers)
+- [x] Bidirectional Translation (compose in any language, 35+ languages, email-aware)
+- [x] Collaboration (shared inboxes, internal comments, assignments, collaborative drafts)
 
 ## Vision
 

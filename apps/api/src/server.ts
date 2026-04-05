@@ -39,6 +39,14 @@ import { auth } from "./routes/auth.js";
 import { health } from "./routes/health.js";
 import { admin } from "./routes/admin.js";
 import { billing } from "./routes/billing.js";
+import { templatesRouter } from "./routes/templates.js";
+import { voice } from "./routes/voice.js";
+import { grammar } from "./routes/grammar.js";
+import { dictation } from "./routes/dictation.js";
+import { inbox } from "./routes/inbox.js";
+import { recall } from "./routes/recall.js";
+import { translate } from "./routes/translate.js";
+import { collaborate } from "./routes/collaborate.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
@@ -142,6 +150,28 @@ app.use("/v1/billing/usage", authMiddleware, readRateLimit);
 app.use("/v1/billing/plan", authMiddleware, readRateLimit);
 // Stripe webhook: IP-based, no auth (Stripe verifies via signature)
 app.use("/v1/billing/webhook", webhookRateLimit);
+// Templates: write-level limits (200 req/min)
+app.use("/v1/templates/*", authMiddleware, writeRateLimit);
+app.use("/v1/templates", authMiddleware, writeRateLimit);
+// Voice: write-level limits (200 req/min)
+app.use("/v1/voice/*", authMiddleware, writeRateLimit);
+// Grammar: high-frequency read (600 req/min — real-time typing)
+app.use("/v1/grammar/*", authMiddleware, readRateLimit);
+// Dictation: write-level (200 req/min)
+app.use("/v1/dictation/*", authMiddleware, writeRateLimit);
+// Smart Inbox: read/write (200 req/min)
+app.use("/v1/inbox/*", authMiddleware, writeRateLimit);
+// Recall: write-level (200 req/min)
+app.use("/v1/recall/enable", authMiddleware, writeRateLimit);
+app.use("/v1/recall/revoke/*", authMiddleware, writeRateLimit);
+app.use("/v1/recall/status/*", authMiddleware, readRateLimit);
+app.use("/v1/recall/self-destruct", authMiddleware, writeRateLimit);
+// Recall view is PUBLIC (no auth — recipients access via link)
+// Translation: read-level (600 req/min)
+app.use("/v1/translate/*", authMiddleware, readRateLimit);
+app.use("/v1/translate", authMiddleware, readRateLimit);
+// Collaboration: write-level (200 req/min)
+app.use("/v1/collaborate/*", authMiddleware, writeRateLimit);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
@@ -152,6 +182,14 @@ app.route("/v1/suppressions", suppressions);
 app.route("/v1/api-keys", apiKeysRouter);
 app.route("/v1/account", account);
 app.route("/v1/billing", billing);
+app.route("/v1/templates", templatesRouter);
+app.route("/v1/voice", voice);
+app.route("/v1/grammar", grammar);
+app.route("/v1/dictation", dictation);
+app.route("/v1/inbox", inbox);
+app.route("/v1/recall", recall);
+app.route("/v1/translate", translate);
+app.route("/v1/collaborate", collaborate);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 
