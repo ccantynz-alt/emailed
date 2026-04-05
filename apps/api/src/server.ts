@@ -48,6 +48,8 @@ import { recall } from "./routes/recall.js";
 import { translate } from "./routes/translate.js";
 import { collaborate } from "./routes/collaborate.js";
 import { connect } from "./routes/connect.js";
+import { snooze, scheduleSend } from "./routes/snooze.js";
+import { importRouter } from "./routes/import.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
@@ -179,6 +181,12 @@ app.use("/v1/connect/outlook", authMiddleware, writeRateLimit);
 app.use("/v1/connect/imap", authMiddleware, writeRateLimit);
 app.use("/v1/connect/accounts", authMiddleware, readRateLimit);
 app.use("/v1/connect/accounts/*", authMiddleware, writeRateLimit);
+// Snooze: write-level (200 req/min)
+app.use("/v1/snooze/*", authMiddleware, writeRateLimit);
+// Schedule/Undo send: write-level (200 req/min)
+app.use("/v1/send/*", authMiddleware, writeRateLimit);
+// Import: write-level (200 req/min)
+app.use("/v1/import/*", authMiddleware, writeRateLimit);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
@@ -198,6 +206,9 @@ app.route("/v1/recall", recall);
 app.route("/v1/translate", translate);
 app.route("/v1/collaborate", collaborate);
 app.route("/v1/connect", connect);
+app.route("/v1/snooze", snooze);
+app.route("/v1/send", scheduleSend);
+app.route("/v1/import", importRouter);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 
