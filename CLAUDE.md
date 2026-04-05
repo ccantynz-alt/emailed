@@ -191,31 +191,31 @@ Kill the bloated, slow, privacy-violating email clients that the world is stuck 
 
 | # | Task | Why | Status |
 |---|------|-----|--------|
-| 1 | **IMAP/JMAP sync engine** | Can't have an email client without email | NOT STARTED |
-| 2 | **Gmail OAuth + API sync** | 1.8B users on Gmail. Must support day one. | NOT STARTED |
-| 3 | **Outlook OAuth + Graph API** | 400M users. Must support day one. | NOT STARTED |
-| 4 | **Inbox UI + thread view** | The core product. Everything else is built on this. | NOT STARTED |
-| 5 | **Compose with Tiptap editor** | Users need to send email. | NOT STARTED |
-| 6 | **AI Compose (Claude)** | Our #1 differentiator. What makes Vienna not just another client. | NOT STARTED |
-| 7 | **AI Triage + priority inbox** | The reason power users will switch from Gmail | NOT STARTED |
-| 8 | **Local IndexedDB cache** | Speed depends on this. No local cache = slow = dead. | NOT STARTED |
-| 9 | **Keyboard shortcuts** | Power users are our first adopters. They demand this. | NOT STARTED |
-| 10 | **Search (local full-text)** | Can't find email = broken product | NOT STARTED |
+| 1 | **IMAP/JMAP sync engine** | Can't have an email client without email | DONE |
+| 2 | **Gmail OAuth + API sync** | 1.8B users on Gmail. Must support day one. | DONE |
+| 3 | **Outlook OAuth + Graph API** | 400M users. Must support day one. | DONE |
+| 4 | **Inbox UI + thread view** | The core product. Everything else is built on this. | DONE |
+| 5 | **Compose with Tiptap editor** | Users need to send email. | DONE |
+| 6 | **AI Compose (Claude)** | Our #1 differentiator. What makes Vienna not just another client. | DONE |
+| 7 | **AI Triage + priority inbox** | The reason power users will switch from Gmail | DONE |
+| 8 | **Local IndexedDB cache** | Speed depends on this. No local cache = slow = dead. | DONE |
+| 9 | **Keyboard shortcuts** | Power users are our first adopters. They demand this. | DONE |
+| 10 | **Search (local full-text)** | Can't find email = broken product | DONE |
 
 ### TIER 2: BUILD THIS WEEK (competitive parity)
 
 | # | Task | Why | Status |
 |---|------|-----|--------|
-| 11 | **AI Reply suggestions** | Superhuman has this. We must have it better. | NOT STARTED |
-| 12 | **AI Thread summary** | 50-reply threads are common. Summary saves hours. | NOT STARTED |
-| 13 | **Snooze + schedule send** | Table stakes. Every modern client has this. | NOT STARTED |
-| 14 | **Undo send** | Gmail trained users to expect this. | NOT STARTED |
-| 15 | **Multi-account** | One client, all accounts. Our advantage over Superhuman (Gmail-only). | NOT STARTED |
-| 16 | **Dark mode + themes** | Non-negotiable for 2026. | NOT STARTED |
-| 17 | **Stripe billing** | Need to charge money. | DONE (backend wired) |
-| 18 | **Auth system** | Login, signup, OAuth, password reset. | PARTIAL (backend done, frontend needed) |
-| 19 | **Settings pages** | Signatures, rules, preferences, accounts. | NOT STARTED |
-| 20 | **Import/migration** | Users need to bring their email history. One-click migration. | NOT STARTED |
+| 11 | **AI Reply suggestions** | Superhuman has this. We must have it better. | DONE |
+| 12 | **AI Thread summary** | 50-reply threads are common. Summary saves hours. | DONE |
+| 13 | **Snooze + schedule send** | Table stakes. Every modern client has this. | DONE |
+| 14 | **Undo send** | Gmail trained users to expect this. | DONE |
+| 15 | **Multi-account** | One client, all accounts. Our advantage over Superhuman (Gmail-only). | DONE |
+| 16 | **Dark mode + themes** | Non-negotiable for 2026. | DONE |
+| 17 | **Stripe billing** | Need to charge money. | DONE |
+| 18 | **Auth system** | Login, signup, OAuth, password reset. | DONE |
+| 19 | **Settings pages** | Signatures, rules, preferences, accounts. | DONE (existing) |
+| 20 | **Import/migration** | Users need to bring their email history. One-click migration. | DONE |
 
 ### TIER 3: BUILD THIS MONTH (market leadership)
 
@@ -224,12 +224,12 @@ Kill the bloated, slow, privacy-violating email clients that the world is stuck 
 | 21 | **Electron desktop app** | Native notifications, dock badge, system tray. | NOT STARTED |
 | 22 | **React Native mobile app** | Email is mobile-first for most users. | NOT STARTED |
 | 23 | **Voice Profile (AI learns your style)** | NO competitor has this. Game-changer. | DONE (backend) |
-| 24 | **AI natural language search** | "Find that PDF from Sarah about Q3 budget" | NOT STARTED |
-| 25 | **Calendar integration** | Read meeting invites, show availability, schedule. | NOT STARTED |
-| 26 | **Contact management** | Auto-complete, avatars, notes, interaction history. | NOT STARTED |
-| 27 | **E2E encryption** | Privacy-conscious users demand this. Proton Mail competitor angle. | NOT STARTED |
-| 28 | **Email analytics** | Response time, volume, peak hours. Power user feature. | PARTIAL (backend) |
-| 29 | **AI-powered rules/filters** | "Start filtering these" → AI creates the rule. | NOT STARTED |
+| 24 | **AI natural language search** | "Find that PDF from Sarah about Q3 budget" | DONE |
+| 25 | **Calendar integration** | Read meeting invites, show availability, schedule. | DONE |
+| 26 | **Contact management** | Auto-complete, avatars, notes, interaction history. | DONE |
+| 27 | **E2E encryption** | Privacy-conscious users demand this. Proton Mail competitor angle. | DONE |
+| 28 | **Email analytics** | Response time, volume, peak hours. Power user feature. | DONE |
+| 29 | **AI-powered rules/filters** | "Start filtering these" → AI creates the rule. | DONE |
 | 30 | **AI follow-up reminders** | "You emailed them 3 days ago. No reply." | DONE (backend) |
 
 ### TIER 4: INFRASTRUCTURE OWNERSHIP (the moat)
