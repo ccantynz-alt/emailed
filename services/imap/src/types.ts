@@ -467,6 +467,11 @@ export const SYSTEM_FLAGS = [
 
 export type SystemFlag = (typeof SYSTEM_FLAGS)[number];
 
+/**
+ * An IMAP flag string (e.g., "\\Seen", "\\Flagged", or a custom keyword).
+ */
+export type ImapFlag = string;
+
 // ─── Default Capabilities ───────────────────────────────────────────────────
 
 /**

@@ -39,6 +39,8 @@ import { auth } from "./routes/auth.js";
 import { health } from "./routes/health.js";
 import { admin } from "./routes/admin.js";
 import { billing } from "./routes/billing.js";
+import { templatesRouter } from "./routes/templates.js";
+import { voice } from "./routes/voice.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
@@ -142,6 +144,11 @@ app.use("/v1/billing/usage", authMiddleware, readRateLimit);
 app.use("/v1/billing/plan", authMiddleware, readRateLimit);
 // Stripe webhook: IP-based, no auth (Stripe verifies via signature)
 app.use("/v1/billing/webhook", webhookRateLimit);
+// Templates: write-level limits (200 req/min)
+app.use("/v1/templates/*", authMiddleware, writeRateLimit);
+app.use("/v1/templates", authMiddleware, writeRateLimit);
+// Voice: write-level limits (200 req/min)
+app.use("/v1/voice/*", authMiddleware, writeRateLimit);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
@@ -152,6 +159,8 @@ app.route("/v1/suppressions", suppressions);
 app.route("/v1/api-keys", apiKeysRouter);
 app.route("/v1/account", account);
 app.route("/v1/billing", billing);
+app.route("/v1/templates", templatesRouter);
+app.route("/v1/voice", voice);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 

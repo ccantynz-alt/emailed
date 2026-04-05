@@ -89,18 +89,41 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name emailed-cluster --region ${{ env.AWS_REGION }}
+
       - name: Deploy to staging
         run: |
           echo "Deploying to staging with image tag: ${{ github.sha }}"
-          # Replace with actual deployment command, e.g.:
-          # kubectl set image deployment/web web=$ECR_REGISTRY/emailed-web:${{ github.sha }} --namespace=staging
-          # kubectl set image deployment/api api=$ECR_REGISTRY/emailed-api:${{ github.sha }} --namespace=staging
-          # kubectl set image deployment/mta mta=$ECR_REGISTRY/emailed-mta:${{ github.sha }} --namespace=staging
+          kubectl set image deployment/emailed-web web=${{ env.ECR_REGISTRY }}/emailed-web:${{ github.sha }} --namespace=staging
+          kubectl set image deployment/emailed-api api=${{ env.ECR_REGISTRY }}/emailed-api:${{ github.sha }} --namespace=staging
+          kubectl set image deployment/emailed-mta mta=${{ env.ECR_REGISTRY }}/emailed-mta:${{ github.sha }} --namespace=staging
+
+          echo "Waiting for rollouts..."
+          kubectl rollout status deployment/emailed-web --namespace=staging --timeout=300s
+          kubectl rollout status deployment/emailed-api --namespace=staging --timeout=300s
+          kubectl rollout status deployment/emailed-mta --namespace=staging --timeout=300s
 
       - name: Verify staging deployment
         run: |
-          echo "Running staging health checks..."
-          # Replace with actual health check commands
+          STAGING_URL=$(kubectl get svc emailed-api -n staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "Running health check against $STAGING_URL..."
+
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -sf "http://${STAGING_URL}/health" | jq -r '.status' 2>/dev/null || echo "unreachable")
+            if [ "$STATUS" = "ok" ]; then
+              echo "Staging health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "Staging health check failed after 5 attempts"
+          exit 1
 
   deploy-production:
     name: Deploy to Production
@@ -117,15 +140,38 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name emailed-cluster --region ${{ env.AWS_REGION }}
+
       - name: Deploy to production
         run: |
           echo "Deploying to production with image tag: ${{ github.sha }}"
-          # Replace with actual deployment command, e.g.:
-          # kubectl set image deployment/web web=$ECR_REGISTRY/emailed-web:${{ github.sha }} --namespace=production
-          # kubectl set image deployment/api api=$ECR_REGISTRY/emailed-api:${{ github.sha }} --namespace=production
-          # kubectl set image deployment/mta mta=$ECR_REGISTRY/emailed-mta:${{ github.sha }} --namespace=production
+          kubectl set image deployment/emailed-web web=${{ env.ECR_REGISTRY }}/emailed-web:${{ github.sha }} --namespace=production
+          kubectl set image deployment/emailed-api api=${{ env.ECR_REGISTRY }}/emailed-api:${{ github.sha }} --namespace=production
+          kubectl set image deployment/emailed-mta mta=${{ env.ECR_REGISTRY }}/emailed-mta:${{ github.sha }} --namespace=production
+
+          echo "Waiting for rollouts..."
+          kubectl rollout status deployment/emailed-web --namespace=production --timeout=300s
+          kubectl rollout status deployment/emailed-api --namespace=production --timeout=300s
+          kubectl rollout status deployment/emailed-mta --namespace=production --timeout=300s
 
       - name: Verify production deployment
         run: |
-          echo "Running production health checks..."
-          # Replace with actual health check commands
+          PROD_URL=$(kubectl get svc emailed-api -n production -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "Running health check against $PROD_URL..."
+
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -sf "http://${PROD_URL}/health" | jq -r '.status' 2>/dev/null || echo "unreachable")
+            if [ "$STATUS" = "ok" ]; then
+              echo "Production health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "Production health check failed after 5 attempts"
+          exit 1

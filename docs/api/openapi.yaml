@@ -27,12 +27,32 @@ security:
 tags:
   - name: Messages
     description: Send and retrieve email messages
+  - name: Templates
+    description: Email template CRUD and rendering
   - name: Domains
     description: Domain management and DNS verification
   - name: Webhooks
     description: Webhook endpoint registration and management
+  - name: Suppressions
+    description: Suppression list management
   - name: Analytics
     description: Delivery and engagement analytics
+  - name: Auth
+    description: Authentication (register, login, logout)
+  - name: Account
+    description: Account profile management
+  - name: API Keys
+    description: API key management
+  - name: Billing
+    description: Stripe billing, checkout, and usage
+  - name: Voice
+    description: AI writing style analysis and draft generation
+  - name: Warmup
+    description: IP warm-up orchestration
+  - name: Tracking
+    description: Open/click tracking pixels (no auth)
+  - name: Admin
+    description: Platform admin dashboard
   - name: Health
     description: Service health checks
 
@@ -424,6 +444,662 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /v1/messages/search:
+    get:
+      operationId: searchMessages
+      summary: Full-text email search
+      description: Search messages via Meilisearch full-text index.
+      tags: [Messages]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: mailbox
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/LimitParam"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MessageRecord"
+                  totalHits:
+                    type: integer
+                  processingTimeMs:
+                    type: number
+                  query:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Search service unavailable
+
+  /v1/templates:
+    post:
+      operationId: createTemplate
+      summary: Create an email template
+      tags: [Templates]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, subject]
+              properties:
+                name:
+                  type: string
+                subject:
+                  type: string
+                htmlBody:
+                  type: string
+                textBody:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        "201":
+          description: Template created
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      operationId: listTemplates
+      summary: List templates
+      tags: [Templates]
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/CursorParam"
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of templates
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/templates/{id}:
+    get:
+      operationId: getTemplate
+      summary: Get template details
+      tags: [Templates]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Template details
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateTemplate
+      summary: Update a template
+      tags: [Templates]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                subject:
+                  type: string
+                htmlBody:
+                  type: string
+                textBody:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        "200":
+          description: Template updated
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteTemplate
+      summary: Delete a template
+      tags: [Templates]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Template deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/templates/{id}/render:
+    post:
+      operationId: renderTemplate
+      summary: Render a template with variables
+      tags: [Templates]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [variables]
+              properties:
+                variables:
+                  type: object
+      responses:
+        "200":
+          description: Rendered template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      subject:
+                        type: string
+                      htmlBody:
+                        type: string
+                      textBody:
+                        type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/suppressions:
+    post:
+      operationId: addSuppression
+      summary: Add email to suppression list
+      tags: [Suppressions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, domainId, reason]
+              properties:
+                email:
+                  type: string
+                  format: email
+                domainId:
+                  type: string
+                reason:
+                  type: string
+                  enum: [bounce, complaint, unsubscribe, manual]
+      responses:
+        "201":
+          description: Suppression added
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      operationId: listSuppressions
+      summary: List suppressions
+      tags: [Suppressions]
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+        - $ref: "#/components/parameters/CursorParam"
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: reason
+          in: query
+          schema:
+            type: string
+            enum: [bounce, complaint, unsubscribe, manual]
+      responses:
+        "200":
+          description: Paginated suppression list
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/suppressions/{id}:
+    delete:
+      operationId: deleteSuppression
+      summary: Remove from suppression list
+      tags: [Suppressions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Suppression removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/auth/register:
+    post:
+      operationId: register
+      summary: Register a new account
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, name, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                name:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "201":
+          description: Account created
+        "409":
+          description: Email already registered
+
+  /v1/auth/login:
+    post:
+      operationId: login
+      summary: Login
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful (returns session token)
+        "401":
+          description: Invalid credentials
+
+  /v1/account:
+    get:
+      operationId: getAccount
+      summary: Get account details
+      tags: [Account]
+      responses:
+        "200":
+          description: Account profile
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateAccount
+      summary: Update account settings
+      tags: [Account]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                billingEmail:
+                  type: string
+      responses:
+        "200":
+          description: Account updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/api-keys:
+    post:
+      operationId: createApiKey
+      summary: Create an API key
+      tags: [API Keys]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scopes]
+              properties:
+                name:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: API key created (key shown only once)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      operationId: listApiKeys
+      summary: List API keys
+      tags: [API Keys]
+      responses:
+        "200":
+          description: List of API keys (secrets redacted)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/api-keys/{id}:
+    delete:
+      operationId: deleteApiKey
+      summary: Delete an API key
+      tags: [API Keys]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: API key deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/api-keys/{id}/rotate:
+    post:
+      operationId: rotateApiKey
+      summary: Rotate an API key
+      tags: [API Keys]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: New key returned (shown only once)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/billing/checkout:
+    post:
+      operationId: createCheckout
+      summary: Create Stripe checkout session
+      tags: [Billing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [planId, successUrl, cancelUrl]
+              properties:
+                planId:
+                  type: string
+                  enum: [starter, professional, enterprise]
+                successUrl:
+                  type: string
+                  format: uri
+                cancelUrl:
+                  type: string
+                  format: uri
+      responses:
+        "200":
+          description: Checkout session URL
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/billing/portal:
+    post:
+      operationId: createBillingPortal
+      summary: Create Stripe billing portal session
+      tags: [Billing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [returnUrl]
+              properties:
+                returnUrl:
+                  type: string
+                  format: uri
+      responses:
+        "200":
+          description: Portal session URL
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/billing/usage:
+    get:
+      operationId: getUsage
+      summary: Get current billing period usage
+      tags: [Billing]
+      responses:
+        "200":
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      emailsSent:
+                        type: integer
+                      emailsLimit:
+                        type: integer
+                      percentUsed:
+                        type: number
+                      planTier:
+                        type: string
+                      limitExceeded:
+                        type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/billing/plan:
+    get:
+      operationId: getPlan
+      summary: Get current plan details
+      tags: [Billing]
+      responses:
+        "200":
+          description: Current plan with limits
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/billing/webhook:
+    post:
+      operationId: stripeWebhook
+      summary: Stripe webhook handler
+      tags: [Billing]
+      security: []
+      responses:
+        "200":
+          description: Event processed
+
+  /v1/voice/analyze:
+    post:
+      operationId: analyzeVoice
+      summary: Build voice profile from sent emails
+      tags: [Voice]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sampleSize:
+                  type: integer
+                  default: 50
+                  maximum: 200
+      responses:
+        "200":
+          description: Voice profile built
+        "400":
+          description: Insufficient sent emails
+
+  /v1/voice/profile:
+    get:
+      operationId: getVoiceProfile
+      summary: Get current voice profile
+      tags: [Voice]
+      responses:
+        "200":
+          description: Voice profile data
+        "404":
+          description: No profile exists yet
+
+  /v1/voice/draft:
+    post:
+      operationId: generateDraft
+      summary: Generate email draft in user's voice
+      tags: [Voice]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instructions]
+              properties:
+                instructions:
+                  type: string
+                tone:
+                  type: string
+                  enum: [professional, casual, friendly, formal, urgent, empathetic, assertive]
+                  default: professional
+                length:
+                  type: string
+                  enum: [brief, moderate, detailed]
+                  default: moderate
+                recipientName:
+                  type: string
+                subject:
+                  type: string
+                replyTo:
+                  type: object
+                  properties:
+                    from:
+                      type: string
+                    subject:
+                      type: string
+                    body:
+                      type: string
+      responses:
+        "200":
+          description: Generated draft
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      subject:
+                        type: string
+                      body:
+                        type: string
+                      tone:
+                        type: string
+
+  /v1/voice/adjust:
+    post:
+      operationId: adjustTone
+      summary: Adjust tone of existing email text
+      tags: [Voice]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body, tone]
+              properties:
+                body:
+                  type: string
+                tone:
+                  type: string
+                  enum: [professional, casual, friendly, formal, urgent, empathetic, assertive]
+      responses:
+        "200":
+          description: Tone-adjusted text
+
+  /v1/warmup:
+    get:
+      operationId: listWarmupSessions
+      summary: List IP warm-up sessions
+      tags: [Warmup]
+      responses:
+        "200":
+          description: Warm-up sessions
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createWarmupSession
+      summary: Create warm-up session for a domain
+      tags: [Warmup]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domainId]
+              properties:
+                domainId:
+                  type: string
+                scheduleType:
+                  type: string
+                  enum: [conservative, moderate, aggressive]
+                  default: moderate
+      responses:
+        "201":
+          description: Warm-up session created
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /v1/webhooks:
     post:
       operationId: createWebhook
@@ -457,6 +1133,47 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
+    get:
+      operationId: listWebhooks
+      summary: List webhooks
+      tags: [Webhooks]
+      responses:
+        "200":
+          description: List of webhooks
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/webhooks/{id}:
+    get:
+      operationId: getWebhook
+      summary: Get webhook details
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Webhook details
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteWebhook
+      summary: Delete a webhook
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Webhook deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
   securitySchemes:
