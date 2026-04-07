@@ -56,6 +56,7 @@ import { contacts } from "./routes/contacts.js";
 import { calendar } from "./routes/calendar.js";
 import { encryption } from "./routes/encryption.js";
 import { aiRules } from "./routes/ai-rules.js";
+import { explain } from "./routes/explain.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
@@ -207,6 +208,8 @@ app.use("/v1/encryption/*", authMiddleware, writeRateLimit);
 // AI Rules: write-level (200 req/min)
 app.use("/v1/rules/*", authMiddleware, writeRateLimit);
 app.use("/v1/rules", authMiddleware, readRateLimit);
+// Explain (newsletter summary + "why is this in my inbox?"): read-level (600 req/min)
+app.use("/v1/explain/*", authMiddleware, readRateLimit);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
@@ -235,6 +238,7 @@ app.route("/v1/contacts", contacts);
 app.route("/v1/calendar", calendar);
 app.route("/v1/encryption", encryption);
 app.route("/v1/rules", aiRules);
+app.route("/v1/explain", explain);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 
