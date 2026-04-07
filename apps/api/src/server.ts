@@ -51,6 +51,7 @@ import { connect } from "./routes/connect.js";
 import { snooze, scheduleSend } from "./routes/snooze.js";
 import { importRouter } from "./routes/import.js";
 import { aiSearch } from "./routes/ai-search.js";
+import { semanticSearch } from "./routes/semantic-search.js";
 import { contacts } from "./routes/contacts.js";
 import { calendar } from "./routes/calendar.js";
 import { encryption } from "./routes/encryption.js";
@@ -194,6 +195,8 @@ app.use("/v1/send/*", authMiddleware, writeRateLimit);
 app.use("/v1/import/*", authMiddleware, writeRateLimit);
 // AI Search: search-level (60 req/min)
 app.use("/v1/search/*", authMiddleware, searchRateLimit);
+// Semantic Vector Search: search-level (60 req/min)
+app.use("/v1/semantic/*", authMiddleware, searchRateLimit);
 // Contacts: read-level (600 req/min)
 app.use("/v1/contacts/*", authMiddleware, readRateLimit);
 app.use("/v1/contacts", authMiddleware, readRateLimit);
@@ -227,6 +230,7 @@ app.route("/v1/snooze", snooze);
 app.route("/v1/send", scheduleSend);
 app.route("/v1/import", importRouter);
 app.route("/v1/search", aiSearch);
+app.route("/v1/semantic", semanticSearch);
 app.route("/v1/contacts", contacts);
 app.route("/v1/calendar", calendar);
 app.route("/v1/encryption", encryption);

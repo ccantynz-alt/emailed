@@ -89,6 +89,13 @@ export {
   templatesRelations,
 } from "./schema/templates.js";
 
+// Schema - Email Embeddings (semantic vector search)
+export {
+  emailEmbeddings,
+  emailEmbeddingsRelations,
+  vector,
+} from "./schema/email-embeddings.js";
+
 // Schema - Draft Snapshots (CRDT collaborative drafting)
 export {
   draftSnapshots,
@@ -114,6 +121,7 @@ import type {
 import type { suppressionLists } from "./schema/suppressions.js";
 import type { warmupSessions } from "./schema/warmup.js";
 import type { templates } from "./schema/templates.js";
+import type { emailEmbeddings } from "./schema/email-embeddings.js";
 
 // Select types (what you get back from queries)
 export type Account = InferSelectModel<typeof accounts>;
@@ -148,3 +156,5 @@ export type WarmupSession = InferSelectModel<typeof warmupSessions>;
 export type NewWarmupSession = InferInsertModel<typeof warmupSessions>;
 export type Template = InferSelectModel<typeof templates>;
 export type NewTemplate = InferInsertModel<typeof templates>;
+export type EmailEmbedding = InferSelectModel<typeof emailEmbeddings>;
+export type NewEmailEmbedding = InferInsertModel<typeof emailEmbeddings>;
