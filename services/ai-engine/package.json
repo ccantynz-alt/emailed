@@ -51,6 +51,21 @@
       "bun": "./src/embeddings/voyage.ts",
       "types": "./src/embeddings/voyage.ts",
       "import": "./dist/embeddings/voyage.js"
+    },
+    "./inbox": {
+      "bun": "./src/inbox/smart-inbox.ts",
+      "types": "./src/inbox/smart-inbox.ts",
+      "import": "./dist/inbox/smart-inbox.js"
+    },
+    "./inbox/newsletter-summarizer": {
+      "bun": "./src/inbox/newsletter-summarizer.ts",
+      "types": "./src/inbox/newsletter-summarizer.ts",
+      "import": "./dist/inbox/newsletter-summarizer.js"
+    },
+    "./inbox/email-explainer": {
+      "bun": "./src/inbox/email-explainer.ts",
+      "types": "./src/inbox/email-explainer.ts",
+      "import": "./dist/inbox/email-explainer.js"
     }
   },
   "scripts": {
