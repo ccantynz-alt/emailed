@@ -73,6 +73,7 @@ export function createDefaultShortcuts(actions: {
   aiReply: () => void;
   aiSummarize: () => void;
   toggleDarkMode: () => void;
+  toggleFocusMode: () => void;
 }): Shortcut[] {
   return [
     // Navigation
@@ -110,6 +111,7 @@ export function createDefaultShortcuts(actions: {
 
     // View
     { id: "dark-mode", label: "Toggle Dark Mode", category: "view", keys: ["mod+shift+d"], description: "Switch light/dark theme", handler: actions.toggleDarkMode, context: "global", icon: "🌙" },
+    { id: "focus-mode", label: "Toggle Focus Mode", category: "view", keys: ["mod+shift+f"], description: "Hide everything except important emails", handler: actions.toggleFocusMode, context: "global", icon: "🎯" },
   ];
 }
 
