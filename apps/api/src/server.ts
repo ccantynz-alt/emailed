@@ -59,6 +59,7 @@ import { aiRules } from "./routes/ai-rules.js";
 import { programs } from "./routes/programs.js";
 import { explain } from "./routes/explain.js";
 import { agent } from "./routes/agent.js";
+import { todo } from "./routes/todo.js";
 import { unsubscribe } from "./routes/unsubscribe.js";
 import { sendTime } from "./routes/send-time.js";
 import { composeAssist } from "./routes/compose-assist.js";
@@ -226,6 +227,9 @@ app.use("/v1/unsubscribe", authMiddleware, writeRateLimit);
 app.use("/v1/send-time/*", authMiddleware, writeRateLimit);
 // Compose-Assist / AI calendar slot suggestions (B7)
 app.use("/v1/compose-assist/*", authMiddleware, writeRateLimit);
+// Native Todo App Integrations (S8): write-level (200 req/min)
+app.use("/v1/todo/*", authMiddleware, writeRateLimit);
+app.use("/v1/todo", authMiddleware, writeRateLimit);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
@@ -260,6 +264,7 @@ app.route("/v1/agent", agent);
 app.route("/v1/unsubscribe", unsubscribe);
 app.route("/v1/send-time", sendTime);
 app.route("/v1/compose-assist", composeAssist);
+app.route("/v1/todo", todo);
 
 // ─── 404 handler ────────────────────────────────────────────────────────────
 

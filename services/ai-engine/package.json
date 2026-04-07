@@ -96,6 +96,26 @@
       "bun": "./src/calendar/slot-suggester.ts",
       "types": "./src/calendar/slot-suggester.ts",
       "import": "./dist/calendar/slot-suggester.js"
+    },
+    "./voice/cloner": {
+      "bun": "./src/voice/cloner.ts",
+      "types": "./src/voice/cloner.ts",
+      "import": "./dist/voice/cloner.js"
+    },
+    "./meetings/transcript-linker": {
+      "bun": "./src/meetings/transcript-linker.ts",
+      "types": "./src/meetings/transcript-linker.ts",
+      "import": "./dist/meetings/transcript-linker.js"
+    },
+    "./meetings/transcript-fetcher": {
+      "bun": "./src/meetings/transcript-fetcher.ts",
+      "types": "./src/meetings/transcript-fetcher.ts",
+      "import": "./dist/meetings/transcript-fetcher.js"
+    },
+    "./meetings/types": {
+      "bun": "./src/meetings/types.ts",
+      "types": "./src/meetings/types.ts",
+      "import": "./dist/meetings/types.js"
     }
   },
   "scripts": {
