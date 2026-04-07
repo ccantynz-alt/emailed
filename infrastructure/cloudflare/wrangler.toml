@@ -8,12 +8,12 @@ compatibility_date = "2025-01-01"
 pages_build_output_dir = "apps/web/.next"
 
 [vars]
-NEXT_PUBLIC_API_URL = "https://api.vienna.com"
+NEXT_PUBLIC_API_URL = "https://api.vieanna.com"
 NEXT_PUBLIC_APP_NAME = "Vienna"
-NEXT_PUBLIC_APP_URL = "https://mail.vienna.com"
+NEXT_PUBLIC_APP_URL = "https://mail.vieanna.com"
 NODE_ENV = "production"
 
 # Custom domains (configure in Cloudflare Pages dashboard)
-# - vienna.com (landing/marketing)
-# - mail.vienna.com (email app)
-# - admin.vienna.com (admin dashboard)
+# - vieanna.com (landing/marketing)
+# - mail.vieanna.com (email app)
+# - admin.vieanna.com (admin dashboard)

@@ -88,7 +88,7 @@ recall.post(
         data: {
           emailId: input.emailId,
           token: existingToken,
-          viewUrl: `${process.env["API_URL"] ?? "https://api.vienna.com"}/v1/recall/view/${existingToken}`,
+          viewUrl: `${process.env["API_URL"] ?? "https://api.vieanna.com"}/v1/recall/view/${existingToken}`,
           status: record.revoked ? "revoked" : "active",
           viewCount: record.viewCount,
         },
@@ -109,7 +109,7 @@ recall.post(
     recallStore.set(token, record);
     emailToToken.set(input.emailId, token);
 
-    const baseUrl = process.env["API_URL"] ?? "https://api.vienna.com";
+    const baseUrl = process.env["API_URL"] ?? "https://api.vieanna.com";
 
     return c.json({
       data: {

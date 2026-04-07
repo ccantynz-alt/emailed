@@ -270,7 +270,7 @@ collaborate.post(
     return c.json({
       data: {
         draftId,
-        collaborationUrl: `wss://collab.vienna.com/drafts/${draftId}`,
+        collaborationUrl: `wss://collab.vieanna.com/drafts/${draftId}`,
         message: "Collaborative editing enabled. Share the URL with team members.",
         features: [
           "Real-time co-editing with cursors",

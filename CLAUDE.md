@@ -34,7 +34,7 @@ The following actions require **explicit authorization from Craig (the boss/owne
 1. **Major architectural changes** — swapping frameworks, changing core stack, altering data model
 2. **New dependencies that aren't already in the approved stack** — we don't add bloat
 3. **Pricing changes** — any modification to plans, tiers, or billing logic
-4. **Domain or DNS changes** — anything touching vienna.com or its subdomains
+4. **Domain or DNS changes** — anything touching vieanna.com or its subdomains
 5. **Production deployments** — first-time deploy and any rollback
 6. **Stripe configuration** — webhook URLs, price IDs, plan structures
 7. **Schema migrations on production database** — irreversible changes need sign-off
@@ -336,7 +336,7 @@ After writing the code:
 ## 🚨 EMERGENCY PROTOCOLS
 
 ### Production Outage
-1. **Check status page** (when set up): status.vienna.com
+1. **Check status page** (when set up): status.vieanna.com
 2. **Roll back** to last known good commit
 3. **Notify Craig** immediately
 4. **Post-mortem** within 24 hours, written and committed to `docs/postmortems/`
@@ -401,15 +401,15 @@ After writing the code:
 
 ## 🌐 DOMAIN & INFRASTRUCTURE
 
-### Domains (vienna.com confirmed)
-- **vienna.com** — Landing/marketing site (Cloudflare Pages)
-- **mail.vienna.com** — Email web app (Cloudflare Pages)
-- **admin.vienna.com** — Admin dashboard (Cloudflare Pages)
-- **api.vienna.com** — API server (Cloudflare Workers / Fly.io)
-- **smtp.vienna.com** — MTA outbound (Fly.io, NOT proxied)
-- **mx1.vienna.com / mx2.vienna.com** — Inbound MX (Fly.io, NOT proxied)
-- **status.vienna.com** — Status page (when set up)
-- **docs.vienna.com** — Developer docs (when set up)
+### Domains (vieanna.com confirmed)
+- **vieanna.com** — Landing/marketing site (Cloudflare Pages)
+- **mail.vieanna.com** — Email web app (Cloudflare Pages)
+- **admin.vieanna.com** — Admin dashboard (Cloudflare Pages)
+- **api.vieanna.com** — API server (Cloudflare Workers / Fly.io)
+- **smtp.vieanna.com** — MTA outbound (Fly.io, NOT proxied)
+- **mx1.vieanna.com / mx2.vieanna.com** — Inbound MX (Fly.io, NOT proxied)
+- **status.vieanna.com** — Status page (when set up)
+- **docs.vieanna.com** — Developer docs (when set up)
 
 ### Hosting Stack
 - **Compute:** Cloudflare Pages + Workers (web/api), Fly.io (MTA/long-lived)
@@ -542,23 +542,23 @@ After writing the code:
 | 1 | Monorepo `bun run build` not verified end-to-end | HIGH | 2026-04-05 | PENDING |
 | 2 | Web app passkey login button has no onClick handler | MEDIUM | 2026-04-05 | PENDING |
 | 3 | Some in-memory stores need DB migration (screener, recall, contacts) | MEDIUM | 2026-04-05 | PENDING |
-| 4 | Landing page (vienna.com) doesn't exist yet — needs Coming Soon | HIGH | 2026-04-05 | PENDING |
+| 4 | Landing page (vieanna.com) doesn't exist yet — needs Coming Soon | HIGH | 2026-04-05 | PENDING |
 | 5 | No actual deployment to Cloudflare yet | HIGH | 2026-04-05 | PENDING |
 
 ---
 
 ## 🗓️ NEXT ACTIONS — IN ORDER
 
-1. **Build "Coming Soon" landing page** for vienna.com (no email signup yet)
+1. **Build "Coming Soon" landing page** for vieanna.com (no email signup yet)
 2. **Verify monorepo build** end-to-end (`bun install && bun run build`)
 3. **Fix any build errors** that surface
 4. **Wire passkey login handler** on web frontend
 5. **Set up Cloudflare Pages** project linked to GitHub
 6. **Set up Neon database** + run setup SQL
 7. **Set up Upstash Redis**
-8. **Configure DNS** for vienna.com
-9. **Deploy landing page** to vienna.com
-10. **Deploy web app** to mail.vienna.com (Coming Soon mode initially)
+8. **Configure DNS** for vieanna.com
+9. **Deploy landing page** to vieanna.com
+10. **Deploy web app** to mail.vieanna.com (Coming Soon mode initially)
 11. **Build Electron desktop app** wrapper
 12. **Build React Native mobile app**
 

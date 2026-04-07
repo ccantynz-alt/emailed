@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ─── Vienna.com DNS Setup for Cloudflare ──────────────────────────────────────
 #
-# This script configures ALL DNS records needed for vienna.com
+# This script configures ALL DNS records needed for vieanna.com
 # Run ONCE after adding the domain to Cloudflare.
 #
 # Prerequisites:
-#   - vienna.com added to Cloudflare
+#   - vieanna.com added to Cloudflare
 #   - CLOUDFLARE_API_TOKEN set (with DNS edit permissions)
 #   - CLOUDFLARE_ZONE_ID set (from Cloudflare dashboard → Overview → Zone ID)
 #
@@ -49,10 +49,10 @@ echo ""
 
 # ─── Web App (Cloudflare Pages) ─────────────────────────────────────────────
 echo "▸ Web app records..."
-add_record "CNAME" "vienna.com" "$WEB_PAGES_CNAME" "true"
+add_record "CNAME" "vieanna.com" "$WEB_PAGES_CNAME" "true"
 add_record "CNAME" "mail" "$WEB_PAGES_CNAME" "true"
 add_record "CNAME" "admin" "$WEB_PAGES_CNAME" "true"
-add_record "CNAME" "www" "vienna.com" "true"
+add_record "CNAME" "www" "vieanna.com" "true"
 
 # ─── API Server ─────────────────────────────────────────────────────────────
 echo "▸ API records..."
@@ -66,16 +66,16 @@ add_record "A" "mx2" "$MTA_SERVER_IP" "false"
 
 # ─── MX Records (email routing) ─────────────────────────────────────────────
 echo "▸ MX records..."
-add_record "MX" "vienna.com" "mx1.vienna.com" "false" "10"
-add_record "MX" "vienna.com" "mx2.vienna.com" "false" "20"
+add_record "MX" "vieanna.com" "mx1.vieanna.com" "false" "10"
+add_record "MX" "vieanna.com" "mx2.vieanna.com" "false" "20"
 
 # ─── SPF Record ─────────────────────────────────────────────────────────────
 echo "▸ SPF record..."
-add_record "TXT" "vienna.com" "v=spf1 ip4:$MTA_SERVER_IP include:amazonses.com ~all" "false"
+add_record "TXT" "vieanna.com" "v=spf1 ip4:$MTA_SERVER_IP include:amazonses.com ~all" "false"
 
 # ─── DMARC Record ───────────────────────────────────────────────────────────
 echo "▸ DMARC record..."
-add_record "TXT" "_dmarc" "v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@vienna.com; ruf=mailto:dmarc-forensic@vienna.com; adkim=r; aspf=r; pct=100" "false"
+add_record "TXT" "_dmarc" "v=DMARC1; p=quarantine; rua=mailto:dmarc-reports@vieanna.com; ruf=mailto:dmarc-forensic@vieanna.com; adkim=r; aspf=r; pct=100" "false"
 
 # ─── DKIM (placeholder — real key generated at runtime by the platform) ─────
 echo "▸ DKIM placeholder..."
@@ -83,12 +83,12 @@ add_record "TXT" "default._domainkey" "v=DKIM1; k=rsa; p=REPLACE_WITH_GENERATED_
 
 # ─── Return-Path / Bounce Domain ────────────────────────────────────────────
 echo "▸ Bounce/return-path records..."
-add_record "CNAME" "bounce" "smtp.vienna.com" "false"
+add_record "CNAME" "bounce" "smtp.vieanna.com" "false"
 
 # ─── CAA Record (authorize SSL certificate issuance) ─────────────────────────
 echo "▸ CAA record..."
-add_record "CAA" "vienna.com" "0 issue \"letsencrypt.org\"" "false"
-add_record "CAA" "vienna.com" "0 issue \"digicert.com\"" "false"
+add_record "CAA" "vieanna.com" "0 issue \"letsencrypt.org\"" "false"
+add_record "CAA" "vieanna.com" "0 issue \"digicert.com\"" "false"
 
 # ─── SRV Records (autodiscover for email clients) ────────────────────────────
 echo "▸ Autodiscover SRV records..."
@@ -98,12 +98,12 @@ echo "▸ Autodiscover SRV records..."
 curl -s -X POST "$API/zones/$ZONE/dns_records" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"type\":\"SRV\",\"name\":\"_submission._tcp.vienna.com\",\"data\":{\"service\":\"_submission\",\"proto\":\"_tcp\",\"name\":\"vienna.com\",\"priority\":0,\"weight\":1,\"port\":587,\"target\":\"smtp.vienna.com\"},\"ttl\":1}" | jq -r '.success // .errors[0].message'
+  -d "{\"type\":\"SRV\",\"name\":\"_submission._tcp.vieanna.com\",\"data\":{\"service\":\"_submission\",\"proto\":\"_tcp\",\"name\":\"vieanna.com\",\"priority\":0,\"weight\":1,\"port\":587,\"target\":\"smtp.vieanna.com\"},\"ttl\":1}" | jq -r '.success // .errors[0].message'
 
 curl -s -X POST "$API/zones/$ZONE/dns_records" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"type\":\"SRV\",\"name\":\"_imaps._tcp.vienna.com\",\"data\":{\"service\":\"_imaps\",\"proto\":\"_tcp\",\"name\":\"vienna.com\",\"priority\":0,\"weight\":1,\"port\":993,\"target\":\"smtp.vienna.com\"},\"ttl\":1}" | jq -r '.success // .errors[0].message'
+  -d "{\"type\":\"SRV\",\"name\":\"_imaps._tcp.vieanna.com\",\"data\":{\"service\":\"_imaps\",\"proto\":\"_tcp\",\"name\":\"vieanna.com\",\"priority\":0,\"weight\":1,\"port\":993,\"target\":\"smtp.vieanna.com\"},\"ttl\":1}" | jq -r '.success // .errors[0].message'
 
 echo ""
 echo "═══════════════════════════════════════════════"
@@ -116,6 +116,6 @@ echo "  2. Deploy the web app to Cloudflare Pages"
 echo "  3. Generate DKIM keys via the platform and update"
 echo "     the default._domainkey TXT record"
 echo "  4. Wait for DNS propagation (usually <5 min on CF)"
-echo "  5. Test: dig MX vienna.com"
-echo "  6. Test: dig TXT vienna.com"
+echo "  5. Test: dig MX vieanna.com"
+echo "  6. Test: dig TXT vieanna.com"
 echo "═══════════════════════════════════════════════"

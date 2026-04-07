@@ -27,6 +27,6 @@ export default defineConfig({
     },
   },
   renderer: {
-    // We don't ship our own renderer — we load mail.vienna.com directly
+    // We don't ship our own renderer — we load mail.vieanna.com directly
   },
 });

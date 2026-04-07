@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     title: "Vienna — Email, finally.",
     description:
       "The fastest, smartest, most beautiful email client ever made.",
-    url: "https://vienna.com",
+    url: "https://vieanna.com",
     siteName: "Vienna",
     type: "website",
   },
