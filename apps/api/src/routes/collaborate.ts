@@ -15,8 +15,39 @@
 
 import { Hono } from "hono";
 import { z } from "zod";
+import { SignJWT } from "jose";
 import { requireScope } from "../middleware/auth.js";
 import { validateBody, getValidatedBody } from "../middleware/validator.js";
+
+// ─── Collab service config ───────────────────────────────────────────────────
+
+const COLLAB_WS_URL = process.env.COLLAB_WS_URL ?? "wss://collab.vieanna.com";
+const COLLAB_HTTP_URL = process.env.COLLAB_HTTP_URL ?? "https://collab.vieanna.com";
+const COLLAB_JWT_SECRET = new TextEncoder().encode(
+  process.env.COLLAB_JWT_SECRET ?? process.env.JWT_SECRET ?? "dev-collab-secret-change-me",
+);
+const JWT_ISSUER = process.env.JWT_ISSUER ?? "vienna";
+const JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "vienna-collab";
+const COLLAB_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
+
+async function mintCollabToken(params: {
+  userId: string;
+  accountId: string;
+  draftId: string;
+}): Promise<string> {
+  return await new SignJWT({
+    accountId: params.accountId,
+    draftId: params.draftId,
+    scope: "collab:rw",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(params.userId)
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime(`${COLLAB_TOKEN_TTL_SECONDS}s`)
+    .sign(COLLAB_JWT_SECRET);
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -261,25 +292,87 @@ collaborate.patch(
 collaborate.post(
   "/drafts/:id/collaborate",
   requireScope("collaborate:write"),
-  (c) => {
+  async (c) => {
     const draftId = c.req.param("id");
     const auth = c.get("auth");
 
-    // In production: create a Yjs CRDT room for this draft
-    // and return a WebSocket URL for real-time co-editing
+    const token = await mintCollabToken({
+      userId: auth.accountId,
+      accountId: auth.accountId,
+      draftId,
+    });
+
+    const websocketUrl = `${COLLAB_WS_URL.replace(/\/$/, "")}/collab/${draftId}?token=${encodeURIComponent(token)}`;
+
     return c.json({
       data: {
         draftId,
-        collaborationUrl: `wss://collab.vieanna.com/drafts/${draftId}`,
-        message: "Collaborative editing enabled. Share the URL with team members.",
+        websocketUrl,
+        token,
+        expiresIn: COLLAB_TOKEN_TTL_SECONDS,
         features: [
           "Real-time co-editing with cursors",
-          "Inline comments and suggestions",
-          "Version history",
-          "Conflict-free merging (CRDT-based)",
+          "Awareness presence + selections",
+          "CRDT conflict-free merging (Yjs)",
+          "Resume on reconnect (Postgres-backed snapshots)",
         ],
       },
     });
+  },
+);
+
+collaborate.delete(
+  "/drafts/:id/collaborate",
+  requireScope("collaborate:write"),
+  async (c) => {
+    const draftId = c.req.param("id");
+
+    // Ask the collab service to forcibly close the room. The collab service
+    // exposes an admin endpoint for this; we authenticate with a short-lived
+    // service token signed with the same secret.
+    const adminToken = await new SignJWT({ scope: "collab:admin" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("api-server")
+      .setIssuer(JWT_ISSUER)
+      .setAudience(JWT_AUDIENCE)
+      .setIssuedAt()
+      .setExpirationTime("60s")
+      .sign(COLLAB_JWT_SECRET);
+
+    try {
+      const res = await fetch(
+        `${COLLAB_HTTP_URL.replace(/\/$/, "")}/admin/rooms/${encodeURIComponent(draftId)}`,
+        {
+          method: "DELETE",
+          headers: { authorization: `Bearer ${adminToken}` },
+        },
+      );
+      if (!res.ok && res.status !== 404) {
+        return c.json(
+          {
+            error: {
+              type: "upstream_error",
+              message: `collab service returned ${res.status}`,
+              code: "collab_close_failed",
+            },
+          },
+          502,
+        );
+      }
+    } catch (err) {
+      return c.json(
+        {
+          error: {
+            type: "upstream_error",
+            message: (err as Error).message,
+            code: "collab_unreachable",
+          },
+        },
+        502,
+      );
+    }
+
+    return c.json({ data: { draftId, closed: true } });
   },
 );
 

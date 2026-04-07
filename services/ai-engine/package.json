@@ -46,6 +46,11 @@
       "bun": "./src/classifier.ts",
       "types": "./src/classifier.ts",
       "import": "./dist/classifier.js"
+    },
+    "./embeddings/voyage": {
+      "bun": "./src/embeddings/voyage.ts",
+      "types": "./src/embeddings/voyage.ts",
+      "import": "./dist/embeddings/voyage.js"
     }
   },
   "scripts": {
