@@ -44,6 +44,7 @@ import { templatesRouter } from "./routes/templates.js";
 import { voice } from "./routes/voice.js";
 import { voiceClone } from "./routes/voice-clone.js";
 import { meetingLink } from "./routes/meeting-link.js";
+import { meetings } from "./routes/meetings.js";
 import { grammar } from "./routes/grammar.js";
 import { dictation } from "./routes/dictation.js";
 import { inbox } from "./routes/inbox.js";
@@ -195,6 +196,12 @@ app.use("/v1/voice-clone", authMiddleware, writeRateLimit);
 // Meeting Link (S9): read-level — detection + transcript fetch
 app.use("/v1/meeting-link/*", authMiddleware, readRateLimit);
 app.use("/v1/meeting-link", authMiddleware, readRateLimit);
+// Meetings (S9 full): detect, link-recording, transcribe, summary
+app.use("/v1/meetings/detect", authMiddleware, writeRateLimit);
+app.use("/v1/meetings/thread/*", authMiddleware, readRateLimit);
+app.use("/v1/meetings/*/link-recording", authMiddleware, writeRateLimit);
+app.use("/v1/meetings/*/transcribe", authMiddleware, writeRateLimit);
+app.use("/v1/meetings/*/summary", authMiddleware, readRateLimit);
 // Grammar: high-frequency read (600 req/min — real-time typing)
 app.use("/v1/grammar/*", authMiddleware, readRateLimit);
 // Dictation: write-level (200 req/min)

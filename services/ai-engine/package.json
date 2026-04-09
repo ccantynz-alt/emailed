@@ -127,6 +127,11 @@
       "types": "./src/voice/cloner.ts",
       "import": "./dist/voice/cloner.js"
     },
+    "./voice/style-cloner": {
+      "bun": "./src/voice/style-cloner.ts",
+      "types": "./src/voice/style-cloner.ts",
+      "import": "./dist/voice/style-cloner.js"
+    },
     "./meetings/transcript-linker": {
       "bun": "./src/meetings/transcript-linker.ts",
       "types": "./src/meetings/transcript-linker.ts",

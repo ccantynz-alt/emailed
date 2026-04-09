@@ -245,6 +245,14 @@ export type {
   NewCollaborationHistoryEntry,
 } from "./schema/collaboration.js";
 
+// Schema - Meeting Links (S9 — email thread → meeting transcript link)
+export {
+  meetingLinks,
+  meetingProviderEnum,
+  meetingLinkStatusEnum,
+  meetingLinksRelations,
+} from "./schema/meeting-links.js";
+
 // ---------------------------------------------------------------------------
 // Inferred types from schemas
 // ---------------------------------------------------------------------------
@@ -296,6 +304,7 @@ import type {
   userAchievements,
   dailyStats,
 } from "./schema/gamification.js";
+import type { meetingLinks } from "./schema/meeting-links.js";
 
 // Select types (what you get back from queries)
 export type Account = InferSelectModel<typeof accounts>;
@@ -374,3 +383,5 @@ export type Task = InferSelectModel<typeof tasks>;
 export type NewTask = InferInsertModel<typeof tasks>;
 export type TaskProviderConfig = InferSelectModel<typeof taskProviderConfigs>;
 export type NewTaskProviderConfig = InferInsertModel<typeof taskProviderConfigs>;
+export type MeetingLink = InferSelectModel<typeof meetingLinks>;
+export type NewMeetingLink = InferInsertModel<typeof meetingLinks>;
