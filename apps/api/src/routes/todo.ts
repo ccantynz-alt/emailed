@@ -667,7 +667,8 @@ taskRoutes.put(
     const provider = parsed.data;
     const input = getValidatedBody<z.infer<typeof ProviderConfigSchema>>(c);
 
-    const validation = validateCredentialShape(provider, input.credentials);
+    const creds = input.credentials as TodoCredentials;
+    const validation = validateCredentialShape(provider, creds);
     if (validation !== null) {
       return c.json(
         { error: { type: "invalid_request", message: validation, code: "invalid_credentials" } },
@@ -722,7 +723,7 @@ taskRoutes.put(
     // Also sync to in-memory store for immediate use
     connectTodoApp(auth.accountId, {
       provider,
-      credentials: input.credentials,
+      credentials: creds,
       isDefault: input.isDefault ?? false,
     });
 
@@ -831,8 +832,9 @@ todo.post(
   (c) => {
     const input = getValidatedBody<z.infer<typeof ConnectSchema>>(c);
     const auth = c.get("auth");
+    const connectCreds = input.credentials as TodoCredentials;
 
-    const validation = validateCredentialShape(input.provider, input.credentials);
+    const validation = validateCredentialShape(input.provider, connectCreds);
     if (validation !== null) {
       return c.json(
         { error: { type: "invalid_request", message: validation, code: "invalid_credentials" } },
@@ -842,7 +844,7 @@ todo.post(
 
     const record = connectTodoApp(auth.accountId, {
       provider: input.provider,
-      credentials: input.credentials,
+      credentials: connectCreds,
       isDefault: input.isDefault,
     });
     return c.json(

@@ -47,16 +47,16 @@ export interface UseCollaborativeDraftOptions {
   /** JWT token for the collab service. */
   token: string | null;
   /** WebSocket endpoint override. */
-  endpoint?: string;
+  endpoint?: string | undefined;
   /** Current user info. */
   user: {
     userId: string;
     name: string;
-    avatarUrl?: string;
-    cursorColor?: string;
+    avatarUrl?: string | undefined;
+    cursorColor?: string | undefined;
   };
   /** Auto-connect on mount when all required params are set. */
-  autoConnect?: boolean;
+  autoConnect?: boolean | undefined;
 }
 
 export interface UseCollaborativeDraftReturn {
@@ -103,7 +103,7 @@ function mapCollaborator(rc: RemoteCollaborator): Collaborator {
   return {
     userId: rc.userId,
     name: rc.name,
-    avatarUrl: rc.avatarUrl,
+    ...(rc.avatarUrl !== undefined ? { avatarUrl: rc.avatarUrl } : {}),
     cursorColor: rc.color,
     isOnline: true, // all remote collaborators in awareness are online
     role: "editor", // default; real role comes from the API
@@ -124,8 +124,8 @@ export function useCollaborativeDraft(
   // Create CollabDraft instance on mount.
   useEffect(() => {
     const client = new CollabDraft({
-      endpoint,
-      onStatus: (s) => setStatus(mapStatus(s)),
+      ...(endpoint !== undefined ? { endpoint } : {}),
+      onStatus: (s: CollabStatus) => setStatus(mapStatus(s)),
     });
 
     client.onCollaboratorsChange((remotes) => {
@@ -147,13 +147,14 @@ export function useCollaborativeDraft(
     if (!autoConnect || !draftId || !token || !clientRef.current) return;
 
     const client = clientRef.current;
+    const connectUser: CollabUser = {
+      name: user.name,
+      color: user.cursorColor ?? "#3b82f6",
+      ...(user.avatarUrl !== undefined ? { avatarUrl: user.avatarUrl } : {}),
+    };
     void client.connect(draftId, token, {
-      sessionId: sessionId ?? undefined,
-      user: {
-        name: user.name,
-        color: user.cursorColor ?? "#3b82f6",
-        avatarUrl: user.avatarUrl,
-      },
+      ...(sessionId !== null ? { sessionId } : {}),
+      user: connectUser,
     });
 
     return () => {
@@ -166,13 +167,14 @@ export function useCollaborativeDraft(
   const connect = useCallback(() => {
     const client = clientRef.current;
     if (!client || !draftId || !token) return;
+    const connectUser: CollabUser = {
+      name: user.name,
+      color: user.cursorColor ?? "#3b82f6",
+      ...(user.avatarUrl !== undefined ? { avatarUrl: user.avatarUrl } : {}),
+    };
     void client.connect(draftId, token, {
-      sessionId: sessionId ?? undefined,
-      user: {
-        name: user.name,
-        color: user.cursorColor ?? "#3b82f6",
-        avatarUrl: user.avatarUrl,
-      },
+      ...(sessionId !== null ? { sessionId } : {}),
+      user: connectUser,
     });
   }, [draftId, token, sessionId, user]);
 

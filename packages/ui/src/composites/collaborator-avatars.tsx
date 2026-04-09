@@ -9,7 +9,7 @@ import { Text } from "../primitives/text";
 export interface Collaborator {
   userId: string;
   name: string;
-  avatarUrl?: string;
+  avatarUrl?: string | undefined;
   cursorColor: string;
   isOnline: boolean;
   role: "owner" | "editor" | "viewer";

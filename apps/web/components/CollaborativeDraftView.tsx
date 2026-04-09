@@ -30,26 +30,26 @@ export interface CollaborativeDraftViewProps {
   user: {
     userId: string;
     name: string;
-    avatarUrl?: string;
-    cursorColor?: string;
+    avatarUrl?: string | undefined;
+    cursorColor?: string | undefined;
   };
   /** Whether the current user is the session owner. */
-  isOwner?: boolean;
+  isOwner?: boolean | undefined;
   /** Initial participants from the API. */
-  initialParticipants?: Collaborator[];
+  initialParticipants?: Collaborator[] | undefined;
   /** Initial pending invites from the API. */
-  initialInvites?: CollabInvite[];
+  initialInvites?: CollabInvite[] | undefined;
   /** API base URL for collaboration endpoints. */
-  apiBaseUrl?: string;
+  apiBaseUrl?: string | undefined;
   /** Auth token for API calls. */
-  apiToken?: string;
+  apiToken?: string | undefined;
   /** Callback when the draft is sent. */
-  onSend?: () => void;
+  onSend?: (() => void) | undefined;
   /** Callback when the draft content changes. */
-  onContentChange?: (content: { text: string; html: string }) => void;
+  onContentChange?: ((content: { text: string; html: string }) => void) | undefined;
   /** WebSocket endpoint override. */
-  collabEndpoint?: string;
-  className?: string;
+  collabEndpoint?: string | undefined;
+  className?: string | undefined;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ CollaborativeDraftView.displayName = "CollaborativeDraftView";
 function mergeCollaborators(
   apiParticipants: Collaborator[],
   liveCollaborators: Collaborator[],
-  currentUser: { userId: string; name: string; avatarUrl?: string; cursorColor?: string },
+  currentUser: { userId: string; name: string; avatarUrl?: string | undefined; cursorColor?: string | undefined },
 ): Collaborator[] {
   const merged = new Map<string, Collaborator>();
 
@@ -264,14 +264,17 @@ function mergeCollaborators(
 
   // Add current user.
   if (!merged.has(currentUser.userId)) {
-    merged.set(currentUser.userId, {
+    const entry: Collaborator = {
       userId: currentUser.userId,
       name: currentUser.name,
-      avatarUrl: currentUser.avatarUrl,
       cursorColor: currentUser.cursorColor ?? "#3b82f6",
       isOnline: true,
       role: "owner",
-    });
+    };
+    if (currentUser.avatarUrl !== undefined) {
+      entry.avatarUrl = currentUser.avatarUrl;
+    }
+    merged.set(currentUser.userId, entry);
   } else {
     const existing = merged.get(currentUser.userId);
     if (existing) {
