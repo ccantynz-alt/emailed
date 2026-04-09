@@ -310,12 +310,10 @@ export async function hybridSearch(
       })),
   ]);
 
-  // --- Determine what we got ---
-  const hasVector = vectorResult.ok;
-  const hasKeyword = keywordResult.ok;
+  // --- Determine what we got and fuse/fallback accordingly ---
 
   // Both failed
-  if (!hasVector && !hasKeyword) {
+  if (!vectorResult.ok && !keywordResult.ok) {
     return {
       query,
       results: [],
@@ -328,7 +326,7 @@ export async function hybridSearch(
   }
 
   // Vector-only (keyword failed)
-  if (hasVector && !hasKeyword) {
+  if (vectorResult.ok && !keywordResult.ok) {
     const { hits, model } = vectorResult.value;
     const filtered = hits.filter(
       (h) => h.score >= MIN_SIMILARITY_THRESHOLD,
@@ -345,7 +343,7 @@ export async function hybridSearch(
   }
 
   // Keyword-only (vector failed)
-  if (!hasVector && hasKeyword) {
+  if (!vectorResult.ok && keywordResult.ok) {
     return {
       query,
       results: keywordResult.value,
@@ -358,18 +356,32 @@ export async function hybridSearch(
   }
 
   // --- Both succeeded — fuse ---
-  const vectorHits = vectorResult.value.hits;
-  const kwHits = keywordResult.value;
-  const fused = fuseResults(vectorHits, kwHits, vectorWeight, limit);
+  // TypeScript now knows both are `.ok === true` after the above checks.
+  if (vectorResult.ok && keywordResult.ok) {
+    const vectorHits = vectorResult.value.hits;
+    const kwHits = keywordResult.value;
+    const fused = fuseResults(vectorHits, kwHits, vectorWeight, limit);
 
+    return {
+      query,
+      results: fused,
+      totalHits: fused.length,
+      processingTimeMs: Date.now() - start,
+      model: vectorResult.value.model,
+      usedVectorSearch: true,
+      vectorFallbackReason: null,
+    };
+  }
+
+  // Unreachable, but TypeScript needs an exhaustive return
   return {
     query,
-    results: fused,
-    totalHits: fused.length,
+    results: [],
+    totalHits: 0,
     processingTimeMs: Date.now() - start,
-    model: vectorResult.value.model,
-    usedVectorSearch: true,
-    vectorFallbackReason: null,
+    model: null,
+    usedVectorSearch: false,
+    vectorFallbackReason: "Unknown search state",
   };
 }
 

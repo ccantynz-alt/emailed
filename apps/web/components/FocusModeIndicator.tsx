@@ -10,6 +10,7 @@
  * Enhanced: also shows reviewed/total progress and timer dot when running.
  */
 
+import type { JSX } from "react";
 import { motion } from "motion/react";
 import { SPRING_SNAPPY, useViennaReducedMotion } from "../lib/animations";
 import { useFocusMode } from "../lib/focus-mode";

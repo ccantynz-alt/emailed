@@ -8,6 +8,7 @@
  * Fully accessible with ARIA live region for screen reader updates.
  */
 
+import type { JSX } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   SPRING_BOUNCY,

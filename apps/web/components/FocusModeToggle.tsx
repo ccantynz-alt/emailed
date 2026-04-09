@@ -8,6 +8,7 @@
  * This is the button placed in the dashboard toolbar / header area.
  */
 
+import type { JSX } from "react";
 import { motion } from "motion/react";
 import { SPRING_SNAPPY, useViennaReducedMotion } from "../lib/animations";
 import { useFocusMode } from "../lib/focus-mode";

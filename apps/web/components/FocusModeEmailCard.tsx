@@ -10,6 +10,7 @@
  * ARIA role="article" so screen readers announce it as an email item.
  */
 
+import type { JSX } from "react";
 import { motion } from "motion/react";
 import {
   SPRING_SNAPPY,
