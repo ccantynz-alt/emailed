@@ -58,7 +58,7 @@ export default function SettingsPage(): React.ReactNode {
     >
       <motion.div
         className="max-w-3xl space-y-6"
-        variants={reduced ? undefined : staggerSlow}
+        variants={staggerSlow}
         initial="initial"
         animate="animate"
       >

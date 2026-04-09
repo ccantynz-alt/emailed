@@ -68,7 +68,7 @@ export default function AnalyticsPage(): React.ReactNode {
     >
       <motion.div
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
-        variants={reduced ? undefined : staggerGrid}
+        variants={staggerGrid}
         initial="initial"
         animate="animate"
       >
@@ -112,7 +112,7 @@ export default function AnalyticsPage(): React.ReactNode {
 
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-        variants={reduced ? undefined : staggerGrid}
+        variants={staggerGrid}
         initial="initial"
         animate="animate"
       >
