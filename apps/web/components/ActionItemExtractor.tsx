@@ -181,25 +181,39 @@ export function ActionItemExtractor({
 
     try {
       const lastEmail = emails[emails.length - 1];
-      const res = await taskApi.createBatch(
-        selectedProvider,
-        selectedTasks.map((task) => ({
+      const batchPayload = selectedTasks.map((task) => {
+        const entry: {
+          title: string;
+          description?: string;
+          dueDate?: string;
+          assignee?: string;
+          priority?: "low" | "normal" | "high" | "urgent";
+          confidence?: number;
+          source?: {
+            threadId: string;
+            emailId: string;
+            emailSubject: string;
+            emailFrom: string;
+          };
+        } = {
           title: task.title,
-          description: task.description,
-          dueDate: task.dueDate ?? undefined,
-          assignee: task.assignee ?? undefined,
           priority: task.priority,
           confidence: task.confidence,
-          source: lastEmail !== undefined
-            ? {
-                threadId,
-                emailId: task.sourceEmailId,
-                emailSubject: lastEmail.subject,
-                emailFrom: lastEmail.from,
-              }
-            : undefined,
-        })),
-      );
+        };
+        if (task.description.length > 0) entry.description = task.description;
+        if (task.dueDate !== null) entry.dueDate = task.dueDate;
+        if (task.assignee !== null) entry.assignee = task.assignee;
+        if (lastEmail !== undefined) {
+          entry.source = {
+            threadId,
+            emailId: task.sourceEmailId,
+            emailSubject: lastEmail.subject,
+            emailFrom: lastEmail.from,
+          };
+        }
+        return entry;
+      });
+      const res = await taskApi.createBatch(selectedProvider, batchPayload);
 
       setCreatedCount(res.data.succeeded);
       setCreateState(res.data.failed > 0 ? "error" : "created");
