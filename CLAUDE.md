@@ -708,7 +708,7 @@ If you ship something not in this file, you broke the rules.
 | # | Feature | Why It Wins | Status |
 |---|---|---|---|
 | B1 | **Programmable email (TypeScript snippets)** | Apps Script but better, type-safe, runs on every email. Sandboxed snippet runner, 8 API endpoints, DB-persisted scripts + run history, 8 templates, ScriptEditor UI, EmailScriptManager page. | DONE |
-| B2 | **Email-as-database (SQL over inbox)** | Treat your inbox as a queryable dataset. | NOT STARTED |
+| B2 | **Email-as-database (SQL over inbox)** | Treat your inbox as a queryable dataset. NL + SQL-like query engine via Claude Haiku, 6 API endpoints, Drizzle schemas (saved_queries, query_history), split-pane console UI, CSV export, query history + saved queries sidebar. | DONE |
 | B3 | **AI unsubscribe agent (browser automation)** | One click → AI navigates the unsubscribe page → confirms. | DONE |
 | B4 | **Auto-translation badges** | "Translated from Spanish" badge with toggle to original. | DONE |
 | B5 | **Real-time sender verification** | Check sender reputation, business legitimacy, recent news inline. SPF/DKIM/DMARC, DNS auth records, WHOIS domain age, typosquatting detection, trust badges. | DONE |
@@ -800,7 +800,7 @@ If you ship something not in this file, you broke the rules.
 | CLAUDE.md Bible | Complete | 100% |
 | **Tier S features (industry firsts)** | **S1+S2+S3+S4+S5+S6+S7+S8+S9+S10 done (10/10)** | **100%** |
 | **Tier A features (cutting-edge UX)** | **A1+A2+A3+A4+A6+A7 done (6/7)** | **86%** |
-| **Tier B features (power user)** | **B1+B3+B4+B5+B6+B7+B8 done (7/8)** | **87%** |
+| **Tier B features (power user)** | **B1+B2+B3+B4+B5+B6+B7+B8 done (8/8)** | **100%** |
 | **Tier C features (polish + trust)** | **C1+C2+C3+C8+C9+C10 done (6/10)** | **60%** |
 
 **Overall: ~95% of launch-ready product. Core platform 100% done. Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + remaining Tier S/A/B/C features.**
