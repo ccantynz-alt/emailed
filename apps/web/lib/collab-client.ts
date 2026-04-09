@@ -56,7 +56,7 @@ export type CollabStatus =
 export interface CollabUser {
   name: string;
   color: string;
-  avatarUrl?: string;
+  avatarUrl?: string | undefined;
 }
 
 /** Remote collaborator derived from awareness state. */
@@ -65,26 +65,26 @@ export interface RemoteCollaborator {
   userId: string;
   name: string;
   color: string;
-  avatarUrl?: string;
-  cursor?: { anchor: number; head: number } | null;
+  avatarUrl?: string | undefined;
+  cursor?: { anchor: number; head: number } | null | undefined;
 }
 
 export interface CollabDraftOptions {
   /** Override the collab WS base, e.g. wss://collab.48co.ai */
-  endpoint?: string;
+  endpoint?: string | undefined;
   /** Initial reconnect delay in ms (default 500). */
-  baseReconnectDelayMs?: number;
+  baseReconnectDelayMs?: number | undefined;
   /** Max reconnect delay in ms (default 30s). */
-  maxReconnectDelayMs?: number;
+  maxReconnectDelayMs?: number | undefined;
   /** Listener for status changes (UI badges, etc). */
-  onStatus?: (status: CollabStatus) => void;
+  onStatus?: ((status: CollabStatus) => void) | undefined;
 }
 
 export interface CollabConnectOptions {
   /** Session ID for tracking. */
-  sessionId?: string;
+  sessionId?: string | undefined;
   /** Current user info for awareness. */
-  user?: CollabUser;
+  user?: CollabUser | undefined;
 }
 
 const DEFAULT_ENDPOINT =
@@ -109,7 +109,7 @@ export class CollabDraft {
   private readonly endpoint: string;
   private readonly baseDelay: number;
   private readonly maxDelay: number;
-  private readonly onStatus?: (status: CollabStatus) => void;
+  private readonly onStatus: ((status: CollabStatus) => void) | undefined;
 
   constructor(opts: CollabDraftOptions = {}) {
     this.doc = new Y.Doc();
@@ -198,7 +198,7 @@ export class CollabDraft {
     const states = this.awareness.getStates();
     const collaborators: RemoteCollaborator[] = [];
 
-    states.forEach((state, clientId) => {
+    states.forEach((state: Record<string, unknown>, clientId: number) => {
       // Skip our own client.
       if (clientId === this.doc.clientID) return;
 
@@ -212,13 +212,18 @@ export class CollabDraft {
         | undefined;
       if (!user) return;
 
+      const cursorRaw = state.cursor as
+        | { anchor: number; head: number }
+        | null
+        | undefined;
+
       collaborators.push({
         clientId,
         userId: user.userId ?? `client-${clientId}`,
         name: user.name ?? "Anonymous",
         color: user.color ?? "#3b82f6",
-        avatarUrl: user.avatarUrl,
-        cursor: (state.cursor as { anchor: number; head: number } | null) ?? null,
+        avatarUrl: user.avatarUrl ?? undefined,
+        cursor: cursorRaw ?? null,
       });
     });
 
@@ -379,8 +384,8 @@ export class CollabDraft {
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_SYNC);
         syncProtocol.readSyncMessage(
-          encoder,
           decoder,
+          encoder,
           this.doc,
           "remote",
         );

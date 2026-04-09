@@ -57,37 +57,37 @@ export interface CollaborativeEditorProps
   /** Collaboration session config (pass null to use as standalone editor). */
   collabConfig: CollaborativeEditorConfig | null;
   /** Current connection status (managed by parent via CollabDraft client). */
-  connectionStatus?: ConnectionStatus;
+  connectionStatus?: ConnectionStatus | undefined;
   /** Remote collaborators currently in the session (from awareness). */
-  collaborators?: Collaborator[];
+  collaborators?: Collaborator[] | undefined;
   /** The current user's info (for awareness). */
   currentUser: {
     userId: string;
     name: string;
-    avatarUrl?: string;
-    cursorColor?: string;
+    avatarUrl?: string | undefined;
+    cursorColor?: string | undefined;
   };
   /** Initial HTML content (only used if no Yjs state exists). */
-  initialContent?: string;
+  initialContent?: string | undefined;
   /** Placeholder text when editor is empty. */
-  placeholder?: string;
+  placeholder?: string | undefined;
   /** Whether the editor is read-only. */
-  readOnly?: boolean;
+  readOnly?: boolean | undefined;
   /** Called when the local content changes. Receives the plain text + HTML. */
-  onChange?: (content: { text: string; html: string }) => void;
+  onChange?: ((content: { text: string; html: string }) => void) | undefined;
   /** Called when connection status changes. */
-  onConnectionChange?: (status: ConnectionStatus) => void;
+  onConnectionChange?: ((status: ConnectionStatus) => void) | undefined;
   /** Called when a collaborator joins or leaves. */
-  onCollaboratorsChange?: (collaborators: Collaborator[]) => void;
+  onCollaboratorsChange?: ((collaborators: Collaborator[]) => void) | undefined;
   /** Called to open the collaboration panel. */
-  onOpenPanel?: () => void;
+  onOpenPanel?: (() => void) | undefined;
   /** Whether to show the toolbar. */
-  showToolbar?: boolean;
+  showToolbar?: boolean | undefined;
   /** Whether to show the collaborator avatars strip. */
-  showCollaborators?: boolean;
+  showCollaborators?: boolean | undefined;
   /** Minimum height of the editor area. */
-  minHeight?: number;
-  className?: string;
+  minHeight?: number | undefined;
+  className?: string | undefined;
 }
 
 // ─── Connection status display ───────────────────────────────────────────────
@@ -112,7 +112,7 @@ const statusDisplay: Record<
 interface ToolbarAction {
   id: string;
   label: string;
-  shortcut?: string;
+  shortcut?: string | undefined;
   icon: string;
 }
 

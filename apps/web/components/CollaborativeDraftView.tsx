@@ -16,6 +16,7 @@ import {
   useCollaborativeDraft,
   type UseCollaborativeDraftOptions,
 } from "../lib/use-collaborative-draft";
+import { collaborationApi } from "../lib/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -30,26 +31,26 @@ export interface CollaborativeDraftViewProps {
   user: {
     userId: string;
     name: string;
-    avatarUrl?: string;
-    cursorColor?: string;
+    avatarUrl?: string | undefined;
+    cursorColor?: string | undefined;
   };
   /** Whether the current user is the session owner. */
-  isOwner?: boolean;
+  isOwner?: boolean | undefined;
   /** Initial participants from the API. */
-  initialParticipants?: Collaborator[];
+  initialParticipants?: Collaborator[] | undefined;
   /** Initial pending invites from the API. */
-  initialInvites?: CollabInvite[];
-  /** API base URL for collaboration endpoints. */
-  apiBaseUrl?: string;
-  /** Auth token for API calls. */
-  apiToken?: string;
+  initialInvites?: CollabInvite[] | undefined;
+  /** @deprecated API base URL — now uses centralized apiFetch. */
+  apiBaseUrl?: string | undefined;
+  /** @deprecated Auth token — now uses centralized apiFetch. */
+  apiToken?: string | undefined;
   /** Callback when the draft is sent. */
-  onSend?: () => void;
+  onSend?: (() => void) | undefined;
   /** Callback when the draft content changes. */
-  onContentChange?: (content: { text: string; html: string }) => void;
+  onContentChange?: ((content: { text: string; html: string }) => void) | undefined;
   /** WebSocket endpoint override. */
-  collabEndpoint?: string;
-  className?: string;
+  collabEndpoint?: string | undefined;
+  className?: string | undefined;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -94,101 +95,49 @@ export function CollaborativeDraftView({
     user,
   );
 
-  // ─── API calls ──────────────────────────────────────────────────────────
-
-  const authHeaders: Record<string, string> = apiToken
-    ? {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      }
-    : { "Content-Type": "application/json" };
+  // ─── API calls (typed client) ────────────────────────────────────────────
 
   const handleInvite = useCallback(
     async (email: string, role: "editor" | "viewer") => {
-      const res = await fetch(
-        `${apiBaseUrl}/v1/collaborate/draft/${sessionId}/invite`,
-        {
-          method: "POST",
-          headers: authHeaders,
-          body: JSON.stringify({ email, role }),
-        },
-      );
-
-      if (!res.ok) {
-        const body = (await res.json()) as {
-          error?: { message?: string };
-        };
-        throw new Error(
-          body.error?.message ?? `Failed to invite (${res.status})`,
-        );
-      }
-
-      const body = (await res.json()) as {
-        data: {
-          inviteId: string;
-          inviteeEmail: string;
-          role: "editor" | "viewer";
-          expiresAt: string;
-        };
-      };
+      const { data } = await collaborationApi.invite(sessionId, { email, role });
 
       setPendingInvites((prev) => [
         ...prev,
         {
-          id: body.data.inviteId,
-          inviteeEmail: body.data.inviteeEmail,
-          role: body.data.role,
-          status: "pending",
-          expiresAt: body.data.expiresAt,
+          id: data.inviteId,
+          inviteeEmail: data.inviteeEmail,
+          role: data.role as "editor" | "viewer",
+          status: "pending" as const,
+          expiresAt: data.expiresAt,
           createdAt: new Date().toISOString(),
         },
       ]);
     },
-    [apiBaseUrl, sessionId, authHeaders],
+    [sessionId],
   );
 
   const handleRemoveCollaborator = useCallback(
     async (userId: string) => {
-      const res = await fetch(
-        `${apiBaseUrl}/v1/collaborate/draft/${sessionId}/collaborator/${userId}`,
-        { method: "DELETE", headers: authHeaders },
-      );
-
-      if (!res.ok) {
-        const body = (await res.json()) as {
-          error?: { message?: string };
-        };
-        throw new Error(
-          body.error?.message ?? `Failed to remove (${res.status})`,
-        );
-      }
+      await collaborationApi.removeCollaborator(sessionId, userId);
     },
-    [apiBaseUrl, sessionId, authHeaders],
+    [sessionId],
   );
 
   const handleLoadHistory = useCallback(async () => {
     setHistoryLoading(true);
     try {
       const offset = history.length;
-      const res = await fetch(
-        `${apiBaseUrl}/v1/collaborate/draft/${sessionId}/history?limit=20&offset=${offset}`,
-        { headers: authHeaders },
-      );
-
-      if (!res.ok) {
-        throw new Error(`Failed to load history (${res.status})`);
-      }
-
-      const body = (await res.json()) as {
-        data: { entries: CollabHistoryEntry[] };
-      };
-      setHistory((prev) => [...prev, ...body.data.entries]);
+      const { data } = await collaborationApi.getHistory(sessionId, {
+        limit: 20,
+        offset,
+      });
+      setHistory((prev) => [...prev, ...data.entries]);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setHistoryLoading(false);
     }
-  }, [apiBaseUrl, sessionId, history.length, authHeaders]);
+  }, [sessionId, history.length]);
 
   return (
     <Box className={`flex gap-4 ${className}`}>
@@ -253,7 +202,7 @@ CollaborativeDraftView.displayName = "CollaborativeDraftView";
 function mergeCollaborators(
   apiParticipants: Collaborator[],
   liveCollaborators: Collaborator[],
-  currentUser: { userId: string; name: string; avatarUrl?: string; cursorColor?: string },
+  currentUser: { userId: string; name: string; avatarUrl?: string | undefined; cursorColor?: string | undefined },
 ): Collaborator[] {
   const merged = new Map<string, Collaborator>();
 
@@ -264,14 +213,17 @@ function mergeCollaborators(
 
   // Add current user.
   if (!merged.has(currentUser.userId)) {
-    merged.set(currentUser.userId, {
+    const entry: Collaborator = {
       userId: currentUser.userId,
       name: currentUser.name,
-      avatarUrl: currentUser.avatarUrl,
       cursorColor: currentUser.cursorColor ?? "#3b82f6",
       isOnline: true,
       role: "owner",
-    });
+    };
+    if (currentUser.avatarUrl !== undefined) {
+      entry.avatarUrl = currentUser.avatarUrl;
+    }
+    merged.set(currentUser.userId, entry);
   } else {
     const existing = merged.get(currentUser.userId);
     if (existing) {
