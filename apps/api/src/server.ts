@@ -304,6 +304,7 @@ app.route("/v1/templates", templatesRouter);
 app.route("/v1/voice", voice);
 app.route("/v1/voice-clone", voiceClone);
 app.route("/v1/meeting-link", meetingLink);
+app.route("/v1/meetings", meetings);
 app.route("/v1/grammar", grammar);
 app.route("/v1/dictation", dictation);
 app.route("/v1/inbox", inbox);
