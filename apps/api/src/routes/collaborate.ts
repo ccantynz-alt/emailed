@@ -146,8 +146,8 @@ interface Assignment {
   assignedBy: string;
   status: "open" | "in_progress" | "done" | "snoozed";
   priority: "low" | "medium" | "high" | "urgent";
-  dueAt?: Date;
-  note?: string;
+  dueAt?: Date | undefined;
+  note?: string | undefined;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -265,7 +265,7 @@ collaborate.post(
       id: generateId(),
       emailId: input.emailId,
       authorId: auth.accountId,
-      authorName: (auth as Record<string, unknown>).name as string ?? "Unknown",
+      authorName: auth.accountId,
       body: input.body,
       mentions: input.mentions,
       createdAt: new Date(),

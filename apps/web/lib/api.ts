@@ -857,3 +857,198 @@ export const suppressionsApi = {
     });
   },
 };
+
+// ─── Task Integrations (S8) ───────────────────────────────────────────────
+
+export interface ExtractedTaskData {
+  title: string;
+  description: string;
+  dueDate: string | null;
+  assignee: string | null;
+  priority: "low" | "normal" | "high" | "urgent";
+  confidence: number;
+  sourceEmailId: string;
+}
+
+export interface ThreadExtractionResponse {
+  threadId: string;
+  tasks: ExtractedTaskData[];
+  extractedAt: string;
+  model: string;
+}
+
+export interface TaskProviderData {
+  name: string;
+  displayName: string;
+  authType: string;
+  description: string;
+  supportsProjects: boolean;
+  connected: boolean;
+  isDefault: boolean;
+}
+
+export interface CreateTaskResult {
+  taskId: string;
+  provider: string;
+  success: boolean;
+  externalTaskId: string | null;
+  externalTaskUrl: string | null;
+  error: string | null;
+}
+
+export interface BatchCreateResult {
+  provider: string;
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: Array<{
+    index: number;
+    taskId: string;
+    title: string;
+    success: boolean;
+    externalTaskId: string | null;
+    externalTaskUrl: string | null;
+    error: string | null;
+  }>;
+}
+
+export interface TaskListItem {
+  id: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+  assignee: string | null;
+  priority: "low" | "normal" | "high" | "urgent";
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  provider: string;
+  externalTaskId: string | null;
+  externalTaskUrl: string | null;
+  confidence: number | null;
+  source: {
+    threadId: string;
+    emailId: string;
+    emailSubject: string;
+    emailFrom: string;
+    extractedAt: string;
+  } | null;
+  tags: string[];
+  isManual: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskListResponse {
+  tasks: TaskListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export const taskApi = {
+  /** Extract action items from an email thread. */
+  extractFromThread(
+    threadId: string,
+    emails: readonly {
+      emailId: string;
+      from: string;
+      subject: string;
+      body: string;
+      receivedAt?: string;
+    }[],
+  ): Promise<{ data: ThreadExtractionResponse }> {
+    return apiFetch<{ data: ThreadExtractionResponse }>(
+      `/v1/emails/${threadId}/extract-tasks`,
+      {
+        method: "POST",
+        body: JSON.stringify({ emails }),
+      },
+    );
+  },
+
+  /** Create a single task. */
+  createTask(payload: {
+    provider: string;
+    title: string;
+    description?: string;
+    dueDate?: string;
+    assignee?: string;
+    priority?: "low" | "normal" | "high" | "urgent";
+    tags?: string[];
+    source?: {
+      threadId: string;
+      emailId: string;
+      emailSubject: string;
+      emailFrom: string;
+    };
+    confidence?: number;
+  }): Promise<{ data: CreateTaskResult }> {
+    return apiFetch<{ data: CreateTaskResult }>("/v1/tasks/create", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Create multiple tasks at once. */
+  createBatch(
+    provider: string,
+    tasks: readonly {
+      title: string;
+      description?: string;
+      dueDate?: string;
+      assignee?: string;
+      priority?: "low" | "normal" | "high" | "urgent";
+      tags?: string[];
+      source?: {
+        threadId: string;
+        emailId: string;
+        emailSubject: string;
+        emailFrom: string;
+      };
+      confidence?: number;
+    }[],
+  ): Promise<{ data: BatchCreateResult }> {
+    return apiFetch<{ data: BatchCreateResult }>("/v1/tasks/create-batch", {
+      method: "POST",
+      body: JSON.stringify({ provider, tasks }),
+    });
+  },
+
+  /** List configured task providers. */
+  listProviders(): Promise<{ data: TaskProviderData[] }> {
+    return apiFetch<{ data: TaskProviderData[] }>("/v1/tasks/providers");
+  },
+
+  /** Configure a task provider (set API key/credentials). */
+  configureProvider(
+    provider: string,
+    config: {
+      isDefault?: boolean;
+      credentials: Record<string, unknown>;
+    },
+  ): Promise<{ data: { provider: string; isDefault: boolean; configuredAt: string } }> {
+    return apiFetch<{
+      data: { provider: string; isDefault: boolean; configuredAt: string };
+    }>(`/v1/tasks/providers/${provider}/config`, {
+      method: "PUT",
+      body: JSON.stringify(config),
+    });
+  },
+
+  /** List tasks from the built-in task list. */
+  listTasks(params?: {
+    status?: "pending" | "in_progress" | "completed" | "cancelled";
+    priority?: "low" | "normal" | "high" | "urgent";
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: TaskListResponse }> {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.priority) qs.set("priority", params.priority);
+    if (params?.limit) qs.set("limit", params.limit.toString());
+    if (params?.offset) qs.set("offset", params.offset.toString());
+    const query = qs.toString();
+    return apiFetch<{ data: TaskListResponse }>(
+      `/v1/tasks${query ? `?${query}` : ""}`,
+    );
+  },
+};
