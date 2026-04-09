@@ -707,7 +707,7 @@ If you ship something not in this file, you broke the rules.
 
 | # | Feature | Why It Wins | Status |
 |---|---|---|---|
-| B1 | **Programmable email (TypeScript snippets)** | Apps Script but better, type-safe, runs on every email. | NOT STARTED |
+| B1 | **Programmable email (TypeScript snippets)** | Apps Script but better, type-safe, runs on every email. Sandboxed snippet runner, 8 API endpoints, DB-persisted scripts + run history, 8 templates, ScriptEditor UI, EmailScriptManager page. | DONE |
 | B2 | **Email-as-database (SQL over inbox)** | Treat your inbox as a queryable dataset. | NOT STARTED |
 | B3 | **AI unsubscribe agent (browser automation)** | One click → AI navigates the unsubscribe page → confirms. | DONE |
 | B4 | **Auto-translation badges** | "Translated from Spanish" badge with toggle to original. | DONE |
@@ -727,7 +727,7 @@ If you ship something not in this file, you broke the rules.
 | C5 | **GDPR DPA template** | Legal pages exist, need DPA workflow | NOT STARTED |
 | C6 | **Bug bounty program** | HackerOne or Intigriti | NOT STARTED |
 | C7 | **Public roadmap** | Trello/Linear public board | NOT STARTED |
-| C8 | **Changelog page** | changelog.48co.ai | NOT STARTED |
+| C8 | **Changelog page** | changelog.48co.ai | DONE |
 | C9 | **Migration guides** | "From Gmail to Vienna in 5 minutes" | DONE |
 | C10 | **Spell check (multi-language)** | Native browser spell-check + custom dictionary | DONE |
 
@@ -800,8 +800,8 @@ If you ship something not in this file, you broke the rules.
 | CLAUDE.md Bible | Complete | 100% |
 | **Tier S features (industry firsts)** | **S1+S2+S3+S4+S5+S6+S7+S8+S9+S10 done (10/10)** | **100%** |
 | **Tier A features (cutting-edge UX)** | **A1+A2+A3+A4+A6+A7 done (6/7)** | **86%** |
-| **Tier B features (power user)** | **B3+B4+B5+B6+B7+B8 done (6/8)** | **75%** |
-| **Tier C features (polish + trust)** | **C1+C2+C3+C9+C10 done (5/10)** | **50%** |
+| **Tier B features (power user)** | **B1+B3+B4+B5+B6+B7+B8 done (7/8)** | **87%** |
+| **Tier C features (polish + trust)** | **C1+C2+C3+C8+C9+C10 done (6/10)** | **60%** |
 
 **Overall: ~95% of launch-ready product. Core platform 100% done. Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + remaining Tier S/A/B/C features.**
 

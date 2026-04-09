@@ -47,6 +47,7 @@ export { VoiceProfileSelector, type VoiceProfileSelectorProps, type VoiceProfile
 export { VoiceRecorder, type VoiceRecorderProps, type VoiceRecordingResult, type RecordingState } from "./composites/voice-recorder";
 export { VoiceMessagePlayer, type VoiceMessagePlayerProps, type VoiceMessageData, type PlaybackSpeed } from "./composites/voice-message-player";
 export { ScriptEditor, type ScriptEditorProps, type ScriptData, type ScriptTemplate, type ScriptRunEntry, type ScriptTrigger, type ScriptRunStatus, type TestResult } from "./composites/script-editor";
+export { QueryConsole, type QueryConsoleProps, type QueryMode, type QueryState, type ConsolePanelView, type QueryResultData, type QueryExplanationData, type QueryHistoryEntry, type SavedQueryEntry, type QueryResultColumn } from "./composites/query-console";
 
 // Layouts
 export { Sidebar, type SidebarProps, type SidebarNavItem, type SidebarSection } from "./layouts/sidebar";
