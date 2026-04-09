@@ -14,6 +14,7 @@ export { AnalyticsChart, type AnalyticsChartProps, type ChartDataPoint, type Cha
 export { StatCard, type StatCardProps, type StatTrend } from "./composites/stat-card";
 export { SlotPicker, type SlotPickerProps, type SlotOption } from "./composites/slot-picker";
 export { CalendarSlotSuggestion, type CalendarSlotSuggestionProps, type MeetingIntentInfo } from "./composites/calendar-slot-suggestion";
+export { SendTimeSuggestion, type SendTimeSuggestionProps, type SendTimeSlot, type ConfidenceLevel, type DataSource } from "./composites/send-time-suggestion";
 
 // Layouts
 export { Sidebar, type SidebarProps, type SidebarNavItem, type SidebarSection } from "./layouts/sidebar";

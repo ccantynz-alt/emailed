@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageLayout, ComposeEditor, type ComposeData, type AISuggestion } from "@emailed/ui";
-import { messagesApi, authApi } from "../../../lib/api";
+import { messagesApi, authApi, calendarApi } from "../../../lib/api";
+import { SendTimePanel } from "../../../components/SendTimePanel";
 
 const sampleSuggestions: AISuggestion[] = [
   {
@@ -43,6 +44,8 @@ function ComposePage() {
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState("");
+  const [recipientForPrediction, setRecipientForPrediction] = useState("");
+  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
 
   // Get compose mode from URL params (reply, forward, or new)
   const mode = searchParams.get("mode") as "reply" | "replyAll" | "forward" | null;
@@ -67,6 +70,41 @@ function ComposePage() {
     ? `\n\n--- Original Message ---\n${replyBody}`
     : "";
 
+  // S10: Send-time optimization handlers
+  const handleScheduleAt = useCallback(
+    (datetime: string, reasoning: string) => {
+      setScheduledAt(datetime);
+      const date = new Date(datetime);
+      const formatted = date.toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      setStatus(`Scheduled to send at ${formatted} (${reasoning})`);
+    },
+    [],
+  );
+
+  const handleSendNow = useCallback(() => {
+    setScheduledAt(null);
+    setStatus(null);
+  }, []);
+
+  // B7: Calendar slot suggestion handler
+  const handleRequestCalendarSlots = useCallback(
+    async (text: string, recipientEmail: string) => {
+      const res = await calendarApi.suggestSlots({
+        text,
+        recipientEmail: recipientEmail || undefined,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      return res.data;
+    },
+    [],
+  );
+
   const handleSend = async (data: ComposeData) => {
     if (sending) return;
     setSending(true);
@@ -80,12 +118,19 @@ function ComposePage() {
         return;
       }
 
+      // Track the first recipient for send-time prediction panel
+      const toList = data.to.split(",").map((e: string) => e.trim()).filter(Boolean);
+      if (toList[0] && toList[0] !== recipientForPrediction) {
+        setRecipientForPrediction(toList[0]);
+      }
+
       const sendPayload: Parameters<typeof messagesApi.send>[0] = {
         from: { email: fromEmail },
-        to: data.to.split(",").map((e: string) => ({ email: e.trim() })).filter((e) => e.email),
+        to: toList.map((e) => ({ email: e })),
         subject: data.subject,
         html: data.body,
         text: data.body.replace(/<[^>]*>/g, ""),
+        ...(scheduledAt ? { scheduledAt } : {}),
       };
       if (data.cc) {
         const ccList = data.cc.split(",").map((e: string) => ({ email: e.trim() })).filter((e) => e.email);
@@ -109,6 +154,32 @@ function ComposePage() {
           {status}
         </div>
       )}
+      <SendTimePanel
+        recipientEmail={recipientForPrediction || replyTo}
+        onScheduleAt={handleScheduleAt}
+        onSendNow={handleSendNow}
+        className="mb-4"
+      />
+      {scheduledAt && (
+        <div className="mb-4 p-3 rounded text-sm bg-blue-50 text-blue-800 flex items-center justify-between">
+          <span>
+            Scheduled: {new Date(scheduledAt).toLocaleString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </span>
+          <button
+            type="button"
+            onClick={() => { setScheduledAt(null); setStatus(null); }}
+            className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+          >
+            Clear schedule
+          </button>
+        </div>
+      )}
       <ComposeEditor
         from={userEmail}
         to={replyTo}
@@ -126,6 +197,7 @@ function ComposePage() {
           window.history.back();
         }}
         onApplySuggestion={() => {}}
+        onRequestCalendarSlots={handleRequestCalendarSlots}
         className="flex-1"
       />
     </PageLayout>

@@ -294,15 +294,18 @@ export async function getLocalAIStatus(): Promise<LocalAIStatus> {
  * Cloud Claude API client. Uses Vienna's existing /api/ai/complete endpoint
  * which proxies to Anthropic with auth + rate limits attached server-side.
  *
- * Cost note: pricing varies by model. The router does not pick the model —
- * the server endpoint does, based on the user's plan tier (Free → Haiku,
- * Personal → Haiku, Pro → Sonnet, Enterprise → Opus).
+ * Cost note: pricing varies by model. The router does not pick the model --
+ * the server endpoint does, based on the user's plan tier (Free -> Haiku,
+ * Personal -> Haiku, Pro -> Sonnet, Enterprise -> Opus).
  */
-interface CloudCompleteResponse {
-  text: string;
-  modelId: string;
-  estimatedCostUSD: number;
-}
+
+const CloudCompleteResponseSchema = z.object({
+  text: z.string(),
+  modelId: z.string().optional(),
+  estimatedCostUSD: z.number().optional(),
+});
+
+type CloudCompleteResponse = z.infer<typeof CloudCompleteResponseSchema>;
 
 async function cloudComplete(request: LocalAIRequest): Promise<CloudCompleteResponse> {
   const res = await fetch("/api/ai/complete", {
@@ -321,14 +324,17 @@ async function cloudComplete(request: LocalAIRequest): Promise<CloudCompleteResp
     throw new Error(`Cloud AI request failed: ${res.status} ${res.statusText}`);
   }
 
-  const data = (await res.json()) as Partial<CloudCompleteResponse>;
-  if (typeof data.text !== "string") {
-    throw new Error("Cloud AI returned malformed response (missing text)");
+  const raw: unknown = await res.json();
+  const parsed = CloudCompleteResponseSchema.safeParse(raw);
+
+  if (!parsed.success) {
+    throw new Error("Cloud AI returned malformed response: " + parsed.error.message);
   }
+
   return {
-    text: data.text,
-    modelId: data.modelId ?? "claude-haiku-4.5",
-    estimatedCostUSD: typeof data.estimatedCostUSD === "number" ? data.estimatedCostUSD : 0,
+    text: parsed.data.text,
+    modelId: parsed.data.modelId ?? "claude-haiku-4.5",
+    estimatedCostUSD: parsed.data.estimatedCostUSD ?? 0,
   };
 }
 
@@ -393,12 +399,15 @@ async function* cloudStream(request: LocalAIRequest): AsyncIterable<string> {
  *   console.log(result.text, result.source); // "...", "webgpu"
  */
 export async function runAI(request: LocalAIRequest): Promise<LocalAIResult> {
+  // Validate input at the API boundary
+  const validated = LocalAIRequestSchema.parse(request);
+
   if (!state.initialized) {
     await initLocalAI({ probeOnly: true });
   }
 
   const caps = state.capabilities ?? { supported: false, adapter: "none", vramMB: 0 };
-  const decision = decideRoute(request, caps);
+  const decision = decideRoute(validated, caps);
   const start = Date.now();
 
   if (decision.useLocal) {
@@ -413,10 +422,10 @@ export async function runAI(request: LocalAIRequest): Promise<LocalAIResult> {
         throw new Error("local model failed to load");
       }
 
-      const text = await webgpuGenerate(request.prompt, {
-        maxTokens: request.maxTokens,
-        temperature: request.temperature,
-        systemPrompt: request.systemPrompt,
+      const text = await webgpuGenerate(validated.prompt, {
+        maxTokens: validated.maxTokens,
+        temperature: validated.temperature,
+        systemPrompt: validated.systemPrompt,
       });
 
       return {
@@ -424,27 +433,27 @@ export async function runAI(request: LocalAIRequest): Promise<LocalAIResult> {
         source: "webgpu",
         modelId: getLoadedModelId() ?? "unknown",
         latencyMs: Date.now() - start,
-        estimatedCostUSD: 0, // ← The whole point. Free forever.
+        estimatedCostUSD: 0, // The whole point. Free forever.
       };
     } catch (err) {
-      if (request.localOnly) {
+      if (validated.localOnly) {
         throw err;
       }
       // Fall through to cloud
     }
   }
 
-  if (request.localOnly) {
+  if (validated.localOnly) {
     throw new Error(`Local AI required but unavailable: ${decision.reason}`);
   }
 
-  const cloud = await cloudComplete(request);
+  const cloud = await cloudComplete(validated);
   return {
     text: cloud.text,
     source: "cloud",
-    modelId: cloud.modelId,
+    modelId: cloud.modelId ?? "claude-haiku-4.5",
     latencyMs: Date.now() - start,
-    estimatedCostUSD: cloud.estimatedCostUSD,
+    estimatedCostUSD: cloud.estimatedCostUSD ?? 0,
   };
 }
 
@@ -455,12 +464,14 @@ export async function runAI(request: LocalAIRequest): Promise<LocalAIResult> {
 export async function* runAIStreaming(
   request: LocalAIRequest,
 ): AsyncIterable<LocalAIStreamChunk> {
+  const validated = LocalAIRequestSchema.parse(request);
+
   if (!state.initialized) {
     await initLocalAI({ probeOnly: true });
   }
 
   const caps = state.capabilities ?? { supported: false, adapter: "none", vramMB: 0 };
-  const decision = decideRoute(request, caps);
+  const decision = decideRoute(validated, caps);
 
   if (decision.useLocal) {
     try {
@@ -473,29 +484,92 @@ export async function* runAIStreaming(
         throw new Error("local model failed to load");
       }
 
-      for await (const delta of webgpuGenerateStreaming(request.prompt, {
-        maxTokens: request.maxTokens,
-        temperature: request.temperature,
-        systemPrompt: request.systemPrompt,
+      for await (const delta of webgpuGenerateStreaming(validated.prompt, {
+        maxTokens: validated.maxTokens,
+        temperature: validated.temperature,
+        systemPrompt: validated.systemPrompt,
       })) {
         yield { delta, source: "webgpu" };
       }
       return;
     } catch (err) {
-      if (request.localOnly) {
+      if (validated.localOnly) {
         throw err;
       }
       // fall through to cloud stream
     }
   }
 
-  if (request.localOnly) {
+  if (validated.localOnly) {
     throw new Error(`Local AI required but unavailable: ${decision.reason}`);
   }
 
-  for await (const delta of cloudStream(request)) {
+  for await (const delta of cloudStream(validated)) {
     yield { delta, source: "cloud" };
   }
+}
+
+// ─── localInfer — The S1 Primary API ────────────────────────────────────────
+
+/**
+ * The primary public inference API for feature S1: WebGPU Client-Side AI.
+ *
+ * Takes a plain text prompt and returns a completion string. Automatically
+ * routes through the three-tier compute model:
+ *
+ *   1. CLIENT GPU (WebGPU) -- $0/token, sub-200ms first token
+ *   2. EDGE (Cloudflare Workers) -- sub-50ms (future)
+ *   3. CLOUD (Claude API) -- full Sonnet/Opus power
+ *
+ * The caller never needs to know which tier handled the request.
+ * For UI feedback, use `getLocalAIStatus()` to check which tier is active.
+ *
+ * @param prompt - The user's input text
+ * @returns The AI-generated completion text
+ *
+ * @example
+ *   const reply = await localInfer("Summarize this email thread: ...");
+ *   console.log(reply); // "The thread discusses..."
+ */
+export async function localInfer(prompt: string): Promise<string> {
+  z.string().min(1, "Prompt must not be empty").parse(prompt);
+
+  const result = await runAI({
+    task: "other",
+    prompt,
+    maxTokens: 512,
+    temperature: 0.7,
+  });
+
+  return result.text;
+}
+
+/**
+ * Extended variant of localInfer that returns the full result including
+ * routing metadata (source tier, model ID, latency, cost).
+ */
+export async function localInferWithMetadata(
+  prompt: string,
+  options?: {
+    task?: LocalAITask;
+    systemPrompt?: string;
+    maxTokens?: number;
+    temperature?: number;
+    forceCloud?: boolean;
+    localOnly?: boolean;
+  },
+): Promise<LocalAIResult> {
+  z.string().min(1, "Prompt must not be empty").parse(prompt);
+
+  return runAI({
+    task: options?.task ?? "other",
+    prompt,
+    systemPrompt: options?.systemPrompt,
+    maxTokens: options?.maxTokens ?? 512,
+    temperature: options?.temperature ?? 0.7,
+    forceCloud: options?.forceCloud,
+    localOnly: options?.localOnly,
+  });
 }
 
 // ─── Convenience Wrappers ────────────────────────────────────────────────────
@@ -534,6 +608,7 @@ export async function summarize(thread: string): Promise<LocalAIResult> {
 }
 
 export async function translate(text: string, targetLang: string): Promise<LocalAIResult> {
+  z.string().min(1).parse(targetLang);
   return runAI({
     task: "translate",
     systemPrompt: `Translate the following text to ${targetLang}. Return only the translation.`,

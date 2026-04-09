@@ -13,9 +13,18 @@ import {
   type EmailListItem,
   type EmailMessage,
 } from "@emailed/ui";
+import { AnimatePresence, motion } from "motion/react";
 import { messagesApi, type Message, type MessageDetail } from "../../../lib/api";
 import { NewsletterSummaryPreview } from "../../../components/NewsletterSummaryPreview";
 import { EmailExplainerPanel } from "../../../components/EmailExplainerPanel";
+import { EmailListSkeleton } from "../../../components/AnimatedSkeleton";
+import { PressableScale } from "../../../components/PressableScale";
+import {
+  fadeInUp,
+  threadExpand,
+  SPRING_BOUNCY,
+  useViennaReducedMotion,
+} from "../../../lib/animations";
 
 function formatTimestamp(iso: string): string {
   const date = new Date(iso);
@@ -125,8 +134,9 @@ function toEmailMessage(detail: MessageDetail): EmailMessage {
   };
 }
 
-export default function InboxPage() {
+export default function InboxPage(): JSX.Element {
   const router = useRouter();
+  const reduced = useViennaReducedMotion();
   const [emailItems, setEmailItems] = useState<EmailListItem[]>([]);
   const [selectedEmailId, setSelectedEmailId] = useState<string | undefined>();
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(null);
@@ -265,27 +275,16 @@ export default function InboxPage() {
         }
       />
       <Box className="flex items-center gap-2 ml-auto">
-        <Button
-          variant={filter === "all" ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setFilter("all")}
-        >
-          All
-        </Button>
-        <Button
-          variant={filter === "unread" ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setFilter("unread")}
-        >
-          Unread
-        </Button>
-        <Button
-          variant={filter === "starred" ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setFilter("starred")}
-        >
-          Starred
-        </Button>
+        {(["all", "unread", "starred"] as const).map((f) => (
+          <PressableScale key={f} as="button" type="button" tapScale={0.95} hoverScale={1.03} onClick={() => setFilter(f)}>
+            <Button
+              variant={filter === f ? "secondary" : "ghost"}
+              size="sm"
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </Button>
+          </PressableScale>
+        ))}
       </Box>
     </Box>
   );

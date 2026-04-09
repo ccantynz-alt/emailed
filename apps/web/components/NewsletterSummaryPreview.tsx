@@ -12,6 +12,7 @@
  * Framer Motion spring animations, reduced-motion support.
  */
 
+import type { ReactElement } from "react";
 import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Card, CardContent, Text, Box, Button } from "@emailed/ui";
@@ -59,7 +60,7 @@ export function NewsletterSummaryPreview({
   isNewsletter,
   onShowFullEmail,
   className,
-}: NewsletterSummaryPreviewProps): JSX.Element | null {
+}: NewsletterSummaryPreviewProps): ReactElement | null {
   const [state, setState] = useState<LoadState>("idle");
   const [summary, setSummary] = useState<NewsletterSummaryData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");

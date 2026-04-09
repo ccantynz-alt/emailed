@@ -265,3 +265,5 @@ export type UnsubscribeHistoryRecord = InferSelectModel<typeof unsubscribeHistor
 export type NewUnsubscribeHistoryRecord = InferInsertModel<typeof unsubscribeHistory>;
 export type EmailTranslation = InferSelectModel<typeof emailTranslations>;
 export type NewEmailTranslation = InferInsertModel<typeof emailTranslations>;
+export type CustomDictionary = InferSelectModel<typeof customDictionaries>;
+export type NewCustomDictionary = InferInsertModel<typeof customDictionaries>;

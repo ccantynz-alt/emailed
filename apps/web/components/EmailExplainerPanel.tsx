@@ -15,6 +15,7 @@
  * accessible keyboard navigation, reduced-motion support.
  */
 
+import type { ReactElement } from "react";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Card, CardContent, Text, Box, Button } from "@emailed/ui";
@@ -67,7 +68,7 @@ export function EmailExplainerPanel({
   open,
   onClose,
   className,
-}: EmailExplainerPanelProps): JSX.Element {
+}: EmailExplainerPanelProps): ReactElement {
   const [state, setState] = useState<LoadState>("idle");
   const [explanation, setExplanation] = useState<EmailExplanationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
@@ -351,7 +352,7 @@ function ExplainerSection({
   title,
   icon,
   content,
-}: ExplainerSectionProps): JSX.Element {
+}: ExplainerSectionProps): ReactElement {
   return (
     <Box className="space-y-2">
       <Text
@@ -374,7 +375,7 @@ interface SectionIconProps {
   type: "sender" | "relationship" | "inbox" | "actions";
 }
 
-function SectionIcon({ type }: SectionIconProps): JSX.Element {
+function SectionIcon({ type }: SectionIconProps): ReactElement {
   const iconClassMap: Record<string, string> = {
     sender: "bg-blue-500/20",
     relationship: "bg-emerald-500/20",

@@ -95,28 +95,7 @@ function toVectorLiteral(vec: readonly number[]): string {
   return `[${vec.join(",")}]`;
 }
 
-interface SearchHit {
-  emailId: string;
-  subject: string;
-  from: { email: string; name: string | null };
-  snippet: string;
-  date: string;
-  score: number;
-  distance: number;
-}
-
-interface EmailRow {
-  id: string;
-  accountId: string;
-  subject: string;
-  fromAddress: string;
-  fromName: string | null;
-  textBody: string | null;
-  htmlBody: string | null;
-  createdAt: Date;
-}
-
-function rowToHit(row: EmailRow, distance: number): SearchHit {
+function rowToHit(row: EmbeddableEmail, distance: number): SemanticSearchHit {
   const text = row.textBody ?? (row.htmlBody ?? "").replace(/<[^>]+>/g, " ");
   return {
     emailId: row.id,
@@ -127,6 +106,7 @@ function rowToHit(row: EmailRow, distance: number): SearchHit {
     // Cosine similarity in [-1, 1]; higher = more similar
     score: 1 - distance,
     distance,
+    source: "vector",
   };
 }
 
@@ -138,9 +118,9 @@ const semanticSearch = new Hono();
 semanticSearch.post(
   "/index",
   requireScope("messages:write"),
-  validateBody(IndexOneSchema),
+  validateBody(IndexEmailRequestSchema),
   async (c) => {
-    const input = getValidatedBody<z.infer<typeof IndexOneSchema>>(c);
+    const input = getValidatedBody<IndexEmailRequest>(c);
     const auth = c.get("auth");
     const db = getDatabase();
 
@@ -193,9 +173,9 @@ semanticSearch.post(
 semanticSearch.post(
   "/index-batch",
   requireScope("messages:write"),
-  validateBody(IndexBatchSchema),
+  validateBody(IndexBatchRequestSchema),
   async (c) => {
-    const input = getValidatedBody<z.infer<typeof IndexBatchSchema>>(c);
+    const input = getValidatedBody<IndexBatchRequest>(c);
     const auth = c.get("auth");
     const db = getDatabase();
 
@@ -301,7 +281,7 @@ semanticSearch.post(
       created_at: Date; distance: number;
     }> }).rows ?? [];
 
-    const hits: SearchHit[] = rows.map((r) =>
+    const hits: SemanticSearchHit[] = rows.map((r) =>
       rowToHit(
         {
           id: r.id,
@@ -324,6 +304,7 @@ semanticSearch.post(
         totalHits: hits.length,
         processingTimeMs: Date.now() - start,
         model: VOYAGE_MODEL,
+        usedVectorSearch: true,
       },
     });
   },
@@ -333,10 +314,10 @@ semanticSearch.post(
 semanticSearch.post(
   "/similar/:emailId",
   requireScope("messages:read"),
-  validateBody(SimilarSchema),
+  validateBody(SimilarEmailsRequestSchema),
   async (c) => {
     const emailId = c.req.param("emailId");
-    const input = getValidatedBody<z.infer<typeof SimilarSchema>>(c);
+    const input = getValidatedBody<SimilarEmailsRequest>(c);
     const auth = c.get("auth");
     const db = getDatabase();
 
@@ -391,7 +372,7 @@ semanticSearch.post(
       text_body: string | null; html_body: string | null; created_at: Date; distance: number;
     }> }).rows ?? [];
 
-    const hits: SearchHit[] = rows.map((r) =>
+    const hits: SemanticSearchHit[] = rows.map((r) =>
       rowToHit(
         {
           id: r.id,
@@ -443,6 +424,53 @@ semanticSearch.delete(
         emailId,
         deleted: deleted > 0,
       },
+    });
+  },
+);
+
+// POST /v1/semantic/backfill — Index all un-indexed emails for the account
+semanticSearch.post(
+  "/backfill",
+  requireScope("messages:write"),
+  async (c) => {
+    const auth = c.get("auth");
+
+    try {
+      const enqueued = await indexAllUnindexed(auth.accountId);
+
+      return c.json({
+        data: {
+          enqueued,
+          message:
+            enqueued > 0
+              ? `Enqueued ${enqueued} emails for background embedding.`
+              : "All emails are already indexed.",
+        },
+      });
+    } catch (err) {
+      return c.json(
+        {
+          error: {
+            type: "server_error",
+            message: `Backfill failed: ${(err as Error).message}`,
+            code: "backfill_failed",
+          },
+        },
+        500,
+      );
+    }
+  },
+);
+
+// GET /v1/semantic/stats — Auto-indexer health and queue stats
+semanticSearch.get(
+  "/stats",
+  requireScope("messages:read"),
+  async (c) => {
+    const stats = getAutoIndexerStats();
+
+    return c.json({
+      data: stats,
     });
   },
 );

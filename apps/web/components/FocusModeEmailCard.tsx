@@ -29,7 +29,7 @@ export interface FocusModeEmail {
   timestamp: string;
   isUnread: boolean;
   priority: "high" | "normal" | "low";
-  aiCategory?: string;
+  aiCategory: string | undefined;
   isReviewed: boolean;
 }
 
@@ -107,8 +107,8 @@ export function FocusModeEmailCard({
         aria-label={`Email from ${email.senderName}: ${email.subject}`}
         aria-selected={selected}
         tabIndex={0}
-        whileHover={reduced ? undefined : { y: -1, scale: 1.005 }}
-        whileTap={reduced ? undefined : { scale: 0.995 }}
+        {...(!reduced ? { whileHover: { y: -1, scale: 1.005 } } : {})}
+        {...(!reduced ? { whileTap: { scale: 0.995 } } : {})}
         transition={SPRING_SNAPPY}
       >
         {/* Top row: sender + timestamp + priority */}
