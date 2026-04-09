@@ -12,7 +12,16 @@ import {
   CardFooter,
   PageLayout,
 } from "@emailed/ui";
+import { motion } from "motion/react";
 import { authApi, accountApi } from "../../../lib/api";
+import { PressableScale } from "../../../components/PressableScale";
+import { AnimatedPresence } from "../../../components/AnimatedPresence";
+import {
+  staggerSlow,
+  fadeInUp,
+  useViennaReducedMotion,
+  withReducedMotion,
+} from "../../../lib/animations";
 
 interface UserData {
   name: string;
