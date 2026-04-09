@@ -23,7 +23,7 @@ import {
   type ConfidenceLevel,
   type DataSource,
 } from "@emailed/ui";
-import { sendTimeApi, type SendTimeRecommendation } from "../../lib/api";
+import { sendTimeApi, type SendTimeRecommendation } from "../lib/api";
 
 // ─── Props ─────────────────────────────────────────────────────────────────
 
