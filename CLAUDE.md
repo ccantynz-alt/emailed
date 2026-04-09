@@ -517,7 +517,7 @@ After writing the code:
 - [x] Public API + webhooks
 - [x] Team shared inboxes
 - [x] White-label SDK
-- [ ] Admin SSO (PARTIAL — admin dashboard exists)
+- [x] Admin SSO (SAML 2.0 SP with jose JWT — SP metadata, ACS, SLO endpoints + admin login page)
 
 ### Bonus Features Built (not in original plan)
 - Advanced Dictation Engine (replaces Dragon)
@@ -540,10 +540,14 @@ After writing the code:
 | # | Issue | Severity | Found | Status |
 |---|-------|----------|-------|--------|
 | 1 | Monorepo `bun run build` not verified end-to-end | HIGH | 2026-04-05 | PENDING |
-| 2 | Web app passkey login button has no onClick handler | MEDIUM | 2026-04-05 | PENDING |
+| 2 | Web app passkey login button has no onClick handler | MEDIUM | 2026-04-05 | FIXED 2026-04-09 |
 | 3 | Some in-memory stores need DB migration (screener, recall, contacts) | MEDIUM | 2026-04-05 | PENDING |
 | 4 | Landing page (vieanna.com) doesn't exist yet — needs Coming Soon | HIGH | 2026-04-05 | PENDING |
 | 5 | No actual deployment to Cloudflare yet | HIGH | 2026-04-05 | PENDING |
+| 6 | Admin route imported but was never mounted in server.ts | HIGH | 2026-04-09 | FIXED |
+| 7 | 5x `as any` casts in snooze.ts and voice.ts | MEDIUM | 2026-04-09 | FIXED |
+| 8 | `emailStatusEnum` missing "draft" value — using "queued" as workaround | LOW | 2026-04-09 | NOTED |
+| 9 | Pre-existing Drizzle ORM type errors on `.set()` and `.values()` calls | MEDIUM | 2026-04-09 | NOTED |
 
 ---
 
@@ -552,7 +556,7 @@ After writing the code:
 1. **Build "Coming Soon" landing page** for vieanna.com (no email signup yet)
 2. **Verify monorepo build** end-to-end (`bun install && bun run build`)
 3. **Fix any build errors** that surface
-4. **Wire passkey login handler** on web frontend
+4. ~~**Wire passkey login handler** on web frontend~~ DONE 2026-04-09
 5. **Set up Cloudflare Pages** project linked to GitHub
 6. **Set up Neon database** + run setup SQL
 7. **Set up Upstash Redis**
@@ -637,7 +641,7 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 
 ## 📅 STATUS
 
-**Date last updated:** 2026-04-05
+**Date last updated:** 2026-04-09
 **Current phase:** Phase 1 — Approaching Beta Launch
 **Current focus:** Coming Soon landing page + production deployment
 **Build completion:** TIER 1-3 done (30/36 features) + 7 bonus features
@@ -713,7 +717,7 @@ If you ship something not in this file, you broke the rules.
 |---|---|---|---|
 | C1 | **Status page** | status.vieanna.com showing uptime | NOT STARTED |
 | C2 | **Public API docs site** | docs.vieanna.com (OpenAPI exists, needs site) | NOT STARTED |
-| C3 | **Admin console SSO** | SAML for enterprise sales | NOT STARTED |
+| C3 | **Admin console SSO** | SAML for enterprise sales | DONE |
 | C4 | **SOC 2 Type I → Type II** | Required for enterprise | NOT STARTED |
 | C5 | **GDPR DPA template** | Legal pages exist, need DPA workflow | NOT STARTED |
 | C6 | **Bug bounty program** | HackerOne or Intigriti | NOT STARTED |
@@ -781,7 +785,7 @@ If you ship something not in this file, you broke the rules.
 | Web app (full inbox UI) | Built, needs backend live | 90% |
 | Desktop app (Electron) | Scaffolded, needs build + sign | 80% |
 | Mobile app (RN/Expo) | Scaffolded, needs build + sign | 75% |
-| Auth flow (frontend) | Built, passkey button needs onClick | 90% |
+| Auth flow (frontend) | Passkey login/register wired with WebAuthn | 100% |
 | Stripe billing flow | Backend done, frontend wired | 95% |
 | Cloudflare deployment configs | Ready | 100% |
 | Neon SQL setup | Ready | 100% |
