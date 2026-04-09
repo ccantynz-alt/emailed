@@ -629,9 +629,8 @@ emailUnsubscribe.get(
 
     return c.json({
       data: {
-        emailId,
-        hasAttempt: true,
         ...record,
+        hasAttempt: true,
       },
     });
   },

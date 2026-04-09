@@ -37,7 +37,7 @@ export function AnimatedPage({
   mode = "slide",
   className,
   pageKey,
-}: AnimatedPageProps): JSX.Element {
+}: AnimatedPageProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
   const base = mode === "crossfade" ? pageCrossfade : pageEnter;
   const variants = withReducedMotion(base, reduced);

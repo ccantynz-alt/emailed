@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Box, Text, type SidebarSection } from "@emailed/ui";

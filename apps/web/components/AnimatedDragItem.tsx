@@ -54,7 +54,7 @@ export function AnimatedDragItem({
   layoutAnimation = true,
   layoutId,
   ariaLabel,
-}: AnimatedDragItemProps): JSX.Element {
+}: AnimatedDragItemProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
   const y = useMotionValue(0);
   const x = useMotionValue(0);
@@ -140,7 +140,7 @@ export function AnimatedDropZone({
   active,
   className,
   ariaLabel,
-}: AnimatedDropZoneProps): JSX.Element {
+}: AnimatedDropZoneProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
 
   return (

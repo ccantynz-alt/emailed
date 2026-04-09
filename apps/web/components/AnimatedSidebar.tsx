@@ -46,7 +46,7 @@ export function AnimatedSidebar({
   collapsed,
   onNavigate,
   className,
-}: AnimatedSidebarProps): JSX.Element {
+}: AnimatedSidebarProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
 
   return (
@@ -96,7 +96,7 @@ function SidebarSectionGroup({
   collapsed,
   onNavigate,
   reduced,
-}: SidebarSectionGroupProps): JSX.Element {
+}: SidebarSectionGroupProps): React.ReactNode {
   return (
     <div className="px-2 py-2">
       <AnimatePresence>
@@ -142,7 +142,7 @@ function SidebarNavItemRow({
   collapsed,
   onNavigate,
   reduced,
-}: SidebarNavItemRowProps): JSX.Element {
+}: SidebarNavItemRowProps): React.ReactNode {
   return (
     <li>
       <motion.a

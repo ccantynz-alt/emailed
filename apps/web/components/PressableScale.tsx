@@ -50,7 +50,7 @@ export function PressableScale({
   ariaLabel,
   tabIndex,
   type = "button",
-}: PressableScaleProps): JSX.Element {
+}: PressableScaleProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
 
   const handleKeyDown = (e: KeyboardEvent<HTMLElement>): void => {

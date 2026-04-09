@@ -35,7 +35,7 @@ export function AnimatedCompose({
   asModal = false,
   onClose,
   className,
-}: AnimatedComposeProps): JSX.Element {
+}: AnimatedComposeProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
   const contentVariants = withReducedMotion(composeEnter, reduced);
   const backdropVariants = withReducedMotion(composeBackdrop, reduced);

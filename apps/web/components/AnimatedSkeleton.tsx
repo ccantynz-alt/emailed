@@ -42,7 +42,7 @@ export function AnimatedSkeleton({
   height,
   borderRadius,
   className,
-}: AnimatedSkeletonProps): JSX.Element {
+}: AnimatedSkeletonProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
   const defaults = shapeDefaults[shape];
   const resolvedWidth = width ?? (shape === "circle" ? defaults.height : "100%");
@@ -106,7 +106,7 @@ export function AnimatedSkeletonGroup({
   widthRange = [60, 100],
   shape = "line",
   className,
-}: AnimatedSkeletonGroupProps): JSX.Element {
+}: AnimatedSkeletonGroupProps): React.ReactNode {
   const stagger = staggerChildren(0.08, 0);
 
   // Deterministic widths based on index, not random (avoids hydration mismatch)
@@ -136,7 +136,7 @@ export function AnimatedSkeletonGroup({
 /**
  * EmailSkeletonRow — skeleton that mimics the email list row layout.
  */
-export function EmailSkeletonRow(): JSX.Element {
+export function EmailSkeletonRow(): React.ReactNode {
   return (
     <motion.div
       className="flex items-start gap-3 px-4 py-3"
@@ -174,7 +174,7 @@ export interface EmailListSkeletonProps {
 export function EmailListSkeleton({
   count = 8,
   className,
-}: EmailListSkeletonProps): JSX.Element {
+}: EmailListSkeletonProps): React.ReactNode {
   const stagger = staggerChildren(0.05, 0.02);
   const rows = Array.from({ length: count }, (_, i) => i);
 

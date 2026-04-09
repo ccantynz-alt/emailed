@@ -46,7 +46,7 @@ export function AnimatedPresence({
   role,
   ariaLabel,
   animateOnMount = true,
-}: AnimatedPresenceProps): JSX.Element {
+}: AnimatedPresenceProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
   const baseVariants = customVariants ?? fadeInUp;
   const variants = withReducedMotion(baseVariants, reduced);

@@ -66,7 +66,7 @@ export function AnimatedToast({
   toast,
   position = "bottom-right",
   onDismiss,
-}: AnimatedToastProps): JSX.Element {
+}: AnimatedToastProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
   const baseVariants = getVariantsForPosition(position);
   const variants = withReducedMotion(baseVariants, reduced);
@@ -168,7 +168,7 @@ export function AnimatedToastContainer({
   toasts,
   position = "bottom-right",
   onDismiss,
-}: AnimatedToastContainerProps): JSX.Element {
+}: AnimatedToastContainerProps): React.ReactNode {
   return (
     <div className={positionClasses[position]} aria-label="Notifications">
       <AnimatePresence>

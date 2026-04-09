@@ -59,7 +59,7 @@ export function AnimatedList({
   emailMode = false,
   layoutAnimated = true,
   itemVariants: customItemVariants,
-}: AnimatedListProps): JSX.Element {
+}: AnimatedListProps): React.ReactNode {
   const reduced = useViennaReducedMotion();
   const parentVariants = reduced ? undefined : staggerPresets[speed];
   const baseItemVariants = customItemVariants ?? (emailMode ? emailListItem : listItemEnter);
