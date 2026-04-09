@@ -11,8 +11,8 @@
  * any reorderable list content.
  */
 
-import { motion, useMotionValue, useTransform, type PanInfo } from "motion/react";
-import type { ReactNode, MouseEvent, TouchEvent, PointerEvent } from "react";
+import { motion, useMotionValue, useTransform } from "motion/react";
+import type { ReactNode } from "react";
 import {
   SPRING_HEAVY,
   SPRING_SNAPPY,
@@ -79,21 +79,17 @@ export function AnimatedDragItem({
         : false
       : dragConstraints;
 
-  const handleDrag = onDrag
-    ? (_event: MouseEvent | TouchEvent | PointerEvent, _info: PanInfo): void => {
-        onDrag({ x: x.get(), y: y.get() });
-      }
-    : (_event: MouseEvent | TouchEvent | PointerEvent, _info: PanInfo): void => {
-        // noop — required to satisfy exactOptionalPropertyTypes
-      };
+  const handleDrag = (): void => {
+    if (onDrag) {
+      onDrag({ x: x.get(), y: y.get() });
+    }
+  };
 
-  const handleDragEnd = onDragEnd
-    ? (_event: MouseEvent | TouchEvent | PointerEvent, _info: PanInfo): void => {
-        onDragEnd({ x: x.get(), y: y.get() });
-      }
-    : (_event: MouseEvent | TouchEvent | PointerEvent, _info: PanInfo): void => {
-        // noop — required to satisfy exactOptionalPropertyTypes
-      };
+  const handleDragEnd = (): void => {
+    if (onDragEnd) {
+      onDragEnd({ x: x.get(), y: y.get() });
+    }
+  };
 
   return (
     <motion.div
@@ -116,7 +112,7 @@ export function AnimatedDragItem({
       onDragEnd={handleDragEnd}
       transition={SPRING_SNAPPY}
       layout={layoutAnimation ? true : false}
-      layoutId={layoutId}
+      {...(layoutId !== undefined ? { layoutId } : {})}
       role="listitem"
       aria-label={ariaLabel}
       aria-roledescription="Draggable item"

@@ -60,25 +60,24 @@ export function PressableScale({
     }
   };
 
-  const motionProps = {
-    className,
-    onClick: disabled ? undefined : onClick,
-    onKeyDown: disabled ? undefined : handleKeyDown,
-    whileHover: reduced || disabled ? undefined : { scale: hoverScale },
-    whileTap: reduced || disabled ? undefined : { scale: tapScale },
-    transition: SPRING_MICRO,
-    "aria-label": ariaLabel,
-    "aria-disabled": disabled || undefined,
-    tabIndex: disabled ? -1 : (tabIndex ?? (onClick ? 0 : undefined)),
-    style: { cursor: disabled ? "default" : onClick ? "pointer" : undefined },
-  };
+  // Always provide a concrete value for whileHover/whileTap to satisfy exactOptionalPropertyTypes
+  const hoverTarget = reduced || disabled ? { scale: 1 } : { scale: hoverScale };
+  const tapTarget = reduced || disabled ? { scale: 1 } : { scale: tapScale };
 
   if (as === "button") {
     return (
       <motion.button
         type={type}
         disabled={disabled}
-        {...motionProps}
+        className={className}
+        onClick={disabled ? noop : onClick ?? noop}
+        onKeyDown={disabled ? noopKey : handleKeyDown}
+        whileHover={hoverTarget}
+        whileTap={tapTarget}
+        transition={SPRING_MICRO}
+        aria-label={ariaLabel}
+        aria-disabled={disabled ? true : false}
+        tabIndex={disabled ? -1 : (tabIndex ?? 0)}
       >
         {children}
       </motion.button>
@@ -87,10 +86,27 @@ export function PressableScale({
 
   return (
     <motion.div
-      role={onClick ? "button" : undefined}
-      {...motionProps}
+      role={onClick ? "button" : "presentation"}
+      className={className}
+      onClick={disabled ? noop : onClick ?? noop}
+      onKeyDown={disabled ? noopKey : handleKeyDown}
+      whileHover={hoverTarget}
+      whileTap={tapTarget}
+      transition={SPRING_MICRO}
+      aria-label={ariaLabel}
+      aria-disabled={disabled ? true : false}
+      tabIndex={disabled ? -1 : (tabIndex ?? (onClick ? 0 : -1))}
+      style={{ cursor: disabled ? "default" : onClick ? "pointer" : "default" }}
     >
       {children}
     </motion.div>
   );
+}
+
+function noop(): void {
+  // intentionally empty
+}
+
+function noopKey(_e: KeyboardEvent<HTMLElement>): void {
+  // intentionally empty
 }
