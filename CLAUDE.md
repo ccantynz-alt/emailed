@@ -34,7 +34,7 @@ The following actions require **explicit authorization from Craig (the boss/owne
 1. **Major architectural changes** — swapping frameworks, changing core stack, altering data model
 2. **New dependencies that aren't already in the approved stack** — we don't add bloat
 3. **Pricing changes** — any modification to plans, tiers, or billing logic
-4. **Domain or DNS changes** — anything touching vieanna.com or its subdomains
+4. **Domain or DNS changes** — anything touching 48co.ai or its subdomains
 5. **Production deployments** — first-time deploy and any rollback
 6. **Stripe configuration** — webhook URLs, price IDs, plan structures
 7. **Schema migrations on production database** — irreversible changes need sign-off
@@ -336,7 +336,7 @@ After writing the code:
 ## 🚨 EMERGENCY PROTOCOLS
 
 ### Production Outage
-1. **Check status page** (when set up): status.vieanna.com
+1. **Check status page** (when set up): status.48co.ai
 2. **Roll back** to last known good commit
 3. **Notify Craig** immediately
 4. **Post-mortem** within 24 hours, written and committed to `docs/postmortems/`
@@ -401,15 +401,15 @@ After writing the code:
 
 ## 🌐 DOMAIN & INFRASTRUCTURE
 
-### Domains (vieanna.com confirmed)
-- **vieanna.com** — Landing/marketing site (Cloudflare Pages)
-- **mail.vieanna.com** — Email web app (Cloudflare Pages)
-- **admin.vieanna.com** — Admin dashboard (Cloudflare Pages)
-- **api.vieanna.com** — API server (Cloudflare Workers / Fly.io)
-- **smtp.vieanna.com** — MTA outbound (Fly.io, NOT proxied)
-- **mx1.vieanna.com / mx2.vieanna.com** — Inbound MX (Fly.io, NOT proxied)
-- **status.vieanna.com** — Status page (when set up)
-- **docs.vieanna.com** — Developer docs (when set up)
+### Domains (48co.ai confirmed)
+- **48co.ai** — Landing/marketing site (Cloudflare Pages)
+- **mail.48co.ai** — Email web app (Cloudflare Pages)
+- **admin.48co.ai** — Admin dashboard (Cloudflare Pages)
+- **api.48co.ai** — API server (Cloudflare Workers / Fly.io)
+- **smtp.48co.ai** — MTA outbound (Fly.io, NOT proxied)
+- **mx1.48co.ai / mx2.48co.ai** — Inbound MX (Fly.io, NOT proxied)
+- **status.48co.ai** — Status page (when set up)
+- **docs.48co.ai** — Developer docs (when set up)
 
 ### Hosting Stack
 - **Compute:** Cloudflare Pages + Workers (web/api), Fly.io (MTA/long-lived)
@@ -542,7 +542,7 @@ After writing the code:
 | 1 | Monorepo `bun run build` not verified end-to-end | HIGH | 2026-04-05 | FIXED 2026-04-09 — 26/26 tasks pass |
 | 2 | Web app passkey login button has no onClick handler | MEDIUM | 2026-04-05 | FIXED 2026-04-09 — full WebAuthn flow |
 | 3 | Some in-memory stores need DB migration (screener, recall, contacts) | MEDIUM | 2026-04-05 | FIXED 2026-04-09 — Drizzle schemas + routes wired |
-| 4 | Landing page (vieanna.com) doesn't exist yet — needs Coming Soon | HIGH | 2026-04-05 | DONE — built previously |
+| 4 | Landing page (48co.ai) doesn't exist yet — needs Coming Soon | HIGH | 2026-04-05 | DONE — built previously |
 | 5 | No actual deployment to Cloudflare yet | HIGH | 2026-04-05 | IN PROGRESS — Vercel deploying from main |
 | 6 | Admin route imported but was never mounted in server.ts | HIGH | 2026-04-09 | FIXED 2026-04-09 |
 | 7 | 5x `as any` casts in snooze.ts and voice.ts | MEDIUM | 2026-04-09 | FIXED 2026-04-09 |
@@ -567,7 +567,7 @@ After writing the code:
 10. **Verify Vercel deployment succeeds** (Craig — check Vercel dashboard)
 11. **Set up Neon database** + run setup SQL (Craig action)
 12. **Set up Upstash Redis** (Craig action)
-13. **Configure DNS** for vieanna.com (Craig action)
+13. **Configure DNS** for 48co.ai (Craig action)
 14. **Set up Stripe account** + configure webhook URLs (Craig action)
 15. **Add API keys** (Anthropic, OpenAI, Google, Microsoft) to production env (Craig action)
 
@@ -720,14 +720,14 @@ If you ship something not in this file, you broke the rules.
 
 | # | Feature | Why It Wins | Status |
 |---|---|---|---|
-| C1 | **Status page** | status.vieanna.com showing uptime | NOT STARTED |
-| C2 | **Public API docs site** | docs.vieanna.com (OpenAPI exists, needs site) | NOT STARTED |
+| C1 | **Status page** | status.48co.ai showing uptime | NOT STARTED |
+| C2 | **Public API docs site** | docs.48co.ai (OpenAPI exists, needs site) | NOT STARTED |
 | C3 | **Admin console SSO** | SAML for enterprise sales | DONE |
 | C4 | **SOC 2 Type I → Type II** | Required for enterprise | NOT STARTED |
 | C5 | **GDPR DPA template** | Legal pages exist, need DPA workflow | NOT STARTED |
 | C6 | **Bug bounty program** | HackerOne or Intigriti | NOT STARTED |
 | C7 | **Public roadmap** | Trello/Linear public board | NOT STARTED |
-| C8 | **Changelog page** | changelog.vieanna.com | NOT STARTED |
+| C8 | **Changelog page** | changelog.48co.ai | NOT STARTED |
 | C9 | **Migration guides** | "From Gmail to Vienna in 5 minutes" | NOT STARTED |
 | C10 | **Spell check (multi-language)** | Native browser spell-check + custom dictionary | NOT STARTED |
 
@@ -811,7 +811,7 @@ If you ship something not in this file, you broke the rules.
 
 - ✅ **Apple Developer account** — DONE
 - ⏳ **Google Play Developer** — needed for Android
-- ⏳ **Domain (replacing vieanna.com)** — Craig sourcing new domain
+- ✅ **Domain** — 48co.ai confirmed
 - ⏳ **Stripe account** — needed before charging
 - ⏳ **Anthropic API key** — needed for AI features in production
 - ⏳ **OpenAI API key** — needed for Whisper transcription
