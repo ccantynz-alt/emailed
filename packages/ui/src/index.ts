@@ -12,6 +12,8 @@ export { ComposeEditor, type ComposeEditorProps, type ComposeData, type AISugges
 export { DomainCard, type DomainCardProps, type DnsRecord, type DomainVerificationState } from "./composites/domain-card";
 export { AnalyticsChart, type AnalyticsChartProps, type ChartDataPoint, type ChartType } from "./composites/analytics-chart";
 export { StatCard, type StatCardProps, type StatTrend } from "./composites/stat-card";
+export { SlotPicker, type SlotPickerProps, type SlotOption } from "./composites/slot-picker";
+export { CalendarSlotSuggestion, type CalendarSlotSuggestionProps, type MeetingIntentInfo } from "./composites/calendar-slot-suggestion";
 
 // Layouts
 export { Sidebar, type SidebarProps, type SidebarNavItem, type SidebarSection } from "./layouts/sidebar";

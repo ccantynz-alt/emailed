@@ -14,6 +14,8 @@ import {
   type EmailMessage,
 } from "@emailed/ui";
 import { messagesApi, type Message, type MessageDetail } from "../../../lib/api";
+import { NewsletterSummaryPreview } from "../../../components/NewsletterSummaryPreview";
+import { EmailExplainerPanel } from "../../../components/EmailExplainerPanel";
 
 function formatTimestamp(iso: string): string {
   const date = new Date(iso);
