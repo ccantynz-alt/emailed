@@ -4,6 +4,13 @@ interface CalloutProps {
   readonly children: React.ReactNode;
 }
 
+const DEFAULT_STYLE = {
+  border: "border-blue-500/30",
+  bg: "bg-blue-500/10",
+  title: "text-blue-300",
+  icon: "i",
+} as const;
+
 const CALLOUT_STYLES: Record<string, { border: string; bg: string; title: string; icon: string }> = {
   info: {
     border: "border-blue-500/30",
@@ -32,7 +39,7 @@ const CALLOUT_STYLES: Record<string, { border: string; bg: string; title: string
 };
 
 export function Callout({ type, title, children }: CalloutProps): React.JSX.Element {
-  const styles = CALLOUT_STYLES[type] ?? CALLOUT_STYLES["info"];
+  const styles = CALLOUT_STYLES[type] ?? DEFAULT_STYLE;
 
   return (
     <div className={`rounded-xl border ${styles.border} ${styles.bg} p-4 my-6`}>
