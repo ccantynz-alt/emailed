@@ -696,8 +696,8 @@ If you ship something not in this file, you broke the rules.
 | # | Feature | Why It Wins | Status |
 |---|---|---|---|
 | A1 | **Magic UI animations (Linear-style)** | Framer Motion + spring physics. Full animation library + 8 reusable components. Wired into sidebar, inbox, compose, analytics, settings. | DONE |
-| A2 | **Spatial inbox (3D thread visualization)** | R3F-powered 3D view for power users. Optional. | NOT STARTED |
-| A3 | **Inbox heatmap** | Visual email habits (when you're most productive). | NOT STARTED |
+| A2 | **Spatial inbox (3D thread visualization)** | R3F-powered 3D view for power users. Optional. InstancedMesh for 1000+ threads, configurable axes (time/priority/category/sender), color schemes, orbit controls, hover tooltips, keyboard navigation, connection lines, cluster labels. Lazy-loaded with ErrorBoundary for WebGL failures. | DONE |
+| A3 | **Inbox heatmap** | Visual email habits (when you're most productive). GitHub-style contribution heatmap, 24h hourly activity chart, stats dashboard with period selector and comparison. 3 UI components, 3 API endpoints, web view. | DONE |
 | A4 | **Focus mode** | Hides everything except important emails. Full screen. Timer, progress tracking, Cmd+Shift+F shortcut. | DONE |
 | A5 | **Quick-reply gestures (mobile)** | Brilliant swipe interactions. Mobile already has the pattern, needs polish. | NOT STARTED |
 | A6 | **Drag-to-snooze on mini-calendar** | Drag email to a time slot to snooze. HTML5 DnD + touch long-press, mini-calendar drop zones, time slot picker, quick presets, keyboard S shortcut, undo support. | DONE |
@@ -799,7 +799,7 @@ If you ship something not in this file, you broke the rules.
 | Neon SQL setup | Ready | 100% |
 | CLAUDE.md Bible | Complete | 100% |
 | **Tier S features (industry firsts)** | **S1+S2+S3+S5+S6+S7+S8+S9+S10 done (9/10)** | **90%** |
-| **Tier A features (cutting-edge UX)** | **A1+A4+A6+A7 done (4/7)** | **57%** |
+| **Tier A features (cutting-edge UX)** | **A1+A2+A3+A4+A6+A7 done (6/7)** | **86%** |
 | **Tier B features (power user)** | **B3+B4+B5+B6+B7 done (5/8)** | **62%** |
 | **Tier C features (polish + trust)** | **C1+C2+C3+C9+C10 done (5/10)** | **50%** |
 
