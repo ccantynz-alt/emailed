@@ -1,9 +1,9 @@
 {
-  "name": "@emailed/mobile",
+  "name": "@vienna/mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "Vienna Mobile \u2014 iOS and Android email client built with Expo + React Native",
-  "main": "index.ts",
+  "description": "Vienna Mobile — iOS and Android email client built with Expo + React Native",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -15,7 +15,7 @@
     "submit:ios": "eas submit --platform ios",
     "submit:android": "eas submit --platform android",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/",
+    "lint": "echo 'Lint via biome at root level'",
     "test": "jest",
     "build": "echo 'Mobile app builds via EAS Build, not in monorepo turbo build'"
   },
@@ -25,6 +25,7 @@
     "expo-constants": "~17.0.0",
     "expo-crypto": "~14.0.0",
     "expo-haptics": "~14.0.0",
+    "expo-linear-gradient": "~14.0.0",
     "expo-linking": "~7.0.0",
     "expo-local-authentication": "~15.0.0",
     "expo-notifications": "~0.29.0",

@@ -128,6 +128,73 @@ export interface AuthResponse {
   };
 }
 
+export interface PasskeyRegisterChallengeResponse {
+  challengeId: string;
+  publicKey: {
+    challenge: string;
+    rp: { name: string; id: string };
+    user: { id: string; name: string; displayName: string };
+    pubKeyCredParams: Array<{ alg: number; type: "public-key" }>;
+    timeout: number;
+    authenticatorSelection: {
+      authenticatorAttachment: "platform";
+      residentKey: "preferred";
+      userVerification: "preferred";
+    };
+    attestation: "none";
+  };
+  _registration: {
+    email: string;
+    name: string;
+    userId: string;
+  };
+}
+
+export interface PasskeyLoginChallengeResponse {
+  challengeId: string;
+  publicKey: {
+    challenge: string;
+    rpId: string;
+    timeout: number;
+    userVerification: "preferred";
+    allowCredentials?: Array<{
+      type: "public-key";
+      id: string;
+      transports?: string[];
+    }>;
+  };
+}
+
+/** Serialized PublicKeyCredential for registration (attestation). */
+export interface PublicKeyCredentialJSON {
+  id: string;
+  rawId: string;
+  type: "public-key";
+  response: {
+    clientDataJSON: string;
+    attestationObject: string;
+    publicKey?: string;
+    publicKeyAlgorithm?: number;
+    transports?: string[];
+    authenticatorData?: string;
+  };
+  authenticatorAttachment?: string;
+}
+
+/** Serialized PublicKeyCredential for authentication (assertion). */
+export interface PublicKeyCredentialAssertionJSON {
+  id: string;
+  rawId: string;
+  type: "public-key";
+  response: {
+    clientDataJSON: string;
+    authenticatorData: string;
+    signature: string;
+    userHandle?: string;
+  };
+  authenticatorAttachment?: string;
+}
+
 export const authApi = {
   async login(email: string, password: string): Promise<AuthResponse> {
     const res = await fetch(`${API_BASE}/v1/auth/login`, {
@@ -186,8 +253,100 @@ export const authApi = {
     }
   },
 
-  async me() {
+  async me(): Promise<{ data: AuthResponse["user"] }> {
     return apiFetch<{ data: AuthResponse["user"] }>("/v1/auth/me");
+  },
+
+  /** Request a WebAuthn registration challenge from the server. */
+  async passkeyRegisterChallenge(payload: {
+    email: string;
+    name: string;
+  }): Promise<PasskeyRegisterChallengeResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/passkey/register/challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as ApiError | null;
+      throw new Error(err?.error?.message ?? "Failed to create passkey challenge");
+    }
+
+    const data = (await res.json()) as { data: PasskeyRegisterChallengeResponse };
+    return data.data;
+  },
+
+  /** Verify a WebAuthn registration attestation and create the account. */
+  async passkeyRegisterVerify(payload: {
+    challengeId: string;
+    credential: PublicKeyCredentialJSON;
+    _registration: { email: string; name: string; userId: string };
+  }): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/passkey/register/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as ApiError | null;
+      throw new Error(err?.error?.message ?? "Passkey registration failed");
+    }
+
+    const data = (await res.json()) as { data: AuthResponse };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("emailed_api_key", data.data.token);
+      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+    }
+
+    return data.data;
+  },
+
+  /** Request a WebAuthn authentication challenge from the server. */
+  async passkeyLoginChallenge(payload?: {
+    email?: string;
+  }): Promise<PasskeyLoginChallengeResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/passkey/login/challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload ?? {}),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as ApiError | null;
+      throw new Error(err?.error?.message ?? "Failed to create login challenge");
+    }
+
+    const data = (await res.json()) as { data: PasskeyLoginChallengeResponse };
+    return data.data;
+  },
+
+  /** Verify a WebAuthn authentication assertion and log in. */
+  async passkeyLoginVerify(payload: {
+    challengeId: string;
+    credential: PublicKeyCredentialAssertionJSON;
+  }): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/v1/auth/passkey/login/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as ApiError | null;
+      throw new Error(err?.error?.message ?? "Passkey login failed");
+    }
+
+    const data = (await res.json()) as { data: AuthResponse };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("emailed_api_key", data.data.token);
+      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+    }
+
+    return data.data;
   },
 };
 

@@ -36,6 +36,7 @@ import { tracking } from "./routes/tracking.js";
 import { apiKeysRouter } from "./routes/api-keys.js";
 import { account } from "./routes/account.js";
 import { auth } from "./routes/auth.js";
+import { passkeyRouter } from "./routes/passkey.js";
 import { health } from "./routes/health.js";
 import { admin } from "./routes/admin.js";
 import { billing } from "./routes/billing.js";
@@ -66,6 +67,7 @@ import { todo } from "./routes/todo.js";
 import { unsubscribe } from "./routes/unsubscribe.js";
 import { sendTime } from "./routes/send-time.js";
 import { composeAssist } from "./routes/compose-assist.js";
+import { sso } from "./routes/sso.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
@@ -137,6 +139,7 @@ app.route("/v1/health", health);
 // Auth endpoints: strict IP rate limiting (10 req/min), no API key auth
 app.use("/v1/auth/*", authRateLimit);
 app.route("/v1/auth", auth);
+app.route("/v1/auth/passkey", passkeyRouter);
 
 // Tracking endpoints (no auth — embedded in emails)
 app.route("/t", tracking);

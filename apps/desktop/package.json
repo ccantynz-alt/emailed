@@ -7,7 +7,7 @@
   "main": "dist/main.cjs",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "echo 'Desktop app builds via electron-builder, not in monorepo turbo build'",
+    "build": "electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron .",
     "pack": "electron-builder --dir",
