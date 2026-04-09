@@ -72,6 +72,8 @@ import { sso } from "./routes/sso.js";
 import { spellcheckRouter } from "./routes/spellcheck.js";
 import { status } from "./routes/status.js";
 import { gamification } from "./routes/gamification.js";
+import { changelog } from "./routes/changelog.js";
+import { heatmapAnalytics } from "./routes/heatmap.js";
 import { closeConnection } from "@emailed/db";
 import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
@@ -290,6 +292,11 @@ app.use("/v1/tasks", authMiddleware, readRateLimit);
 // Gamification (A7): read-level for stats, write-level for check-zero/track
 app.use("/v1/gamification/*", authMiddleware, readRateLimit);
 app.use("/v1/gamification", authMiddleware, readRateLimit);
+// Changelog (C8): public read, admin-authed write (200 req/min)
+// Note: GET endpoints are public (no auth middleware). POST/PUT/DELETE require admin scope
+// which is enforced inside the route via requireScope("admin:write").
+app.use("/v1/changelog", readRateLimit);
+app.use("/v1/changelog/*", readRateLimit);
 
 // Mount route handlers
 app.route("/v1/messages", messages);
@@ -337,6 +344,8 @@ app.route("/v1/emails", emailSecurity);
 app.route("/v1/send-time", sendTime);
 app.route("/v1/emails", optimalSendTime);
 app.route("/v1/analytics", recipientPatterns);
+// A3: Inbox Heatmap analytics (heatmap grid, hourly chart, stats dashboard)
+app.route("/v1/analytics", heatmapAnalytics);
 app.route("/v1/compose-assist", composeAssist);
 app.route("/v1/compose/spellcheck", spellcheckRouter);
 app.route("/v1/todo", todo);
@@ -344,6 +353,7 @@ app.route("/v1/todo", todo);
 app.route("/v1/emails", emailTasks);
 app.route("/v1/tasks", taskRoutes);
 app.route("/v1/gamification", gamification);
+app.route("/v1/changelog", changelog);
 
 // Admin dashboard: requires admin API key auth (applied via authMiddleware above)
 app.use("/v1/admin/*", authMiddleware, readRateLimit);

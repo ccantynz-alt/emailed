@@ -1179,3 +1179,224 @@ export const collaborationApi = {
     );
   },
 };
+
+// ─── Meeting Transcript Links (S9) ──────────────────────────────────────────
+
+export type MeetingProviderType = "zoom" | "meet" | "teams" | "webex" | "generic";
+export type MeetingLinkStatusType = "detected" | "linked" | "transcribed" | "summarized";
+
+export interface MeetingLinkData {
+  id: string;
+  threadId: string;
+  emailId: string | null;
+  provider: MeetingProviderType;
+  meetingUrl: string | null;
+  scheduledAt: string | null;
+  recordingUrl: string | null;
+  transcriptUrl: string | null;
+  transcriptPreview: string | null;
+  aiSummary: string | null;
+  title: string | null;
+  confidence: number | null;
+  status: MeetingLinkStatusType;
+  participants: string | null;
+  duration: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface MeetingDetectResponse {
+  detected: boolean;
+  meeting: {
+    id: string;
+    threadId: string;
+    provider: MeetingProviderType;
+    meetingUrl: string | null;
+    scheduledAt: string | null;
+    title: string | null;
+    confidence: number;
+    detectedFrom: string;
+    status: MeetingLinkStatusType;
+  } | null;
+}
+
+export interface MeetingThreadResponse {
+  meetings: MeetingLinkData[];
+}
+
+export interface MeetingLinkRecordingResponse {
+  id: string;
+  recordingUrl: string;
+  transcriptUrl: string | null;
+  status: MeetingLinkStatusType;
+  updatedAt: string;
+}
+
+export interface MeetingTranscribeResponse {
+  id: string;
+  transcriptPreview: string;
+  transcriptLength: number;
+  status: MeetingLinkStatusType;
+  updatedAt: string;
+}
+
+export interface MeetingSummaryResponse {
+  id: string;
+  title: string | null;
+  summary: string;
+  status: MeetingLinkStatusType;
+  cached: boolean;
+}
+
+export const meetingsApi = {
+  /** Detect meetings in a thread and persist. */
+  detect(payload: {
+    threadId: string;
+    thread: {
+      messages: Array<{
+        id?: string;
+        from?: string;
+        to?: string[];
+        subject?: string;
+        textBody?: string;
+        htmlBody?: string;
+        receivedAt?: string;
+      }>;
+    };
+  }): Promise<{ data: MeetingDetectResponse }> {
+    return apiFetch<{ data: MeetingDetectResponse }>("/v1/meetings/detect", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Get meeting links for a thread. */
+  getByThread(threadId: string): Promise<{ data: MeetingThreadResponse }> {
+    return apiFetch<{ data: MeetingThreadResponse }>(
+      `/v1/meetings/thread/${encodeURIComponent(threadId)}`,
+    );
+  },
+
+  /** Manually attach a recording URL to a meeting. */
+  linkRecording(
+    meetingId: string,
+    payload: { recordingUrl: string; transcriptUrl?: string },
+  ): Promise<{ data: MeetingLinkRecordingResponse }> {
+    return apiFetch<{ data: MeetingLinkRecordingResponse }>(
+      `/v1/meetings/${encodeURIComponent(meetingId)}/link-recording`,
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  },
+
+  /** Trigger transcription (Whisper API or direct text). */
+  transcribe(
+    meetingId: string,
+    payload?: { transcriptText?: string; audioUrl?: string },
+  ): Promise<{ data: MeetingTranscribeResponse }> {
+    return apiFetch<{ data: MeetingTranscribeResponse }>(
+      `/v1/meetings/${encodeURIComponent(meetingId)}/transcribe`,
+      { method: "POST", body: JSON.stringify(payload ?? {}) },
+    );
+  },
+
+  /** Get AI summary of a meeting transcript. */
+  getSummary(meetingId: string): Promise<{ data: MeetingSummaryResponse }> {
+    return apiFetch<{ data: MeetingSummaryResponse }>(
+      `/v1/meetings/${encodeURIComponent(meetingId)}/summary`,
+    );
+  },
+};
+
+// ─── Voice Clone Profiles (S4) ──────────────────────────────────────────────
+
+export interface VoiceCloneProfile {
+  id: string;
+  name: string;
+  sampleCount: number;
+  confidenceScore: number;
+  isDefault: boolean;
+  isTraining: boolean;
+  lastTrainedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VoiceCloneTrainingResult {
+  profileId: string;
+  sampleCount: number;
+  confidenceScore: number;
+  formalityLevel: string;
+  emojiUsage: number;
+  signaturePhrasesFound: number;
+  characteristicWordsFound: number;
+  trainedAt: string;
+}
+
+export interface VoiceCloneComposeResult {
+  body: string;
+  profileId: string;
+  profileName: string;
+  confidenceScore: number;
+  formalityLevel: string;
+  sampleCount: number;
+}
+
+export const voiceCloneApi = {
+  /** Create a new voice style profile. */
+  createProfile(payload: {
+    name: string;
+    isDefault?: boolean;
+  }): Promise<{ data: VoiceCloneProfile }> {
+    return apiFetch<{ data: VoiceCloneProfile }>(
+      "/v1/voice-clone/profiles",
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  },
+
+  /** List all voice profiles for the current account. */
+  listProfiles(): Promise<{ data: VoiceCloneProfile[] }> {
+    return apiFetch<{ data: VoiceCloneProfile[] }>(
+      "/v1/voice-clone/profiles",
+    );
+  },
+
+  /** Get a single profile by ID. */
+  getProfile(profileId: string): Promise<{ data: VoiceCloneProfile & { styleFingerprint: unknown; trainingSampleCount: number } }> {
+    return apiFetch(
+      `/v1/voice-clone/profiles/${encodeURIComponent(profileId)}`,
+    );
+  },
+
+  /** Train or retrain a profile from sent emails. */
+  trainProfile(
+    profileId: string,
+    payload: { sampleSize?: number },
+  ): Promise<{ data: VoiceCloneTrainingResult }> {
+    return apiFetch<{ data: VoiceCloneTrainingResult }>(
+      `/v1/voice-clone/profiles/${encodeURIComponent(profileId)}/train`,
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  },
+
+  /** Delete a voice profile. */
+  deleteProfile(profileId: string): Promise<{ data: { deleted: boolean; id: string } }> {
+    return apiFetch<{ data: { deleted: boolean; id: string } }>(
+      `/v1/voice-clone/profiles/${encodeURIComponent(profileId)}`,
+      { method: "DELETE" },
+    );
+  },
+
+  /** Compose an email using a specific voice profile. */
+  compose(payload: {
+    profileId: string;
+    prompt: string;
+    recipient?: string;
+    threadHistory?: Array<{ from: string; body: string }>;
+    replyTo?: { from: string; subject: string; body: string };
+  }): Promise<{ data: VoiceCloneComposeResult }> {
+    return apiFetch<{ data: VoiceCloneComposeResult }>(
+      "/v1/voice-clone/compose",
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  },
+};

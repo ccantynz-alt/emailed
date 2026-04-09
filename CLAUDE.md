@@ -688,7 +688,7 @@ If you ship something not in this file, you broke the rules.
 | S6 | **Auto-summary of every newsletter** | AI reduces newsletters to 3 bullets in inbox preview. Full text on demand. | DONE |
 | S7 | **AI "Why is this in my inbox?" explainer** | Click any email → AI explains who this is, history, why it landed here, suggested action. | DONE |
 | S8 | **One-click thread → action items in todo apps** | Native Things, Todoist, Linear, Notion integration. AI thread extraction, batch create, built-in task list, DB-backed provider configs. | DONE |
-| S9 | **Email thread → meeting transcript link** | If a thread leads to a call, auto-link the recording + transcript. | NOT STARTED |
+| S9 | **Email thread → meeting transcript link** | If a thread leads to a call, auto-link the recording + transcript. DB-backed meeting_links table, 5 API endpoints, Whisper transcription, Claude Haiku summary, MeetingLinkCard UI, MeetingTranscriptPanel web component. | DONE |
 | S10 | **Predictive send-time optimization** | AI predicts best send time based on recipient open patterns. | DONE |
 
 ### TIER A — CUTTING-EDGE UX

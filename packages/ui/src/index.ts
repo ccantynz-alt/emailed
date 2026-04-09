@@ -31,6 +31,15 @@ export { CollaboratorAvatars, type CollaboratorAvatarsProps, type Collaborator }
 export { CollaborationPanel, type CollaborationPanelProps, type CollabPanelView, type CollabInvite, type CollabHistoryEntry, type CollabSessionInfo, type CollabSessionStatus } from "./composites/collaboration-panel";
 export { CollaborativeEditor, type CollaborativeEditorProps, type CollaborativeEditorConfig, type ConnectionStatus, type AwarenessUserState } from "./composites/collaborative-editor";
 export { ActionItemList, type ActionItemListProps, type ExtractedActionItem, type TaskProvider, type TaskPriority, type ExtractionState, type CreateState } from "./composites/action-item-list";
+export { MeetingLinkCard, type MeetingLinkCardProps, type MeetingLinkData, type MeetingProvider, type MeetingLinkStatus } from "./composites/meeting-link-card";
+export { SnoozeCalendar, type SnoozeCalendarProps, type SnoozeTimeSlot, type SnoozePreset } from "./composites/snooze-calendar";
+export { DraggableEmailRow, type DraggableEmailRowProps, type DraggableEmailData } from "./composites/draggable-email-row";
+export { SnoozeDropOverlay, type SnoozeDropOverlayProps } from "./composites/snooze-drop-overlay";
+export { SpatialInboxView, type SpatialInboxViewProps, type SpatialThread, type SpatialAxis, type SpatialColorScheme, type SpatialFilterState, type ThreadCategory } from "./composites/spatial-inbox-view";
+export { SpatialControls, type SpatialControlsProps } from "./composites/spatial-controls";
+export { InboxHeatmap, type InboxHeatmapProps, type HeatmapDayData, type HeatmapMode } from "./composites/inbox-heatmap";
+export { HourlyActivityChart, type HourlyActivityChartProps, type HourlyBucket } from "./composites/hourly-activity-chart";
+export { EmailStatsDashboard, type EmailStatsDashboardProps, type EmailStatsMetrics, type EmailStatsCompare, type StatsPeriod } from "./composites/email-stats-dashboard";
 
 // Layouts
 export { Sidebar, type SidebarProps, type SidebarNavItem, type SidebarSection } from "./layouts/sidebar";
