@@ -151,6 +151,11 @@ const RegisterVerifySchema = z.object({
     }),
     authenticatorAttachment: z.string().optional(),
   }),
+  _registration: z.object({
+    email: z.string().email(),
+    name: z.string().min(1).max(256),
+    userId: z.string().min(1),
+  }),
 });
 
 const LoginChallengeSchema = z.object({
@@ -425,27 +430,22 @@ passkeyRouter.post(
       );
     }
 
-    // Parse the registration metadata from the request body
-    // We need email/name — pass them through the registration payload
-    const bodyRaw = await c.req.json() as Record<string, unknown>;
-    const registrationMeta = (bodyRaw as { _registration?: { email: string; name: string } })
-      ._registration;
-
-    if (!registrationMeta?.email || !registrationMeta?.name) {
+    // Verify the userId from the challenge matches the registration metadata
+    if (input._registration.userId !== userId) {
       return c.json(
         {
           error: {
-            type: "validation_error",
-            message: "Missing registration metadata (email, name)",
-            code: "missing_registration_meta",
+            type: "authentication_error",
+            message: "Registration user ID mismatch",
+            code: "user_id_mismatch",
           },
         },
         400,
       );
     }
 
-    const email = registrationMeta.email.toLowerCase();
-    const name = registrationMeta.name;
+    const email = input._registration.email.toLowerCase();
+    const name = input._registration.name;
 
     // Double-check user doesn't exist
     const [existingUser] = await db

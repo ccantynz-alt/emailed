@@ -146,7 +146,7 @@ const IMPORTANT_SIGNALS = [
   "response needed",
 ];
 
-// ──�� Screener Logic ────────────────────────────────��─────────────────────────
+// ─── Screener Logic ──────────────────────────────────────────────────────────
 
 /**
  * In-process cache for screener decisions. This avoids a DB round-trip on
@@ -155,10 +155,6 @@ const IMPORTANT_SIGNALS = [
  * populated on read and kept in sync via `screenSender`.
  */
 const decisionCache = new Map<string, Map<string, "allow" | "block">>();
-
-function cacheKey(accountId: string, email: string): { accountId: string; normalized: string } {
-  return { accountId, normalized: email.toLowerCase() };
-}
 
 export function isKnownSender(accountId: string, senderEmail: string): boolean {
   const cached = decisionCache.get(accountId)?.get(senderEmail.toLowerCase());
