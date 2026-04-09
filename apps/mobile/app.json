@@ -57,18 +57,13 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
       [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
           "color": "#3b82f6",
           "defaultChannel": "default"
-        }
-      ],
-      [
-        "expo-secure-store",
-        {
-          "faceIDPermission": "Allow Vienna to use Face ID to access your encrypted email."
         }
       ]
     ],
@@ -78,7 +73,8 @@
     "extra": {
       "eas": {
         "projectId": "vienna-app"
-      }
+      },
+      "apiUrl": "https://api.vieanna.com"
     },
     "owner": "vienna",
     "runtimeVersion": {

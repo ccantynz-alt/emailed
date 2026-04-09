@@ -104,6 +104,42 @@ export {
   type NewDraftSnapshot,
 } from "./schema/draft-snapshots.js";
 
+// Schema - Passkeys (WebAuthn credentials)
+export {
+  passkeys,
+  passkeyChallenges,
+  passkeysRelations,
+  passkeyChallengesRelations,
+} from "./schema/passkeys.js";
+
+// Schema - Contacts
+export {
+  contacts,
+  contactsRelations,
+} from "./schema/contacts.js";
+
+// Schema - Recall Records
+export {
+  recallRecords,
+  recallRecordsRelations,
+} from "./schema/recall.js";
+
+// Schema - Screener, Commitments, Inbox Categories
+export {
+  screenerDecisions,
+  screenerQueue,
+  commitments,
+  inboxCategories,
+  screenerDecisionEnum,
+  commitmentActorEnum,
+  commitmentStatusEnum,
+  inboxCategorySourceEnum,
+  screenerDecisionsRelations,
+  screenerQueueRelations,
+  commitmentsRelations,
+  inboxCategoriesRelations,
+} from "./schema/screener.js";
+
 // ---------------------------------------------------------------------------
 // Inferred types from schemas
 // ---------------------------------------------------------------------------
@@ -122,6 +158,15 @@ import type { suppressionLists } from "./schema/suppressions.js";
 import type { warmupSessions } from "./schema/warmup.js";
 import type { templates } from "./schema/templates.js";
 import type { emailEmbeddings } from "./schema/email-embeddings.js";
+import type { passkeys, passkeyChallenges } from "./schema/passkeys.js";
+import type { contacts } from "./schema/contacts.js";
+import type { recallRecords } from "./schema/recall.js";
+import type {
+  screenerDecisions,
+  screenerQueue,
+  commitments,
+  inboxCategories,
+} from "./schema/screener.js";
 
 // Select types (what you get back from queries)
 export type Account = InferSelectModel<typeof accounts>;
@@ -158,3 +203,19 @@ export type Template = InferSelectModel<typeof templates>;
 export type NewTemplate = InferInsertModel<typeof templates>;
 export type EmailEmbedding = InferSelectModel<typeof emailEmbeddings>;
 export type NewEmailEmbedding = InferInsertModel<typeof emailEmbeddings>;
+export type Passkey = InferSelectModel<typeof passkeys>;
+export type NewPasskey = InferInsertModel<typeof passkeys>;
+export type PasskeyChallenge = InferSelectModel<typeof passkeyChallenges>;
+export type NewPasskeyChallenge = InferInsertModel<typeof passkeyChallenges>;
+export type Contact = InferSelectModel<typeof contacts>;
+export type NewContact = InferInsertModel<typeof contacts>;
+export type RecallRecord = InferSelectModel<typeof recallRecords>;
+export type NewRecallRecord = InferInsertModel<typeof recallRecords>;
+export type ScreenerDecision = InferSelectModel<typeof screenerDecisions>;
+export type NewScreenerDecision = InferInsertModel<typeof screenerDecisions>;
+export type ScreenerQueueEntry = InferSelectModel<typeof screenerQueue>;
+export type NewScreenerQueueEntry = InferInsertModel<typeof screenerQueue>;
+export type CommitmentRecord = InferSelectModel<typeof commitments>;
+export type NewCommitmentRecord = InferInsertModel<typeof commitments>;
+export type InboxCategoryRecord = InferSelectModel<typeof inboxCategories>;
+export type NewInboxCategoryRecord = InferInsertModel<typeof inboxCategories>;
