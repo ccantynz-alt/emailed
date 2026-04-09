@@ -799,7 +799,7 @@ If you ship something not in this file, you broke the rules.
 | Neon SQL setup | Ready | 100% |
 | CLAUDE.md Bible | Complete | 100% |
 | **Tier S features (industry firsts)** | **S1+S2+S3+S4+S5+S6+S7+S8+S9+S10 done (10/10)** | **100%** |
-| **Tier A features (cutting-edge UX)** | **A1+A2+A3+A4+A6+A7 done (6/7)** | **86%** |
+| **Tier A features (cutting-edge UX)** | **A1+A2+A3+A4+A5+A6+A7 done (7/7)** | **100%** |
 | **Tier B features (power user)** | **B1+B2+B3+B4+B5+B6+B7+B8 done (8/8)** | **100%** |
 | **Tier C features (polish + trust)** | **C1+C2+C3+C8+C9+C10 done (6/10)** | **60%** |
 
