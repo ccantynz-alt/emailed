@@ -701,7 +701,7 @@ If you ship something not in this file, you broke the rules.
 | A4 | **Focus mode** | Hides everything except important emails. Full screen. Timer, progress tracking, Cmd+Shift+F shortcut. | DONE |
 | A5 | **Quick-reply gestures (mobile)** | Brilliant swipe interactions. Mobile already has the pattern, needs polish. | NOT STARTED |
 | A6 | **Drag-to-snooze on mini-calendar** | Drag email to a time slot to snooze. | NOT STARTED |
-| A7 | **Inbox zero rituals (gamification)** | Streaks, achievements (optional). | NOT STARTED |
+| A7 | **Inbox zero rituals (gamification)** | Streaks, achievements (optional). DB schema (user_streaks, user_achievements, daily_stats), 6 API endpoints, 6 React components (celebration, streak counter, achievement badge/panel, weekly stats, toggle). Respects prefers-reduced-motion. | DONE |
 
 ### TIER B — POWER FEATURES COMPETITORS DON'T HAVE
 
@@ -711,8 +711,8 @@ If you ship something not in this file, you broke the rules.
 | B2 | **Email-as-database (SQL over inbox)** | Treat your inbox as a queryable dataset. | NOT STARTED |
 | B3 | **AI unsubscribe agent (browser automation)** | One click → AI navigates the unsubscribe page → confirms. | DONE |
 | B4 | **Auto-translation badges** | "Translated from Spanish" badge with toggle to original. | DONE |
-| B5 | **Real-time sender verification** | Check sender reputation, business legitimacy, recent news inline. | NOT STARTED |
-| B6 | **Phishing protection with explainer** | "This email is suspicious because..." | NOT STARTED |
+| B5 | **Real-time sender verification** | Check sender reputation, business legitimacy, recent news inline. SPF/DKIM/DMARC, DNS auth records, WHOIS domain age, typosquatting detection, trust badges. | DONE |
+| B6 | **Phishing protection with explainer** | "This email is suspicious because..." AI-powered multi-signal analysis, urgency/credential harvesting/URL mismatch/lookalike/homograph/attachment detection, Claude Sonnet explainer, one-click report. | DONE |
 | B7 | **AI calendar slot suggestions in compose** | Type "let's meet next week" → AI suggests slots inline. | DONE |
 | B8 | **Voice-to-voice replies** | Voice messages as attachments + auto-transcription for recipient. | NOT STARTED |
 
@@ -799,8 +799,8 @@ If you ship something not in this file, you broke the rules.
 | Neon SQL setup | Ready | 100% |
 | CLAUDE.md Bible | Complete | 100% |
 | **Tier S features (industry firsts)** | **S1+S5+S6+S7+S10 done (5/10)** | **50%** |
-| **Tier A features (cutting-edge UX)** | **A1+A4 done (2/7)** | **29%** |
-| **Tier B features (power user)** | **B3+B4+B7 done (3/8)** | **37%** |
+| **Tier A features (cutting-edge UX)** | **A1+A4+A7 done (3/7)** | **43%** |
+| **Tier B features (power user)** | **B3+B4+B5+B6+B7 done (5/8)** | **62%** |
 | **Tier C features (polish + trust)** | **C1+C2+C3+C9+C10 done (5/10)** | **50%** |
 
 **Overall: ~95% of launch-ready product. Core platform 100% done. Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + remaining Tier S/A/B/C features.**
