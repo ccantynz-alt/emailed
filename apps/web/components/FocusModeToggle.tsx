@@ -51,8 +51,8 @@ export function FocusModeToggle({ className }: FocusModeToggleProps): JSX.Elemen
       aria-pressed={active}
       aria-label={active ? "Exit focus mode" : "Enter focus mode"}
       title={active ? "Focus mode is on (Cmd+Shift+F)" : "Enter focus mode (Cmd+Shift+F)"}
-      whileHover={reduced ? undefined : { scale: 1.03 }}
-      whileTap={reduced ? undefined : { scale: 0.97 }}
+      {...(!reduced ? { whileHover: { scale: 1.03 } } : {})}
+      {...(!reduced ? { whileTap: { scale: 0.97 } } : {})}
       transition={SPRING_SNAPPY}
     >
       {/* Icon */}

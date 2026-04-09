@@ -44,8 +44,8 @@ export function FocusModeIndicator({ className }: FocusModeIndicatorProps): JSX.
       aria-pressed={active}
       aria-label={active ? "Disable focus mode" : "Enable focus mode"}
       title={active ? "Focus mode is on (Cmd+Shift+F)" : "Enter focus mode (Cmd+Shift+F)"}
-      whileHover={reduced ? undefined : { scale: 1.04 }}
-      whileTap={reduced ? undefined : { scale: 0.96 }}
+      {...(!reduced ? { whileHover: { scale: 1.04 } } : {})}
+      {...(!reduced ? { whileTap: { scale: 0.96 } } : {})}
       transition={SPRING_SNAPPY}
     >
       <span className="relative flex h-2 w-2">

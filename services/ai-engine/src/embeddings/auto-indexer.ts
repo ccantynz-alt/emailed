@@ -18,7 +18,7 @@
  * manually via `indexAllUnindexed()` for backfill.
  */
 
-import { sql, eq, and, notInArray } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { getDatabase, emails } from "@emailed/db";
 import { embedBatch, VOYAGE_MODEL, EMBEDDING_DIMENSIONS } from "./voyage.js";
 import {

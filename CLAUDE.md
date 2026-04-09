@@ -680,7 +680,7 @@ If you ship something not in this file, you broke the rules.
 
 | # | Feature | Why It Wins | Status |
 |---|---|---|---|
-| S1 | **WebGPU client-side AI inference** | Llama 3.1 8B at 41 tok/sec in browser. $0/token. No competitor has this. Hooks exist (Transformers.js wired) — need to ship a model. | NOT STARTED |
+| S1 | **WebGPU client-side AI inference** | Llama 3.1 8B at 41 tok/sec in browser. $0/token. No competitor has this. Full WebLLM engine, Zod-validated API, IndexedDB cache tracking, progress events, `localInfer()` API, React status indicator. | DONE |
 | S2 | **CRDT real-time collaborative drafting** | Two people editing the same email with live cursors (Yjs). API endpoint exists, UI doesn't. Nobody has this in email. | NOT STARTED |
 | S3 | **AI inbox agent (works while you sleep)** | Wakes up overnight, triages, drafts replies, schedules sends. You approve in the morning with one tap. INDUSTRY FIRST. | NOT STARTED |
 | S4 | **Voice cloning for AI replies** | Drafts sound exactly like you (style transfer beyond voice profile). | NOT STARTED |

@@ -62,7 +62,7 @@ export interface FocusModeOverlayEmail extends FocusFilterableEmail {
   timestamp: string;
   isUnread: boolean;
   priority: "high" | "normal" | "low";
-  aiCategory?: string;
+  aiCategory: string | undefined;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────

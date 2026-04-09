@@ -17,8 +17,8 @@
  *   - If both fail → empty results with error message
  */
 
-import { sql, eq, and } from "drizzle-orm";
-import { getDatabase, emails } from "@emailed/db";
+import { sql } from "drizzle-orm";
+import { getDatabase } from "@emailed/db";
 import { searchEmails } from "@emailed/shared";
 import { embedQuery, VOYAGE_MODEL, EMBEDDING_DIMENSIONS } from "./voyage.js";
 import {

@@ -292,8 +292,16 @@ export default function InboxPage(): JSX.Element {
   if (loading) {
     return (
       <PageLayout header={searchHeader} fullWidth>
-        <Box className="flex items-center justify-center h-full">
-          <Text variant="body-md" muted>Loading emails...</Text>
+        <Box className="flex flex-1 h-full">
+          <Box className="w-96 border-r border-border overflow-y-auto flex-shrink-0">
+            <Box className="px-4 py-2 border-b border-border bg-surface-secondary">
+              <Text variant="body-sm" muted>Loading...</Text>
+            </Box>
+            <EmailListSkeleton count={10} />
+          </Box>
+          <Box className="flex-1 flex items-center justify-center">
+            <Text variant="body-md" muted>Select an email to read</Text>
+          </Box>
         </Box>
       </PageLayout>
     );
@@ -303,10 +311,18 @@ export default function InboxPage(): JSX.Element {
     return (
       <PageLayout header={searchHeader} fullWidth>
         <Box className="flex flex-col items-center justify-center h-full gap-4">
-          <Text variant="body-md" muted>{error}</Text>
-          <Button variant="secondary" size="sm" onClick={fetchEmails}>
-            Retry
-          </Button>
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={reduced ? undefined : { opacity: 1, y: 0 }}
+            transition={SPRING_BOUNCY}
+          >
+            <Text variant="body-md" muted>{error}</Text>
+          </motion.div>
+          <PressableScale as="button" tapScale={0.95}>
+            <Button variant="secondary" size="sm" onClick={fetchEmails}>
+              Retry
+            </Button>
+          </PressableScale>
         </Box>
       </PageLayout>
     );
@@ -325,20 +341,37 @@ export default function InboxPage(): JSX.Element {
                   : `${filteredEmails.filter((e) => !e.read).length} unread of ${filteredEmails.length} emails`}
             </Text>
           </Box>
-          {filteredEmails.length === 0 ? (
-            <Box className="flex items-center justify-center p-8">
-              <Text variant="body-sm" muted>
-                {filter === "all" ? "No emails yet" : `No ${filter} emails`}
-              </Text>
-            </Box>
-          ) : (
-            <EmailList
-              emails={filteredEmails}
-              {...(selectedEmailId !== undefined ? { selectedId: selectedEmailId } : {})}
-              onSelect={handleSelect}
-              onStar={handleStar}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            {filteredEmails.length === 0 ? (
+              <motion.div
+                key="empty"
+                className="flex items-center justify-center p-8"
+                variants={fadeInUp}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                <Text variant="body-sm" muted>
+                  {filter === "all" ? "No emails yet" : `No ${filter} emails`}
+                </Text>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="list"
+                initial={reduced ? false : { opacity: 0 }}
+                animate={reduced ? undefined : { opacity: 1 }}
+                exit={reduced ? undefined : { opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <EmailList
+                  emails={filteredEmails}
+                  {...(selectedEmailId !== undefined ? { selectedId: selectedEmailId } : {})}
+                  onSelect={handleSelect}
+                  onStar={handleStar}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Box>
         <Box className="flex-1 min-w-0 flex flex-col">
           {detailLoading ? (
