@@ -14,17 +14,12 @@ import type {
   SuggestedAction,
   UserBehaviorProfile,
   WeightedSender,
-  WeightedKeyword,
-  ConfidenceScore,
   Result,
-  AIEngineError,
 } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const MODEL_VERSION = '1.0.0';
 
 /** Weight factors for each signal category */
 const SIGNAL_WEIGHTS = {
@@ -154,8 +149,6 @@ export class PriorityRanker {
    * Returns a composite score, tier, contributing signals, and suggested actions.
    */
   rank(email: EmailMessage, userId: string): Result<PriorityRankingResult> {
-    const startTime = performance.now();
-
     try {
       const profile = this.behaviorProfiles.get(userId);
       const signals: PrioritySignal[] = [];

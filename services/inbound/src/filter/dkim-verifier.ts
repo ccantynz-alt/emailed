@@ -337,14 +337,14 @@ function parseDkimSignature(rawHeader: string): DkimSignatureFields {
   const bh = (tags.get("bh") ?? "").replace(/\s+/g, "");
 
   const result: DkimSignatureFields = {
-    v: tags.get("v")!,
-    a: tags.get("a")!,
+    v: tags.get("v") ?? "",
+    a: tags.get("a") ?? "",
     b,
     bh,
     c: tags.get("c") ?? "simple/simple",
-    d: tags.get("d")!,
-    h: tags.get("h")!,
-    s: tags.get("s")!,
+    d: tags.get("d") ?? "",
+    h: tags.get("h") ?? "",
+    s: tags.get("s") ?? "",
   };
 
   const l = tags.get("l");
@@ -383,7 +383,7 @@ async function fetchDkimPublicKey(selector: string, domain: string): Promise<Dki
   } catch (e: unknown) {
     const code = (e as NodeJS.ErrnoException).code;
     if (code === "ENOTFOUND" || code === "ENODATA") {
-      throw new Error(`No DKIM key found at ${name}`);
+      throw new Error(`No DKIM key found at ${name}`, { cause: e });
     }
     throw e;
   }
@@ -393,7 +393,11 @@ async function fetchDkimPublicKey(selector: string, domain: string): Promise<Dki
   }
 
   // TXT records may be split into multiple strings; concatenate them
-  const txtValue = records[0]!.join("");
+  const firstRecord = records[0];
+  if (!firstRecord) {
+    throw new Error(`No DKIM TXT record found at ${name}`);
+  }
+  const txtValue = firstRecord.join("");
 
   return parseDkimDnsRecord(txtValue);
 }
@@ -516,9 +520,11 @@ function canonicalizeSignedHeaders(
     const idx = consumeIndex.get(key) ?? -1;
 
     if (arr && idx >= 0) {
-      const header = arr[idx]!;
-      result.push(canonicalizeHeaderLine(header.raw, mode) + "\r\n");
-      consumeIndex.set(key, idx - 1);
+      const header = arr[idx];
+      if (header) {
+        result.push(canonicalizeHeaderLine(header.raw, mode) + "\r\n");
+        consumeIndex.set(key, idx - 1);
+      }
     }
     // If the header is not present, it is simply omitted (RFC 6376 5.4)
   }

@@ -10,8 +10,6 @@ import type {
   TrackingEvent,
   TrackingPixel,
   TrackedLink,
-  EventType,
-  EventMetadata,
   EventBatch,
   IngestionStats,
   IngestionConfig,
@@ -461,7 +459,7 @@ export class EventIngestionPipeline {
       // Running average of processing time
       this.stats.avgProcessingTimeMs =
         this.stats.avgProcessingTimeMs * 0.9 + duration * 0.1;
-    } catch (error) {
+    } catch {
       this.stats.eventsFailed += batch.length;
       // On failure, put events back in buffer for retry (at the front)
       this.buffer.unshift(...batch);
@@ -489,12 +487,14 @@ export function decodeTrackingToken(
   try {
     const decoded = Buffer.from(token, "base64url").toString("utf-8");
     const parts = decoded.split("|");
-    if (parts.length < 3) {
+    const messageId = parts[0];
+    const accountId = parts[1];
+    if (parts.length < 3 || messageId === undefined || accountId === undefined) {
       return err(new Error("Invalid tracking token format"));
     }
     return ok({
-      messageId: parts[0]!,
-      accountId: parts[1]!,
+      messageId,
+      accountId,
       payload: parts.slice(2).join("|"),
     });
   } catch (error) {

@@ -25,7 +25,6 @@ import {
   type SemanticSearchHit,
   type HybridSearchRequest,
   type HybridSearchResponse,
-  type EmbeddableEmail,
   MIN_SIMILARITY_THRESHOLD,
 } from "./types.js";
 
@@ -189,7 +188,8 @@ function fuseResults(
 
   // Score vector hits
   for (let rank = 0; rank < vectorHits.length; rank++) {
-    const hit = vectorHits[rank]!;
+    const hit = vectorHits[rank];
+    if (!hit) continue;
     const rrfScore = vectorWeight / (RRF_K + rank + 1);
     const existing = map.get(hit.emailId);
     if (existing) {
@@ -207,7 +207,8 @@ function fuseResults(
   // Score keyword hits
   const keywordWeight = 1 - vectorWeight;
   for (let rank = 0; rank < keywordHits.length; rank++) {
-    const hit = keywordHits[rank]!;
+    const hit = keywordHits[rank];
+    if (!hit) continue;
     const rrfScore = keywordWeight / (RRF_K + rank + 1);
     const existing = map.get(hit.emailId);
     if (existing) {

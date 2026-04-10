@@ -381,8 +381,9 @@ export function formatReportAsCsv(report: Report): string {
   lines.push("");
 
   // Time series
-  if (report.timeSeries.length > 0) {
-    const metricNames = Object.keys(report.timeSeries[0]!.metrics);
+  const firstSeriesPoint = report.timeSeries[0];
+  if (firstSeriesPoint) {
+    const metricNames = Object.keys(firstSeriesPoint.metrics);
     lines.push(`Timestamp,${metricNames.join(",")}`);
     for (const point of report.timeSeries) {
       const values = metricNames.map((m) => point.metrics[m as MetricType] ?? 0);
@@ -393,8 +394,9 @@ export function formatReportAsCsv(report: Report): string {
 
   // Breakdowns
   for (const [dimension, entries] of Object.entries(report.breakdowns)) {
-    if (entries.length === 0) continue;
-    const metricNames = Object.keys(entries[0]!.metrics);
+    const firstEntry = entries[0];
+    if (!firstEntry) continue;
+    const metricNames = Object.keys(firstEntry.metrics);
     lines.push(`Breakdown by ${dimension}`);
     lines.push(`Value,${metricNames.join(",")},Percentage`);
     for (const entry of entries) {

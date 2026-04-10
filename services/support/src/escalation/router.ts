@@ -10,14 +10,13 @@ import type {
   ConversationMessage,
   DiagnosticReport,
   EscalationContext,
+  EscalationReason,
   EscalationRequest,
   EscalationResult,
   EscalationRule,
   EscalationTeam,
   Ticket,
-  Result,
 } from "../types";
-import { ok, err } from "../types";
 
 // ─── Sentiment Analysis ─────────────────────────────────────────────────────
 
@@ -68,7 +67,8 @@ function analyzeSentiment(messages: ConversationMessage[]): Sentiment {
 
   // Weight recent messages more heavily
   for (let i = 0; i < customerMessages.length; i++) {
-    const msg = customerMessages[i]!;
+    const msg = customerMessages[i];
+    if (!msg) continue;
     const recencyWeight = (i + 1) / customerMessages.length; // More recent = higher weight
     const text = msg.content.toLowerCase();
 
@@ -301,7 +301,13 @@ export class EscalationRouter {
       (a, b) => (urgencyOrder[a.urgency] ?? 99) - (urgencyOrder[b.urgency] ?? 99),
     );
 
-    const primaryRule = matchedRules[0]!;
+    const primaryRule = matchedRules[0];
+    if (!primaryRule) {
+      return {
+        escalated: false,
+        reason: "No escalation criteria met. AI can continue handling this ticket.",
+      };
+    }
     const team = this.findAvailableTeam(primaryRule.team);
     const reasons = matchedRules.map((r) => r.description);
 
@@ -543,7 +549,7 @@ export class EscalationRouter {
 
   private mapReasonToEnum(
     reason: string,
-  ): import("../types").EscalationReason {
+  ): EscalationReason {
     const lower = reason.toLowerCase();
 
     if (lower.includes("confidence")) return "low_confidence";

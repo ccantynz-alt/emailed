@@ -85,8 +85,9 @@ export function parseSequenceSet(input: string): [number, number][] {
 
     if (trimmed.includes(":")) {
       const [startStr, endStr] = trimmed.split(":");
-      const start = startStr === "*" ? Infinity : parseInt(startStr!, 10);
-      const end = endStr === "*" ? Infinity : parseInt(endStr!, 10);
+      if (startStr === undefined || endStr === undefined) continue;
+      const start = startStr === "*" ? Infinity : parseInt(startStr, 10);
+      const end = endStr === "*" ? Infinity : parseInt(endStr, 10);
       if (Number.isNaN(start) || Number.isNaN(end)) continue;
       ranges.push([Math.min(start, end), Math.max(start, end)]);
     } else {
@@ -147,7 +148,8 @@ export function parseQuotedString(input: string): { value: string; rest: string 
   let value = "";
 
   while (i < trimmed.length) {
-    const ch = trimmed[i]!;
+    const ch = trimmed[i];
+    if (ch === undefined) break;
     if (escaped) {
       value += ch;
       escaped = false;
@@ -178,7 +180,7 @@ export function parseAtom(input: string): { value: string; rest: string } {
   if (!match) {
     return { value: "", rest: trimmed };
   }
-  return { value: match[1]!, rest: match[2]!.trim() };
+  return { value: match[1] ?? "", rest: (match[2] ?? "").trim() };
 }
 
 /**
@@ -218,7 +220,7 @@ export function detectLiteral(line: string): { count: number; nonSync: boolean }
   const match = /\{(\d+)(\+)?\}\s*$/.exec(line);
   if (!match) return null;
 
-  const count = parseInt(match[1]!, 10);
+  const count = parseInt(match[1] ?? "0", 10);
   const nonSync = match[2] === "+";
   return { count, nonSync };
 }
@@ -329,36 +331,47 @@ function tokenizeFetchItems(input: string): string[] {
 
   while (i < input.length) {
     // Skip whitespace
-    while (i < input.length && /\s/.test(input[i]!)) i++;
+    while (i < input.length) {
+      const c = input[i];
+      if (c === undefined || !/\s/.test(c)) break;
+      i++;
+    }
     if (i >= input.length) break;
 
     let token = "";
     // Read until whitespace, but handle brackets
-    while (i < input.length && !/\s/.test(input[i]!)) {
-      if (input[i] === "[") {
+    while (i < input.length) {
+      const ch = input[i];
+      if (ch === undefined || /\s/.test(ch)) break;
+      if (ch === "[") {
         // Read until matching "]"
         let depth = 1;
-        token += input[i]!;
+        token += ch;
         i++;
         while (i < input.length && depth > 0) {
-          if (input[i] === "[") depth++;
-          if (input[i] === "]") depth--;
-          token += input[i]!;
+          const inner = input[i];
+          if (inner === undefined) break;
+          if (inner === "[") depth++;
+          if (inner === "]") depth--;
+          token += inner;
           i++;
         }
         // Check for partial <start.count>
         if (i < input.length && input[i] === "<") {
           while (i < input.length && input[i] !== ">") {
-            token += input[i]!;
+            const p = input[i];
+            if (p === undefined) break;
+            token += p;
             i++;
           }
           if (i < input.length) {
-            token += input[i]!;
+            const close = input[i];
+            if (close !== undefined) token += close;
             i++;
           }
         }
       } else {
-        token += input[i]!;
+        token += ch;
         i++;
       }
     }
@@ -386,9 +399,9 @@ function parseBodySection(token: string): ImapBodySection | null {
   let partialStart: number | undefined;
   let partialCount: number | undefined;
   const partialMatch = /^<(\d+)\.(\d+)>/.exec(afterBracket);
-  if (partialMatch) {
-    partialStart = parseInt(partialMatch[1]!, 10);
-    partialCount = parseInt(partialMatch[2]!, 10);
+  if (partialMatch?.[1] !== undefined && partialMatch[2] !== undefined) {
+    partialStart = parseInt(partialMatch[1], 10);
+    partialCount = parseInt(partialMatch[2], 10);
   }
 
   // Parse section specifier
@@ -400,12 +413,12 @@ function parseBodySection(token: string): ImapBodySection | null {
   const headerFieldsMatch2 = /^(.*?)HEADER\.FIELDS\s*\(([^)]*)\)$/i.exec(sectionStr);
 
   if (headerFieldsMatch) {
-    section = (headerFieldsMatch[1]! + "HEADER.FIELDS.NOT").trim();
-    headerFields = headerFieldsMatch[2]!.trim().split(/\s+/);
+    section = ((headerFieldsMatch[1] ?? "") + "HEADER.FIELDS.NOT").trim();
+    headerFields = (headerFieldsMatch[2] ?? "").trim().split(/\s+/);
     headerFieldsNot = true;
   } else if (headerFieldsMatch2) {
-    section = (headerFieldsMatch2[1]! + "HEADER.FIELDS").trim();
-    headerFields = headerFieldsMatch2[2]!.trim().split(/\s+/);
+    section = ((headerFieldsMatch2[1] ?? "") + "HEADER.FIELDS").trim();
+    headerFields = (headerFieldsMatch2[2] ?? "").trim().split(/\s+/);
   }
 
   return {
@@ -433,7 +446,7 @@ export function parseStoreArgs(args: string): StoreOperation | null {
 
   const prefix = match[1] ?? "";
   const silent = match[2] !== undefined;
-  const flagsStr = match[3]!.trim();
+  const flagsStr = (match[3] ?? "").trim();
 
   let action: StoreAction;
   if (prefix === "+") {
@@ -690,6 +703,7 @@ function escapeQuoted(value: string): string {
  */
 function needsQuoting(value: string): boolean {
   if (value === "INBOX") return false;
+  // eslint-disable-next-line no-control-regex
   return /[\s"()\\{}\x00-\x1f\x7f%*]/.test(value) || value.length === 0;
 }
 

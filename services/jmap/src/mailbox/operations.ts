@@ -104,7 +104,11 @@ export class MailboxOperations {
 
   private getStore(accountId: JmapId): Map<JmapId, Mailbox> {
     this.initAccount(accountId);
-    return this.mailboxes.get(accountId)!;
+    const store = this.mailboxes.get(accountId);
+    if (!store) {
+      throw new Error(`Mailbox store missing for account ${accountId}`);
+    }
+    return store;
   }
 
   // --- Mailbox/get (RFC 8621 Section 2.5) ---
@@ -358,8 +362,8 @@ export class MailboxOperations {
     }
 
     // Apply sort
-    if (args.sort && args.sort.length > 0) {
-      const comparator = args.sort[0]!;
+    const comparator = args.sort?.[0];
+    if (comparator) {
       const prop = comparator.property as keyof Mailbox;
       const asc = comparator.isAscending !== false;
 

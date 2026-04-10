@@ -5,7 +5,7 @@
 // accessible transcript output, multi-language auto-detection.
 // =============================================================================
 
-import type { Result, AIEngineError } from "../types.js";
+import type { Result } from "../types.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

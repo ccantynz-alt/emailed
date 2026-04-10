@@ -226,7 +226,8 @@ export class SmtpClient extends EventEmitter {
     // Parse extensions from multi-line response
     this.extensions.clear();
     for (let i = 1; i < response.lines.length; i++) {
-      const line = response.lines[i]!;
+      const line = response.lines[i];
+      if (line === undefined) continue;
       const spaceIndex = line.indexOf(" ");
       if (spaceIndex > 0) {
         this.extensions.set(

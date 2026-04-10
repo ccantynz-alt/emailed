@@ -78,10 +78,9 @@ export class DnsPropagationChecker {
     let resolvers = [...this.resolvers];
 
     // Filter by region if specified
-    if (options?.regions) {
-      resolvers = resolvers.filter((r) =>
-        options.regions!.includes(r.region)
-      );
+    const regions = options?.regions;
+    if (regions) {
+      resolvers = resolvers.filter((r) => regions.includes(r.region));
     }
 
     // Limit number of resolvers
@@ -101,7 +100,6 @@ export class DnsPropagationChecker {
     );
 
     const propagatedCount = results.filter((r) => r.matchesExpected).length;
-    const resolvedCount = results.filter((r) => r.resolved).length;
 
     return {
       domain,
@@ -371,7 +369,8 @@ function parseResponseValues(msg: Buffer, expectedType: RecordType): string[] {
 function skipDnsName(buffer: Buffer, offset: number): number {
   let pos = offset;
   while (pos < buffer.length) {
-    const len = buffer[pos]!;
+    const len = buffer[pos];
+    if (len === undefined) throw new Error("Malformed DNS name");
     if ((len & 0xc0) === 0xc0) return pos + 2;
     if (len === 0) return pos + 1;
     pos += 1 + len;
@@ -399,7 +398,8 @@ function decodeRdata(type: RecordType, rdata: Buffer): string | null {
       let result = "";
       let pos = 0;
       while (pos < rdata.length) {
-        const len = rdata[pos]!;
+        const len = rdata[pos];
+        if (len === undefined) break;
         pos++;
         result += rdata.subarray(pos, pos + len).toString("utf-8");
         pos += len;
@@ -414,8 +414,8 @@ function decodeRdata(type: RecordType, rdata: Buffer): string | null {
       let name = "";
       let pos = 2;
       while (pos < rdata.length) {
-        const len = rdata[pos]!;
-        if (len === 0) break;
+        const len = rdata[pos];
+        if (len === undefined || len === 0) break;
         if ((len & 0xc0) === 0xc0) break; // compression pointer
         pos++;
         name += (name ? "." : "") + rdata.subarray(pos, pos + len).toString("ascii");

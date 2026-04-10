@@ -325,11 +325,9 @@ export function parseDnsMessage(buffer: Buffer): DnsMessage {
     throw new Error("DNS message too short: must be at least 12 bytes");
   }
 
-  let offset = 0;
-
   // Parse header (12 bytes)
   const header = parseDnsHeader(buffer);
-  offset = 12;
+  let offset = 12;
 
   // Parse questions
   const questions: DnsQuestion[] = [];
@@ -438,7 +436,10 @@ export function decodeName(
       throw new Error("DNS name extends beyond message");
     }
 
-    const length = buffer[currentOffset]!;
+    const length = buffer[currentOffset];
+    if (length === undefined) {
+      throw new Error("DNS name read past buffer end");
+    }
 
     // Check for compression pointer (top 2 bits set)
     if ((length & 0xc0) === 0xc0) {
@@ -636,13 +637,13 @@ export function encodeRdata(
     case RecordType.SRV: {
       // SRV RDATA: priority (2) + weight (2) + port (2) + target
       const srvParts = value.split(" ");
-      if (srvParts.length < 4) {
+      if (srvParts.length < 4 || srvParts[0] === undefined || srvParts[1] === undefined || srvParts[2] === undefined || srvParts[3] === undefined) {
         throw new Error("SRV value must be: priority weight port target");
       }
-      const srvPriority = parseInt(srvParts[0]!, 10);
-      const weight = parseInt(srvParts[1]!, 10);
-      const port = parseInt(srvParts[2]!, 10);
-      const target = srvParts[3]!;
+      const srvPriority = parseInt(srvParts[0], 10);
+      const weight = parseInt(srvParts[1], 10);
+      const port = parseInt(srvParts[2], 10);
+      const target = srvParts[3];
       const targetBuf = encodeName(target);
       const buf = Buffer.alloc(6 + targetBuf.length);
       buf.writeUInt16BE(srvPriority, 0);
@@ -663,8 +664,8 @@ function encodeIPv6(address: string): Buffer {
   let expanded = address;
   if (expanded.includes("::")) {
     const sides = expanded.split("::");
-    const left = sides[0] ? sides[0]!.split(":") : [];
-    const right = sides[1] ? sides[1]!.split(":") : [];
+    const left = sides[0] ? sides[0].split(":") : [];
+    const right = sides[1] ? sides[1].split(":") : [];
     const missing = 8 - left.length - right.length;
     const middle = Array(missing).fill("0");
     expanded = [...left, ...middle, ...right].join(":");
@@ -677,7 +678,8 @@ function encodeIPv6(address: string): Buffer {
 
   const buf = Buffer.alloc(16);
   for (let i = 0; i < 8; i++) {
-    buf.writeUInt16BE(parseInt(groups[i]!, 16), i * 2);
+    const group = groups[i] ?? "0";
+    buf.writeUInt16BE(parseInt(group, 16), i * 2);
   }
   return buf;
 }

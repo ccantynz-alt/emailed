@@ -14,7 +14,6 @@ import type {
   CreateTicketInput,
   UpdateTicketInput,
   SlaInfo,
-  SlaPolicy,
   Result,
 } from "../types";
 import { ok, err, SLA_POLICIES } from "../types";
@@ -123,8 +122,10 @@ export function autoCategorize(
 
   // Confidence is based on the gap between best and second-best
   const sortedScores = Array.from(scores.values()).sort((a, b) => b - a);
-  const gap = sortedScores.length > 1
-    ? (sortedScores[0]! - sortedScores[1]!) / sortedScores[0]!
+  const first = sortedScores[0] ?? 0;
+  const second = sortedScores[1] ?? 0;
+  const gap = sortedScores.length > 1 && first > 0
+    ? (first - second) / first
     : 1.0;
 
   const confidence = Math.min(1.0, bestScore * 0.5 + gap * 0.5);
@@ -622,12 +623,14 @@ export class InMemoryTicketStore implements TicketStore {
       results = results.filter((t) => t.assignedTo === filter.assignedTo);
     }
 
-    if (filter.createdAfter) {
-      results = results.filter((t) => t.createdAt >= filter.createdAfter!);
+    const createdAfter = filter.createdAfter;
+    if (createdAfter) {
+      results = results.filter((t) => t.createdAt >= createdAfter);
     }
 
-    if (filter.createdBefore) {
-      results = results.filter((t) => t.createdAt < filter.createdBefore!);
+    const createdBefore = filter.createdBefore;
+    if (createdBefore) {
+      results = results.filter((t) => t.createdAt < createdBefore);
     }
 
     // Sort by priority (critical first), then by creation time

@@ -11,7 +11,6 @@ import type {
   WebPresenceResult,
   SocialSignalResult,
   Result,
-  AIEngineError,
 } from '../types.js';
 
 // ---------------------------------------------------------------------------

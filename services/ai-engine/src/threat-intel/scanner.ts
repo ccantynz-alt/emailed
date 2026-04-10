@@ -10,12 +10,10 @@ import type {
   EmailMessage,
   EmailAttachment,
   ThreatSignal,
-  ThreatType,
   ThreatIndicator,
   ThreatFeed,
   Result,
   AIEngineError,
-  ConfidenceScore,
 } from '../types.js';
 
 // ---------------------------------------------------------------------------

@@ -14,7 +14,6 @@ import type {
   EmailMessage,
   ComposeTone,
   Result,
-  AIEngineError,
 } from '../types.js';
 
 // ---------------------------------------------------------------------------
@@ -515,7 +514,7 @@ export class ComposeAssistant {
     };
   }
 
-  private postProcess(text: string, voiceProfile: UserVoiceProfile | undefined): string {
+  private postProcess(text: string, _voiceProfile: UserVoiceProfile | undefined): string {
     let result = text.trim();
 
     // Remove any AI preamble that slipped through

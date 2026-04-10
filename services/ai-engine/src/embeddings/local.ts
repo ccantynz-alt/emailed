@@ -69,14 +69,14 @@ interface TransformersOutput {
  */
 function l2Normalize(vec: number[]): number[] {
   let sumSq = 0;
-  for (let i = 0; i < vec.length; i++) {
-    const v = vec[i]!;
+  for (const v of vec) {
     sumSq += v * v;
   }
   const norm = Math.sqrt(sumSq);
   if (norm === 0) return vec;
   for (let i = 0; i < vec.length; i++) {
-    vec[i] = vec[i]! / norm;
+    const current = vec[i] ?? 0;
+    vec[i] = current / norm;
   }
   return vec;
 }
@@ -93,7 +93,7 @@ function padToTarget(vec: number[], targetDim: number): number[] {
 
   const padded = new Array<number>(targetDim).fill(0);
   for (let i = 0; i < vec.length; i++) {
-    padded[i] = vec[i]!;
+    padded[i] = vec[i] ?? 0;
   }
   return padded;
 }
@@ -114,12 +114,12 @@ function meanPool(data: Float32Array, dims: readonly number[]): number[][] {
     for (let t = 0; t < seqLen; t++) {
       const tokenOffset = batchOffset + t * hiddenDim;
       for (let d = 0; d < hiddenDim; d++) {
-        vec[d] = vec[d]! + (data[tokenOffset + d] ?? 0);
+        vec[d] = (vec[d] ?? 0) + (data[tokenOffset + d] ?? 0);
       }
     }
 
     for (let d = 0; d < hiddenDim; d++) {
-      vec[d] = vec[d]! / seqLen;
+      vec[d] = (vec[d] ?? 0) / seqLen;
     }
 
     results.push(vec);
@@ -163,6 +163,7 @@ async function loadPipeline(
       _loadPromise = null;
       throw new Error(
         `Failed to load Transformers.js model "${modelId}": ${(err as Error).message}`,
+        { cause: err },
       );
     }
   })();
@@ -225,11 +226,11 @@ export async function embedLocalText(
   const vec = new Array<number>(hiddenDim).fill(0);
   for (const token of batch) {
     for (let d = 0; d < hiddenDim; d++) {
-      vec[d] = vec[d]! + (token[d] ?? 0);
+      vec[d] = (vec[d] ?? 0) + (token[d] ?? 0);
     }
   }
   for (let d = 0; d < hiddenDim; d++) {
-    vec[d] = vec[d]! / batch.length;
+    vec[d] = (vec[d] ?? 0) / batch.length;
   }
 
   return padToTarget(l2Normalize(vec), targetDim);

@@ -31,9 +31,9 @@ async function authenticateRequest(authHeader: string | undefined): Promise<Auth
   const token = authHeader.slice(7);
   try {
     const parts = token.split(".");
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3 || parts[1] === undefined) return null;
 
-    const payload = JSON.parse(atob(parts[1]!));
+    const payload = JSON.parse(atob(parts[1]));
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
 
     const accountId = payload.sub as string;
@@ -559,7 +559,7 @@ app.onError((err, c) => {
 
 const port = parseInt(process.env.PORT ?? "3001", 10);
 
-console.log(`Emailed JMAP server starting on port ${port}`);
+console.warn(`Emailed JMAP server starting on port ${port}`);
 
 // Initialize OpenTelemetry
 initTelemetry("emailed-jmap").catch((err) => {
@@ -568,9 +568,9 @@ initTelemetry("emailed-jmap").catch((err) => {
 
 // Graceful shutdown
 async function shutdown(signal: string): Promise<void> {
-  console.log(`[jmap] Received ${signal} — shutting down...`);
-  await shutdownTelemetry().catch(() => {});
-  console.log("[jmap] Shutdown complete");
+  console.warn(`[jmap] Received ${signal} — shutting down...`);
+  await shutdownTelemetry().catch(() => { /* no-op */ });
+  console.warn("[jmap] Shutdown complete");
   process.exit(0);
 }
 

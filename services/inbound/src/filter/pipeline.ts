@@ -81,7 +81,11 @@ async function authenticationCheck(ctx: FilterContext): Promise<FilterContext> {
   }
 
   // The best result is first (sorted by verifyDkim)
-  const bestDkim = dkimResults[0]!;
+  const bestDkim = dkimResults[0] ?? {
+    status: "none" as const,
+    domain: "",
+    selector: "",
+  };
   const dkimDomain: string | undefined = bestDkim.domain || undefined;
   const dkimSelector: string | undefined = bestDkim.selector || undefined;
   const dkimStatus: AuthenticationResult["result"] = bestDkim.status === "none"
@@ -327,8 +331,9 @@ async function phishingFilter(ctx: FilterContext): Promise<FilterContext> {
     const linkRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
     let match: RegExpExecArray | null;
     while ((match = linkRegex.exec(email.html)) !== null) {
-      const href = match[1]!;
-      const displayText = match[2]!.trim();
+      const href = match[1];
+      const displayText = match[2]?.trim();
+      if (href === undefined || displayText === undefined) continue;
 
       // If display text looks like a URL but points elsewhere
       if (displayText.match(/^https?:\/\//)) {

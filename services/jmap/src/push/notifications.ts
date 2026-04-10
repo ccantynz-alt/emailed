@@ -210,9 +210,10 @@ export class PushNotificationService {
       }
 
       // Check type filter
-      if (entry.subscription.types) {
+      const types = entry.subscription.types;
+      if (types) {
         const changedTypes = Object.keys(stateChange.changed[accountId] ?? {});
-        const hasMatch = changedTypes.some((t) => entry.subscription.types!.includes(t));
+        const hasMatch = changedTypes.some((t) => types.includes(t));
         if (!hasMatch) continue;
       }
 
@@ -328,8 +329,9 @@ export class EventSourceClient {
    * Check if this client should receive changes for the given types.
    */
   shouldReceive(changes: Record<string, string>): boolean {
-    if (!this.options.types) return true;
-    return Object.keys(changes).some((type) => this.options.types!.includes(type));
+    const types = this.options.types;
+    if (!types) return true;
+    return Object.keys(changes).some((type) => types.includes(type));
   }
 
   startPing(intervalSeconds: number): void {
@@ -395,8 +397,9 @@ export class WebSocketClient {
    * Check if this client should receive changes for the given types.
    */
   shouldReceive(changes: Record<string, string>): boolean {
-    if (!this.options.types) return true;
-    return Object.keys(changes).some((type) => this.options.types!.includes(type));
+    const types = this.options.types;
+    if (!types) return true;
+    return Object.keys(changes).some((type) => types.includes(type));
   }
 
   /**

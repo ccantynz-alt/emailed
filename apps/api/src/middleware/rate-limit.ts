@@ -145,8 +145,8 @@ async function checkRedis(
     // Find the oldest entry to calculate retry-after
     const oldest = await redis.zrange(key, 0, 0, "WITHSCORES");
     let retryAfterSec = Math.ceil(windowMs / 1000);
-    if (oldest.length >= 2) {
-      const oldestTs = parseInt(oldest[1]!, 10);
+    if (oldest.length >= 2 && oldest[1] !== undefined) {
+      const oldestTs = parseInt(oldest[1], 10);
       retryAfterSec = Math.max(1, Math.ceil((oldestTs + windowMs - now) / 1000));
     }
     return { allowed: false, limit, remaining: 0, resetAt, retryAfterSec };
@@ -179,7 +179,7 @@ function checkMemory(
   const count = entry.timestamps.length;
 
   if (count >= limit) {
-    const oldest = entry.timestamps[0]!;
+    const oldest = entry.timestamps[0] ?? now;
     const retryAfterSec = Math.max(1, Math.ceil((oldest + windowMs - now) / 1000));
     return { allowed: false, limit, remaining: 0, resetAt, retryAfterSec };
   }

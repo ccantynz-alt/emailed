@@ -30,10 +30,6 @@ export class JmapHandler {
   private sessionState = "0";
   private stateCounter = 0;
 
-  constructor() {
-    // Register error handler for unknown methods
-  }
-
   /**
    * Register a method handler (e.g., "Mailbox/get", "Email/query").
    */

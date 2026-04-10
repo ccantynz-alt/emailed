@@ -14,7 +14,6 @@ import type {
   PhishingIndicator,
   ConfidenceScore,
   Result,
-  AIEngineError,
 } from '../types.js';
 
 // ---------------------------------------------------------------------------
@@ -258,7 +257,7 @@ function detectDomainSpoofing(senderDomain: string): DomainSpoofingResult {
   const domainLower = senderDomain.toLowerCase();
   const domainBase = domainLower.replace(/^www\./, '');
 
-  for (const [brand, domains] of KNOWN_BRANDS) {
+  for (const [, domains] of KNOWN_BRANDS) {
     for (const legitDomain of domains) {
       if (domainBase === legitDomain) {
         return { isSpoofed: false, similarity: 1.0 };
@@ -328,8 +327,9 @@ function containsHomoglyphs(candidate: string, target: string): boolean {
 
   let homoglyphCount = 0;
   for (let i = 0; i < candidate.length; i++) {
-    const candidateChar = candidate[i]!;
-    const targetChar = target[i]!;
+    const candidateChar = candidate[i];
+    const targetChar = target[i];
+    if (candidateChar === undefined || targetChar === undefined) continue;
     if (candidateChar === targetChar) continue;
 
     const substitutes = HOMOGLYPHS.get(targetChar);
@@ -493,8 +493,6 @@ export class PhishingDetector {
    * Returns a composite result with per-signal breakdown.
    */
   async detect(email: EmailMessage): Promise<Result<PhishingDetectionResult>> {
-    const startTime = performance.now();
-
     try {
       const textBody = email.content.textBody ?? '';
       const htmlBody = email.content.htmlBody ?? '';

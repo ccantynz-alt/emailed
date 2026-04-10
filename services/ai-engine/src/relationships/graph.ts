@@ -21,8 +21,6 @@ import type {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MODEL_VERSION = '1.0.0';
-
 /** Decay factor applied per day to relationship strength (exponential decay) */
 const DAILY_DECAY_FACTOR = 0.995;
 

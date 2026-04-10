@@ -143,7 +143,8 @@ async function processBatch(jobs: AutoIndexJob[]): Promise<void> {
 
   // Upsert into pgvector
   for (let i = 0; i < validJobs.length; i++) {
-    const entry = validJobs[i]!;
+    const entry = validJobs[i];
+    if (!entry) continue;
     const vec = vectors[i];
     if (!vec || vec.length !== EMBEDDING_DIMENSIONS) {
       _totalFailed += 1;

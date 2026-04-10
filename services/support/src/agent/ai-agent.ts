@@ -15,7 +15,8 @@ import type {
   AgentResponse,
   Conversation,
   ConversationContext,
-  ConversationMessage,
+  DiagnosticReport,
+  KnowledgeSearchResult,
   Result,
 } from "../types";
 import { ok, err } from "../types";
@@ -45,10 +46,10 @@ export interface PlatformServices {
     rotateDkimKey(domain: string): Promise<Result<{ selector: string; publicKey: string }>>;
   };
   diagnostics: {
-    runFull(accountId: string, domain: string): Promise<Result<import("../types").DiagnosticReport>>;
+    runFull(accountId: string, domain: string): Promise<Result<DiagnosticReport>>;
   };
   knowledge: {
-    search(query: string, limit?: number): Promise<Result<import("../types").KnowledgeSearchResult[]>>;
+    search(query: string, limit?: number): Promise<Result<KnowledgeSearchResult[]>>;
   };
 }
 
@@ -321,7 +322,6 @@ export class AiSupportAgent {
         }
 
         // Execute tool calls and build tool results
-        const toolResults: Anthropic.MessageParam[] = [];
         const assistantContent: Anthropic.ContentBlockParam[] = [];
 
         // Include text blocks in assistant message
@@ -482,8 +482,6 @@ export class AiSupportAgent {
       params,
       description: `Executing ${actionType}`,
     };
-
-    const startTime = Date.now();
 
     try {
       let data: unknown;

@@ -10,7 +10,6 @@
  *   - RFC 5321  SMTP reply codes
  */
 
-import { randomUUID } from "node:crypto";
 import {
   type BounceInfo,
   type BounceCategory,

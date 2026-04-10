@@ -9,7 +9,6 @@
 import type {
   EmailMessage,
   SentimentResult,
-  ConfidenceScore,
   Result,
   AIEngineError,
 } from '../types.js';

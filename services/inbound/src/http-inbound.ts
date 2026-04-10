@@ -123,7 +123,7 @@ export function createHttpInbound(config: HttpInboundConfig): Hono {
 
       // Build a synthetic SMTP session for the pipeline
       const senderIp = c.req.header("X-Sender-IP") ?? c.req.header("X-Real-IP") ?? "0.0.0.0";
-      const session: SmtpSession = {
+      const _session: SmtpSession = {
         id: `http-${crypto.randomUUID()}`,
         remoteAddress: senderIp,
         remotePort: 0,
@@ -250,11 +250,9 @@ export function createHttpInbound(config: HttpInboundConfig): Hono {
         }
 
         const resolved = await router.resolve(envelope.rcptTo);
-        let deliveryCount = 0;
         for (const [, resolution] of resolved) {
           if (!resolution || resolution.rule.action === "forward") continue;
           await store.store(parsed, resolution, verdict);
-          deliveryCount++;
         }
 
         results.push({ messageId: parsed.messageId, status: "accepted" });

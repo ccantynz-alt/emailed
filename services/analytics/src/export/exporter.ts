@@ -93,11 +93,11 @@ function buildFieldExtractors(fields: string[]): FieldExtractor[] {
   };
 
   return fields
-    .filter((f) => extractorMap[f] !== undefined)
-    .map((f) => ({
-      name: f,
-      extract: extractorMap[f]!,
-    }));
+    .map((f) => {
+      const extract = extractorMap[f];
+      return extract ? { name: f, extract } : null;
+    })
+    .filter((v): v is FieldExtractor => v !== null);
 }
 
 const DEFAULT_FIELDS = [
@@ -210,16 +210,17 @@ export class DataExporter {
     }
 
     const scheduleId = `sched-${Date.now().toString(36)}`;
-    const intervalMs = this.getScheduleIntervalMs(request.schedule);
+    const schedule = request.schedule;
+    const intervalMs = this.getScheduleIntervalMs(schedule);
 
     const timer = setInterval(() => {
       const now = new Date();
-      if (this.shouldRunSchedule(request.schedule!, now)) {
+      if (this.shouldRunSchedule(schedule, now)) {
         // Create a new request with updated date range
         const updatedRequest: ExportRequest = {
           ...request,
           id: `${request.id}-${Date.now()}`,
-          dateRange: this.computeScheduleDateRange(request.schedule!),
+          dateRange: this.computeScheduleDateRange(schedule),
           createdAt: now,
         };
         void this.export(updatedRequest);
@@ -246,7 +247,7 @@ export class DataExporter {
   /**
    * List all active export jobs.
    */
-  listJobs(accountId?: string): ExportJob[] {
+  listJobs(_accountId?: string): ExportJob[] {
     const jobs = Array.from(this.jobs.values());
     return jobs.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
   }
@@ -364,7 +365,7 @@ export class DataExporter {
     }
   }
 
-  private getScheduleIntervalMs(schedule: ExportSchedule): number {
+  private getScheduleIntervalMs(_schedule: ExportSchedule): number {
     // Check every hour if a scheduled export should run
     return 3_600_000;
   }

@@ -14,14 +14,11 @@ import type {
   ABTestConfig,
   ABTestResult,
   Result,
-  AIEngineError,
 } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const MODEL_VERSION = '1.0.0';
 
 /** Default minimum sample size for A/B test conclusions */
 const DEFAULT_MIN_SAMPLE_SIZE = 1000;
