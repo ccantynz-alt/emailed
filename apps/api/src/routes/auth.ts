@@ -219,9 +219,9 @@ function verifyBearerToken(authHeader: string | undefined): SessionPayload | nul
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7);
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
+  if (parts.length !== 3 || !parts[1]) return null;
   try {
-    const payload = JSON.parse(atob(parts[1]!)) as {
+    const payload = JSON.parse(atob(parts[1])) as {
       exp?: number;
       userId?: string;
       sub?: string;

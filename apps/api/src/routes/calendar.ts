@@ -101,7 +101,6 @@ function parseICS(ics: string): Partial<CalendarEvent> | null {
   const dtend = getField("DTEND");
   const location = getField("LOCATION");
   const description = getField("DESCRIPTION");
-  const organizer = getField("ORGANIZER");
 
   const parseICSDate = (val: string | null): string | null => {
     if (!val) return null;
@@ -118,7 +117,7 @@ function parseICS(ics: string): Partial<CalendarEvent> | null {
   return {
     title: summary,
     description: description?.replace(/\\n/g, "\n") ?? "",
-    ...(location != null ? { location } : {}),
+    ...(location !== null ? { location } : {}),
     startTime: parseICSDate(dtstart) ?? new Date().toISOString(),
     endTime: parseICSDate(dtend) ?? new Date().toISOString(),
     isAllDay: dtstart ? !dtstart.includes("T") : false,

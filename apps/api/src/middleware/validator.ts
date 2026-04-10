@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import type { Context } from "hono";
-import { z, type ZodSchema, type ZodError } from "zod";
+import type { ZodSchema, ZodError } from "zod";
 
 function formatZodError(error: ZodError): { field: string; message: string }[] {
   return error.issues.map((issue) => ({

@@ -345,7 +345,7 @@ export class PostgresEmailStore implements EmailStore {
 
   async delete(accountId: string, emailId: string): Promise<boolean> {
     const db = getDatabase();
-    const result = await db
+    await db
       .delete(emails)
       .where(and(eq(emails.id, emailId), eq(emails.accountId, accountId)));
 

@@ -361,7 +361,7 @@ async function handleSend(c: Context) {
   );
 
   // ── 6b. Record send against warm-up counter (fire-and-forget) ────
-  warmupOrchestrator.recordSend(domainRecord.id).catch(() => {});
+  warmupOrchestrator.recordSend(domainRecord.id).catch(() => { /* fire-and-forget */ });
 
   // ── 7. Index in Meilisearch (fire-and-forget) ────────────────────
   indexEmail({
@@ -391,7 +391,7 @@ async function handleSend(c: Context) {
       updatedAt: now,
     })
     .where(eq(accounts.id, auth.accountId))
-    .catch(() => {});
+    .catch(() => { /* fire-and-forget */ });
 
   // ── 9. Return response ────────────────────────────────────────────
   return c.json({ id, messageId, status: "queued" as const }, 202);

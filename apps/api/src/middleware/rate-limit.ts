@@ -322,7 +322,7 @@ export const globalIpRateLimit = rateLimitByIp(1000, ONE_MINUTE);
 
 export async function closeRateLimitRedis(): Promise<void> {
   if (redisClient) {
-    await redisClient.quit().catch(() => {});
+    await redisClient.quit().catch(() => { /* ignore */ });
     redisClient = null;
   }
 }

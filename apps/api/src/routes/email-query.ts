@@ -28,7 +28,6 @@ import {
 import {
   getDatabase,
   emails,
-  attachments,
   savedQueries,
   queryHistory,
 } from "@emailed/db";
@@ -105,7 +104,7 @@ function generateId(prefix: string): string {
 function buildWhereClause(
   accountId: string,
   conditions: readonly QueryCondition[],
-  logicalOp: "and" | "or" | "not",
+  _logicalOp: "and" | "or" | "not",
 ): ReturnType<typeof and> {
   const accountScope = eq(emails.accountId, accountId);
 
@@ -276,7 +275,7 @@ emailQuery.post(
     let parsedQuery: ParsedEmailQuery;
     try {
       parsedQuery = await translateQuery(body.query, {
-        ...(body.limit != null ? { maxLimit: body.limit } : {}),
+        ...(body.limit !== null && body.limit !== undefined ? { maxLimit: body.limit } : {}),
       });
     } catch (err) {
       return c.json(
@@ -367,11 +366,12 @@ emailQuery.post(
             .orderBy(desc(aggFn))
             .limit(parsedQuery.limit);
 
+          const aggFunction = parsedQuery.aggregation.function;
           result = {
-            columns: [groupLabel, parsedQuery.aggregation.function],
+            columns: [groupLabel, aggFunction],
             rows: rows.map((r) => ({
               [groupLabel]: r.group,
-              [parsedQuery.aggregation!.function]: Number(r.value),
+              [aggFunction]: Number(r.value),
             })),
             rowCount: rows.length,
             executionTimeMs: Date.now() - startMs,

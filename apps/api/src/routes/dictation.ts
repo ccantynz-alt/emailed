@@ -102,7 +102,6 @@ dictation.post(
       });
 
       if (!response.ok) {
-        const errText = await response.text();
         return c.json(
           {
             error: {
@@ -117,7 +116,7 @@ dictation.post(
 
       const result = (await response.json()) as { text: string };
       return c.json({ data: { text: result.text } });
-    } catch (err) {
+    } catch {
       return c.json(
         {
           error: {
