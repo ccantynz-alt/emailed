@@ -28,6 +28,10 @@ import { getSendQueue } from "../lib/queue.js";
 import { indexEmail, searchEmails } from "@emailed/shared";
 import { usageEnforcement } from "../middleware/usage.js";
 import { getWarmupOrchestrator, WARMUP_LIMIT_EXCEEDED } from "@emailed/reputation";
+import {
+  validateCustomHeaders,
+  HEADER_INJECTION_REJECTED,
+} from "@emailed/mta/lib";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -131,22 +135,26 @@ function buildRawMessage(
     lines.push("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
   }
 
-  // Custom headers
+  // Custom headers — already validated and sanitized by
+  // validateCustomHeaders() at queue-accept time. We still skip the
+  // handful of names the platform sets itself so customer-supplied
+  // Message-ID (etc) can't collide with the header lines already
+  // emitted above; everything else is guaranteed safe by the validator.
   if (input.headers) {
+    const platformOwned = new Set([
+      "from",
+      "to",
+      "cc",
+      "bcc",
+      "subject",
+      "message-id",
+      "date",
+      "mime-version",
+      "content-type",
+      "content-transfer-encoding",
+    ]);
     for (const [key, value] of Object.entries(input.headers)) {
-      // Prevent injection of restricted headers
-      const lk = key.toLowerCase();
-      if (
-        lk === "from" ||
-        lk === "to" ||
-        lk === "cc" ||
-        lk === "bcc" ||
-        lk === "subject" ||
-        lk === "message-id" ||
-        lk === "date"
-      ) {
-        continue;
-      }
+      if (platformOwned.has(key.toLowerCase())) continue;
       lines.push(`${key}: ${value}`);
     }
   }
@@ -234,6 +242,28 @@ async function handleSend(c: Context) {
     );
   }
 
+  // ── 1a. Validate customer-supplied custom headers ─────────────────
+  // Reputation-protection: Bcc/CRLF injection and platform-controlled
+  // headers (DKIM-Signature, Authentication-Results, etc) must never
+  // reach the SMTP DATA stream. Hard-reject at queue-accept time so
+  // the customer gets a clear error and no bad send is enqueued.
+  const headerCheck = validateCustomHeaders(
+    (input.headers ?? null) as Record<string, unknown> | null,
+  );
+  if (!headerCheck.ok) {
+    return c.json(
+      {
+        error: {
+          type: "validation_error",
+          message: headerCheck.reason,
+          code: HEADER_INJECTION_REJECTED,
+        },
+      },
+      400,
+    );
+  }
+  const sanitizedHeaders = headerCheck.sanitized;
+
   // ── 1b. Auto-enrol the domain in warm-up + hard-enforce day limit ─
   // `ensureWarmupAndCheck` creates a session on-the-fly for any domain
   // that doesn't have one, so new customers cannot bypass warm-up by
@@ -270,7 +300,12 @@ async function handleSend(c: Context) {
   }
 
   // ── 2. Build the raw RFC-5322 message ─────────────────────────────
-  const rawMessage = buildRawMessage(input, messageId, id);
+  // Pass sanitized headers so buildRawMessage never sees unvalidated input.
+  const rawMessage = buildRawMessage(
+    { ...input, headers: sanitizedHeaders },
+    messageId,
+    id,
+  );
 
   // ── 3. Collect all recipient addresses (to + cc + bcc) ────────────
   const allRecipients = [
@@ -304,7 +339,8 @@ async function handleSend(c: Context) {
     subject: input.subject,
     textBody: input.text ?? null,
     htmlBody: input.html ?? null,
-    customHeaders: input.headers ?? null,
+    customHeaders:
+      Object.keys(sanitizedHeaders).length > 0 ? sanitizedHeaders : null,
     status: "queued",
     tags: input.tags ?? [],
     scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,

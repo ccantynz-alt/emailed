@@ -20,6 +20,7 @@
     "@emailed/crypto": "workspace:*",
     "@emailed/db": "workspace:*",
     "@emailed/dns": "workspace:*",
+    "@emailed/mta": "workspace:*",
     "@emailed/reputation": "workspace:*",
     "@emailed/shared": "workspace:*",
     "@hono/zod-validator": "^0.4.0",
