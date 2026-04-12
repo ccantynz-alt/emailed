@@ -17,7 +17,9 @@
   "dependencies": {
     "@emailed/shared": "workspace:*",
     "@emailed/db": "workspace:*",
+    "bullmq": "^5.0.0",
     "drizzle-orm": "^0.38.0",
+    "ioredis": "^5.4.0",
     "pino": "^9.0.0"
   },
   "devDependencies": {
