@@ -551,6 +551,8 @@ After writing the code:
 | 10 | 16x `as any` casts in IMAP storage.ts | MEDIUM | 2026-04-09 | FIXED 2026-04-09 |
 | 11 | Vercel build fails — Root Directory must be apps/web | HIGH | 2026-04-09 | FIXED 2026-04-09 — vercel.json updated + merged to main |
 | 12 | Full rebrand from Vienna/48co/@emailed to AlecRae/alecrae.com/@alecrae | HIGH | 2026-04-12 | DONE 2026-04-12 — all files updated |
+| 13 | No error boundaries in web app (error.tsx / not-found.tsx) | MEDIUM | 2026-04-12 | FIXED 2026-04-12 — root + dashboard error boundaries + 404 page |
+| 14 | No sitemap.xml or robots.txt for SEO | LOW | 2026-04-12 | FIXED 2026-04-12 — Next.js route-based sitemap.ts + robots.ts |
 
 ---
 
