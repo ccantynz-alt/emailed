@@ -77,11 +77,15 @@ import { heatmapAnalytics } from "./routes/heatmap.js";
 import { voiceMessageRouter } from "./routes/voice-message.js";
 import { scripts } from "./routes/scripts.js";
 import { emailQuery } from "./routes/email-query.js";
+import { fbl } from "./routes/fbl.js";
 import { closeConnection } from "@emailed/db";
-import { closeSendQueue } from "./lib/queue.js";
+import { closeIdempotencyRedis } from "./middleware/idempotency.js";
+import { closeSendQueue, getSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
 import { initSearchIndex, initTelemetry, shutdownTelemetry, telemetryMiddleware } from "@emailed/shared";
 import { startAutoIndexer, stopAutoIndexer } from "@emailed/ai-engine/embeddings/auto-indexer";
+import { processDLQ } from "./lib/dlq-processor.js";
+import { reconcileStorageUsage } from "./lib/storage-quota.js";
 
 // ─── Create the Hono app ───────────────────────────────────────────────────
 
@@ -118,6 +122,7 @@ app.use(
       "Content-Type",
       "X-API-Key",
       "X-Request-Id",
+      "Idempotency-Key",
     ],
     exposeHeaders: [
       "X-Request-Id",
@@ -125,6 +130,7 @@ app.use(
       "X-RateLimit-Remaining",
       "X-RateLimit-Reset",
       "Retry-After",
+      "X-Idempotent-Replayed",
     ],
     maxAge: 86400,
     credentials: true,
@@ -372,6 +378,9 @@ app.route("/v1/voice-messages", voiceMessageRouter);
 app.route("/v1/scripts", scripts);
 // B2: Email-as-Database — SQL over inbox query engine
 app.route("/v1/query", emailQuery);
+// FBL: ISP Feedback Loop — complaint reports (no auth — ISPs call this)
+app.use("/v1/fbl/*", webhookRateLimit);
+app.route("/v1/fbl", fbl);
 
 // Admin dashboard: requires admin API key auth (applied via authMiddleware above)
 app.use("/v1/admin/*", authMiddleware, readRateLimit);
@@ -442,6 +451,22 @@ startWebhookWorker();
 // Start the semantic search auto-indexer (embeds new emails in background)
 startAutoIndexer();
 
+// Register DLQ processor repeat job (every 15 minutes)
+const dlqInterval = setInterval(() => {
+  processDLQ().catch((err) => {
+    console.warn("[api] DLQ processing error:", err);
+  });
+}, 15 * 60 * 1000);
+dlqInterval.unref();
+
+// Register storage reconciliation repeat job (weekly — every 7 days)
+const storageReconcileInterval = setInterval(() => {
+  reconcileStorageUsage().catch((err) => {
+    console.warn("[api] Storage reconciliation error:", err);
+  });
+}, 7 * 24 * 60 * 60 * 1000);
+storageReconcileInterval.unref();
+
 // ─── Graceful shutdown ──────────────────────────────────────────────────────
 
 let isShuttingDown = false;
@@ -477,6 +502,10 @@ async function shutdown(signal: string): Promise<void> {
     // Close rate-limit Redis connection
     await closeRateLimitRedis();
     console.log("[api] Rate-limit Redis closed");
+
+    // Close idempotency Redis connection
+    await closeIdempotencyRedis();
+    console.log("[api] Idempotency Redis closed");
 
     // Close the database connection pool
     await closeConnection();

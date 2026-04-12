@@ -1,5 +1,5 @@
 {
-  "name": "@emailed/dns",
+  "name": "@emailed/security",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
   "types": "src/index.ts",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
-    "build": "echo 'Service builds independently \u2014 not part of Vercel web deployment'",
+    "build": "echo 'Service builds independently — not part of Vercel web deployment'",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -16,11 +16,7 @@
   },
   "dependencies": {
     "@emailed/shared": "workspace:*",
-    "@emailed/db": "workspace:*",
-    "bullmq": "^5.0.0",
-    "drizzle-orm": "^0.38.0",
-    "ioredis": "^5.4.0",
-    "pino": "^9.0.0"
+    "@emailed/db": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",
