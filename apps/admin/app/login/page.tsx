@@ -111,13 +111,20 @@ export default function LoginPage(): React.ReactElement {
   return (
     <Box className="min-h-screen flex items-center justify-center bg-surface p-4">
       <Box className="w-full max-w-md">
-        {/* Logo — AR monogram in gold-on-charcoal, matching the brand mark */}
+        {/* Logo — handwritten AR monogram in gold-on-charcoal, matching the brand mark */}
         <Box className="text-center mb-8">
-          <Box className="w-16 h-16 rounded-2xl bg-[#0b0a08] flex items-center justify-center mx-auto mb-4 ring-1 ring-[#cfa630]/30">
+          <Box className="w-20 h-20 rounded-2xl bg-[#0b0a08] flex items-center justify-center mx-auto mb-4 ring-1 ring-[#cfa630]/30">
             <Text
               as="span"
-              className="text-[#cfa630] font-serif italic text-2xl font-medium tracking-tighter"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              className="text-[#cfa630] leading-none"
+              style={{
+                fontFamily:
+                  "var(--font-italianno), 'Snell Roundhand', 'Apple Chancery', cursive",
+                fontSize: "3.25rem",
+                fontWeight: 400,
+                letterSpacing: "-0.04em",
+                paddingBottom: "0.35rem",
+              }}
             >
               AR
             </Text>
