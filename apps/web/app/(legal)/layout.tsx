@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Box, Text } from "@emailed/ui";
+import { Box, Text } from "@alecrae/ui";
 
 const legalPages = [
   { href: "/terms", label: "Terms of Service" },
@@ -12,7 +12,6 @@ const legalPages = [
   { href: "/dmca", label: "DMCA / Copyright Policy" },
   { href: "/cookies", label: "Cookie Policy" },
   { href: "/subprocessors", label: "Subprocessors" },
-  { href: "/security", label: "Security & Disclosure" },
 ] as const;
 
 export default function LegalLayout({
@@ -31,7 +30,7 @@ export default function LegalLayout({
         <Box className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Box as="a" href="/" className="flex items-center gap-2">
             <Text variant="heading-md" className="text-brand-600 font-bold">
-              48co.ai
+              AlecRae
             </Text>
           </Box>
           <Text variant="body-sm" className="text-content-secondary">
@@ -89,7 +88,7 @@ export default function LegalLayout({
       >
         <Box className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Text variant="caption" className="text-content-tertiary">
-            &copy; 2026 48co.ai. All rights reserved.
+            &copy; 2026 AlecRae, Inc. All rights reserved.
           </Text>
           <Box className="flex gap-6">
             <Box as="a" href="/">
