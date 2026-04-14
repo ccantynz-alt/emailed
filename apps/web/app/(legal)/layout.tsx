@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Box, Text } from "@alecrae/ui";
+import { Box, Text } from "@emailed/ui";
 
 const legalPages = [
   { href: "/terms", label: "Terms of Service" },
