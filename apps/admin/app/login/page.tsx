@@ -91,7 +91,7 @@ export default function LoginPage(): React.ReactElement {
 
     // Store the API key and redirect
     if (typeof window !== "undefined") {
-      localStorage.setItem("emailed_admin_key", apiKey.trim());
+      localStorage.setItem("alecrae_admin_key", apiKey.trim());
     }
     window.location.href = "/";
   }, [apiKey]);
@@ -111,15 +111,19 @@ export default function LoginPage(): React.ReactElement {
   return (
     <Box className="min-h-screen flex items-center justify-center bg-surface p-4">
       <Box className="w-full max-w-md">
-        {/* Logo */}
+        {/* Logo — AR monogram in gold-on-charcoal, matching the brand mark */}
         <Box className="text-center mb-8">
-          <Box className="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center mx-auto mb-4">
-            <Text as="span" variant="heading-lg" className="text-white font-bold">
-              V
+          <Box className="w-16 h-16 rounded-2xl bg-[#0b0a08] flex items-center justify-center mx-auto mb-4 ring-1 ring-[#cfa630]/30">
+            <Text
+              as="span"
+              className="text-[#cfa630] font-serif italic text-2xl font-medium tracking-tighter"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              AR
             </Text>
           </Box>
           <Text variant="heading-lg" className="text-content font-bold">
-            Vienna Admin
+            AlecRae Admin
           </Text>
           <Text variant="body-sm" className="text-content-secondary mt-1">
             Sign in to the administration dashboard
@@ -167,7 +171,7 @@ export default function LoginPage(): React.ReactElement {
           >
             <KeyIcon />
             <Text as="span" variant="body-sm" className="font-medium">
-              API Key
+              SSO / SAML
             </Text>
           </Box>
         </Box>
@@ -275,7 +279,7 @@ export default function LoginPage(): React.ReactElement {
             Need help? Contact your organization administrator or visit{" "}
             <Box
               as="a"
-              href="https://docs.48co.ai/admin/sso"
+              href="https://docs.alecrae.com/admin/sso"
               className="text-brand-400 hover:text-brand-300 transition-colors"
               target="_blank"
               rel="noopener noreferrer"
