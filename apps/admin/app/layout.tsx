@@ -3,11 +3,6 @@ import { Italianno, Inter } from "next/font/google";
 import { ThemeProvider, Box } from "@emailed/ui";
 import "./globals.css";
 
-/**
- * Italianno — the signature-style handwritten script for the AlecRae brand mark.
- * Loaded here so the admin app can render the AR monogram and any wordmarks
- * in the same handwriting as the landing page.
- */
 const italianno = Italianno({
   weight: "400",
   subsets: ["latin"],
@@ -15,9 +10,6 @@ const italianno = Italianno({
   display: "swap",
 });
 
-/**
- * Inter — humanist sans for body copy and UI chrome.
- */
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
