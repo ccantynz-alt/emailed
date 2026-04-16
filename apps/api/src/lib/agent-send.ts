@@ -21,7 +21,7 @@ import {
   accounts,
   agentDrafts,
   type AgentDraft,
-} from "@emailed/db";
+} from "@alecrae/db";
 import { getSendQueue } from "./queue.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

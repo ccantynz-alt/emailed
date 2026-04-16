@@ -15,7 +15,7 @@ import {
   parseAtom,
 } from "../server/commands.js";
 import { eq } from "drizzle-orm";
-import { getDatabase, users, accounts } from "@emailed/db";
+import { getDatabase, users, accounts } from "@alecrae/db";
 import {
   hashPassword,
   constantTimeEqual,
