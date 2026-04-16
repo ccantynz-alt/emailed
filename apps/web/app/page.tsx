@@ -26,11 +26,11 @@ const INK = "#0b0a08";
 const GOLD = "#cfa630";
 const GOLD_SOFT = "#efc870";
 
-type Feature = {
+interface Feature {
   number: string;
   title: string;
   body: string;
-};
+}
 
 const FEATURES: Feature[] = [
   {
@@ -59,7 +59,10 @@ const FEATURES: Feature[] = [
   },
 ];
 
-type Row = { tool: string; price: string };
+interface Row {
+  tool: string;
+  price: string;
+}
 
 const STACK_REPLACED: Row[] = [
   { tool: "Gmail Workspace + Gemini", price: "$12 – $30 /mo" },
