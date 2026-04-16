@@ -553,6 +553,14 @@ After writing the code:
 | 12 | Full rebrand from Vienna/48co/@emailed to AlecRae/alecrae.com/@alecrae | HIGH | 2026-04-12 | DONE 2026-04-12 — all files updated |
 | 13 | No error boundaries in web app (error.tsx / not-found.tsx) | MEDIUM | 2026-04-12 | FIXED 2026-04-12 — root + dashboard error boundaries + 404 page |
 | 14 | No sitemap.xml or robots.txt for SEO | LOW | 2026-04-12 | FIXED 2026-04-12 — Next.js route-based sitemap.ts + robots.ts |
+| 15 | No cookie/consent banner — GDPR/ePrivacy/CCPA exposure | CRITICAL | 2026-04-16 | FIXED 2026-04-16 — typed consent lib + banner, GPC/DNT auto-respect, 11 tests |
+| 16 | No /.well-known/security.txt (RFC 9116) or responsible-disclosure policy | HIGH | 2026-04-16 | FIXED 2026-04-16 — security.txt + SECURITY.md + /security page with scope + safe harbour |
+| 17 | Register page had no affirmative age gate (GDPR Art 7, COPPA, UK Children's Code) | HIGH | 2026-04-16 | FIXED 2026-04-16 — ConsentGatedRegistration (13+/16+EEA, terms acceptance, optional marketing) |
+| 18 | No CCPA/CPRA "Do Not Sell or Share" page or GPC signal endpoint | HIGH | 2026-04-16 | FIXED 2026-04-16 — /do-not-sell, /california-notice, /.well-known/gpc.json |
+| 19 | No EU AI Act transparency disclosure (Art 52, model inventory) | HIGH | 2026-04-16 | FIXED 2026-04-16 — /ai-transparency with per-model inventory + Art 22 rights |
+| 20 | No WCAG / EAA / ADA accessibility statement | MEDIUM | 2026-04-16 | FIXED 2026-04-16 — /accessibility page (WCAG 2.2 AA target, EAA, ADA, Section 508) |
+| 21 | Missing Impressum, Children's Privacy, Refund, Corporate Compliance pages | HIGH | 2026-04-16 | FIXED 2026-04-16 — 4 new pages (TMG §5, COPPA, EU 14-day withdrawal, FCPA/Modern Slavery/OFAC) |
+| 22 | Domain inconsistency — 32x `alecrae.dev` emails in legal copy should be `alecrae.com` | MEDIUM | 2026-04-16 | FIXED 2026-04-16 — normalised across terms/privacy/aup/dmca/dpa/sla/cookies/subprocessors/domains |
 
 ---
 
@@ -650,10 +658,10 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 
 ## 📅 STATUS
 
-**Date last updated:** 2026-04-12
+**Date last updated:** 2026-04-16
 **Current phase:** Phase 1 — Ready for Beta Launch
-**Current focus:** Rebrand complete (Vienna/48co → AlecRae/alecrae.com). Production deployment awaiting Craig's infra setup.
-**Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
+**Current focus:** Aggressive legal-compliance release shipped (9 new legal pages, typed consent lib + banner honoring GPC/DNT, affirmative age gate on register, RFC 9116 security.txt + SECURITY.md, EU AI Act transparency, CCPA "Do Not Sell", Impressum/Corporate Compliance/Children/Refund, domain normalization). Production deployment awaiting Craig's infra setup.
+**Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10) + aggressive legal-compliance surface
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
 
