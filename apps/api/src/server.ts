@@ -78,10 +78,27 @@ import { voiceMessageRouter } from "./routes/voice-message.js";
 import { scripts } from "./routes/scripts.js";
 import { emailQuery } from "./routes/email-query.js";
 import { fbl } from "./routes/fbl.js";
+import { signaturesRouter } from "./routes/signatures.js";
+import { contactGroupsRouter } from "./routes/contact-groups.js";
+import { threadMutesRouter } from "./routes/thread-mutes.js";
+import { bulkActionsRouter } from "./routes/bulk-actions.js";
+import { abTestsRouter } from "./routes/ab-tests.js";
+import { mailMergeRouter } from "./routes/mail-merge.js";
+import { contactEnrichmentRouter } from "./routes/contact-enrichment.js";
+import { autoResponderRouter } from "./routes/auto-responder.js";
+import { pushNotificationsRouter } from "./routes/push-notifications.js";
+import { smartFoldersRouter } from "./routes/smart-folders.js";
+import { labelsRouter } from "./routes/labels.js";
+import { notesRouter, emailNotesRouter, threadNotesRouter } from "./routes/notes.js";
+import { filesRouter, emailAttachmentsRouter } from "./routes/files.js";
+import { chatRouter } from "./routes/chat.js";
 // NOTE: warmup route is built but mounting it pulls in @alecrae/reputation + services/dns,
 // which have pre-existing exactOptionalPropertyTypes errors blocking the typecheck gate.
 // Fix those errors first, then re-enable this import and the route mount below.
 // import { warmup } from "./routes/warmup.js";
+import { linkPreviewRouter } from "./routes/link-previews.js";
+import { integrationsRouter } from "./routes/integrations.js";
+import { schedulingAnalyticsRouter } from "./routes/scheduling-analytics.js";
 import { closeConnection } from "@alecrae/db";
 import { closeIdempotencyRedis } from "./middleware/idempotency.js";
 import { closeSendQueue, getSendQueue } from "./lib/queue.js";
@@ -333,7 +350,51 @@ app.use("/v1/voice-messages", authMiddleware, writeRateLimit);
 // Programmable Email Scripts (B1): write-level (200 req/min)
 app.use("/v1/scripts/*", authMiddleware, writeRateLimit);
 app.use("/v1/scripts", authMiddleware, writeRateLimit);
+// Thread Mutes: write-level for mute/unmute, read-level for listing
+app.use("/v1/threads/muted", authMiddleware, readRateLimit);
+app.use("/v1/threads/*/mute", authMiddleware, writeRateLimit);
+// Bulk Actions: write-level (200 req/min)
+app.use("/v1/bulk/*", authMiddleware, writeRateLimit);
+app.use("/v1/bulk", authMiddleware, writeRateLimit);
+// A/B Tests: write-level (200 req/min)
+app.use("/v1/ab-tests/*", authMiddleware, writeRateLimit);
+app.use("/v1/ab-tests", authMiddleware, writeRateLimit);
+// Mail Merge: write-level (200 req/min)
+app.use("/v1/mail-merge/*", authMiddleware, writeRateLimit);
+app.use("/v1/mail-merge", authMiddleware, writeRateLimit);
 
+// Notes: write-level for create/update/delete/pin
+app.use("/v1/notes/*", authMiddleware, writeRateLimit);
+app.use("/v1/notes", authMiddleware, writeRateLimit);
+// Per-email notes + per-thread notes: read-level
+app.use("/v1/emails/*/notes", authMiddleware, readRateLimit);
+app.use("/v1/threads/*/notes", authMiddleware, readRateLimit);
+// Files: write-level for upload/delete, read-level for listing
+app.use("/v1/files/*", authMiddleware, writeRateLimit);
+app.use("/v1/files", authMiddleware, readRateLimit);
+// Per-email attachments: read-level
+app.use("/v1/emails/*/attachments", authMiddleware, readRateLimit);
+// Chat: write-level for send/create/edit/delete
+app.use("/v1/chat/*", authMiddleware, writeRateLimit);
+app.use("/v1/chat", authMiddleware, writeRateLimit);
+
+// Smart Folders / Saved Searches: write-level for CRUD, read-level for email queries
+app.use("/v1/smart-folders/*/emails", authMiddleware, readRateLimit);
+app.use("/v1/smart-folders/*", authMiddleware, writeRateLimit);
+app.use("/v1/smart-folders", authMiddleware, writeRateLimit);
+// Labels / Tags: write-level for CRUD + apply/remove, read-level for listing
+app.use("/v1/labels/*/apply", authMiddleware, writeRateLimit);
+app.use("/v1/labels/*", authMiddleware, writeRateLimit);
+app.use("/v1/labels", authMiddleware, writeRateLimit);
+// Link Previews: read-level for cached lookups, write-level for fetch
+app.use("/v1/link-preview/*", authMiddleware, readRateLimit);
+app.use("/v1/link-preview", authMiddleware, readRateLimit);
+// Integrations (Zapier/Make/n8n): write-level for CRUD + test
+app.use("/v1/integrations/*", authMiddleware, writeRateLimit);
+app.use("/v1/integrations", authMiddleware, writeRateLimit);
+// Scheduling Analytics: read-level for analytics queries
+app.use("/v1/analytics/scheduling/*", authMiddleware, readRateLimit);
+app.use("/v1/analytics/scheduling", authMiddleware, readRateLimit);
 // Mount route handlers
 app.route("/v1/messages", messages);
 app.route("/v1/domains", domains);
@@ -400,6 +461,47 @@ app.route("/v1/query", emailQuery);
 // FBL: ISP Feedback Loop — complaint reports (no auth — ISPs call this)
 app.use("/v1/fbl/*", webhookRateLimit);
 app.route("/v1/fbl", fbl);
+// Signatures — multiple per account, auto-switch by context
+app.route("/v1/signatures", signaturesRouter);
+// Contact Groups / Distribution Lists — group contacts, send to groups
+app.route("/v1/contact-groups", contactGroupsRouter);
+// Thread Mutes — silence a thread without unsubscribing
+app.route("/v1/threads", threadMutesRouter);
+// Bulk Actions — select multiple emails and act on them at once
+app.route("/v1/bulk", bulkActionsRouter);
+// Email A/B Testing — send variants, track performance
+app.route("/v1/ab-tests", abTestsRouter);
+// Mail Merge — personalized mass emails from CSV/contacts
+app.route("/v1/mail-merge", mailMergeRouter);
+// Contact Enrichment — auto-pull company info, social profiles
+// Mounts under /v1/contacts (enrichment routes use /:contactId/enrich etc.)
+app.route("/v1/contacts", contactEnrichmentRouter);
+// Auto-Responder / Vacation Mode — AI-powered OOO with smart replies
+app.route("/v1/auto-responder", autoResponderRouter);
+// Push Notifications — Web Push subscription management
+app.route("/v1/push", pushNotificationsRouter);
+// Smart Folders / Saved Searches — custom auto-populating views
+app.route("/v1/smart-folders", smartFoldersRouter);
+// Labels / Tags — shared across team, nested hierarchy
+app.route("/v1/labels", labelsRouter);
+// Notes — email-linked notes (like Notion meets email)
+app.route("/v1/notes", notesRouter);
+// Per-email notes: /v1/emails/:emailId/notes
+app.route("/v1/emails", emailNotesRouter);
+// Per-thread notes: /v1/threads/:threadId/notes
+app.route("/v1/threads", threadNotesRouter);
+// Files — attachment management + cloud storage browser
+app.route("/v1/files", filesRouter);
+// Per-email attachments: /v1/emails/:emailId/attachments
+app.route("/v1/emails", emailAttachmentsRouter);
+// Chat — secure internal messaging for teams
+app.route("/v1/chat", chatRouter);
+// Link Previews — URL unfurling with 7-day cache
+app.route("/v1/link-preview", linkPreviewRouter);
+// Integrations — Zapier/Make/n8n webhook connectors
+app.route("/v1/integrations", integrationsRouter);
+// Scheduling Analytics — best send times, engagement patterns
+app.route("/v1/analytics/scheduling", schedulingAnalyticsRouter);
 
 // Admin dashboard: requires admin API key auth (applied via authMiddleware above)
 app.use("/v1/admin/*", authMiddleware, readRateLimit);

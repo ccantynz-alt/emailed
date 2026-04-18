@@ -529,9 +529,32 @@ After writing the code:
 - Neon PostgreSQL setup SQL
 - Production .env template
 
-### Total: 36/36 from original plan + 7 bonus features ✅ ALL TIERS COMPLETE
-### API Routes: 30+ route files, 100+ endpoints
-### Code: ~35K lines of TypeScript
+### TIER 5 (Table Stakes Expansion) — 20/20 ✅ COMPLETE (2026-04-18)
+- [x] Read receipts / tracking pixel (open + click tracking)
+- [x] Email templates library (CRUD + variable rendering)
+- [x] Signature manager (multiple per account, auto-switch by context)
+- [x] Contact groups / distribution lists (CRUD + member management)
+- [x] Smart folders / saved searches (dynamic filters, auto-populate)
+- [x] Email scheduling queue dashboard (list/cancel scheduled sends)
+- [x] Thread muting (silence threads without unsubscribing)
+- [x] Bulk actions (archive/delete/read/star/label/move — up to 500 at once)
+- [x] Labels / tags (shared, nested hierarchy, apply/remove from emails)
+- [x] Push notifications (Web Push subscriptions + preferences + quiet hours)
+- [x] Link previews / URL unfurling (OG meta parsing, 7-day cache)
+- [x] Email scheduling analytics (opens/clicks by hour+day, best send times)
+- [x] Email A/B testing (multi-variant, auto-winner by metric)
+- [x] Auto-responder / vacation mode (AI-powered OOO with smart replies)
+- [x] Contact enrichment (company info, social profiles, AI-powered)
+- [x] Mail merge (personalized mass emails from CSV/contacts)
+- [x] Zapier/Make/n8n integration (outbound webhooks, HMAC-signed, 11 event types)
+- [x] AlecRae Notes (email-linked notes, pin, thread/contact scoping)
+- [x] AlecRae Files (attachment management, storage stats, presigned uploads)
+- [x] AlecRae Chat (secure team messaging, channels, DMs, thread-linked)
+
+### Total: 36/36 original + 7 bonus + 20 expansion features = 63 features ✅ ALL COMPLETE
+### API Routes: 69 route files, 150+ endpoints
+### DB Schemas: 43 schema files
+### Code: ~45K lines of TypeScript
 
 ---
 
@@ -650,10 +673,10 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 
 ## 📅 STATUS
 
-**Date last updated:** 2026-04-12
+**Date last updated:** 2026-04-18
 **Current phase:** Phase 1 — Ready for Beta Launch
-**Current focus:** Rebrand complete (Vienna/48co → AlecRae/alecrae.com). Production deployment awaiting Craig's infra setup.
-**Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
+**Current focus:** Feature-complete build (63 features, 69 routes, 43 schemas). All table-stakes expansion features built. Production deployment awaiting Craig's infra setup.
+**Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced (S10/10 + A7/7 + B8/8 + C6/10) + 20 expansion (Tier 5)
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
 
@@ -806,8 +829,9 @@ If you ship something not in this file, you broke the rules.
 | **Tier A features (cutting-edge UX)** | **A1+A2+A3+A4+A5+A6+A7 done (7/7)** | **100%** |
 | **Tier B features (power user)** | **B1+B2+B3+B4+B5+B6+B7+B8 done (8/8)** | **100%** |
 | **Tier C features (polish + trust)** | **C1+C2+C3+C8+C9+C10 done (6/10)** | **60%** |
+| **Tier 5 features (table stakes expansion)** | **20/20 done** | **100%** |
 
-**Overall: ~98% of launch-ready product. All code features complete. Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
+**Overall: ~99% of launch-ready product. All code features complete (63 features, 69 routes, 43 schemas). Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
 
 ---
 

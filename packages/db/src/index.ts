@@ -295,11 +295,146 @@ export type {
   PunctuationStyleData,
 } from "./schema/voice-clone.js";
 
+// Schema - Signatures (multiple per account, auto-switch by context)
+export {
+  signatures,
+  signaturesRelations,
+} from "./schema/signatures.js";
+export type { SignatureContext } from "./schema/signatures.js";
+
+// Schema - Contact Groups / Distribution Lists
+export {
+  contactGroups,
+  contactGroupMembers,
+  contactGroupsRelations,
+  contactGroupMembersRelations,
+} from "./schema/contact-groups.js";
+
+// Schema - Link Previews (cached URL metadata for rich unfurling)
+export {
+  linkPreviews,
+} from "./schema/link-previews.js";
+export type { LinkPreviewData } from "./schema/link-previews.js";
+
+// Schema - Webhook Integrations (Zapier/Make/n8n connectors)
+export {
+  webhookIntegrations,
+  integrationPlatformEnum,
+  webhookIntegrationsRelations,
+} from "./schema/webhook-integrations.js";
+export type { IntegrationTriggerConfig } from "./schema/webhook-integrations.js";
+
+// Schema - Auto-Responder / Vacation Mode
+export {
+  autoResponders,
+  autoResponderLog,
+  autoResponderModeEnum,
+  autoRespondersRelations,
+  autoResponderLogRelations,
+} from "./schema/auto-responder.js";
+export type {
+  AutoResponderSchedule,
+  AutoResponderRules,
+} from "./schema/auto-responder.js";
+
+// Schema - Push Notifications (Web Push + mobile tokens)
+export {
+  pushSubscriptions,
+  pushNotificationPreferences,
+  pushPlatformEnum,
+  pushSubscriptionsRelations,
+  pushNotificationPreferencesRelations,
+} from "./schema/push-subscriptions.js";
+export type { WebPushKeys } from "./schema/push-subscriptions.js";
+
 // Schema - Refresh Tokens (JWT rotation with theft detection)
 export {
   refreshTokens,
   refreshTokensRelations,
 } from "./schema/refresh-tokens.js";
+
+// Schema - Smart Folders / Saved Searches
+export {
+  smartFolders,
+  smartFolderTypeEnum,
+  smartFoldersRelations,
+} from "./schema/smart-folders.js";
+export type { SmartFolderFilter } from "./schema/smart-folders.js";
+
+// Schema - Labels / Tags
+export {
+  labels,
+  emailLabels,
+  labelsRelations,
+  emailLabelsRelations,
+} from "./schema/labels.js";
+
+// Schema - Thread Mutes
+export {
+  threadMutes,
+  threadMutesRelations,
+} from "./schema/thread-mutes.js";
+
+// Schema - A/B Tests
+export {
+  abTests,
+  abTestStatusEnum,
+  abTestsRelations,
+} from "./schema/ab-tests.js";
+export type { ABTestVariant, ABTestResults } from "./schema/ab-tests.js";
+
+// Schema - Mail Merge
+export {
+  mailMerges,
+  mailMergeStatusEnum,
+  mailMergesRelations,
+} from "./schema/mail-merge.js";
+export type { MailMergeRecipient } from "./schema/mail-merge.js";
+
+// Schema - Contact Enrichment
+export {
+  contactEnrichments,
+  contactEnrichmentsRelations,
+} from "./schema/contact-enrichment.js";
+export type { EnrichmentData } from "./schema/contact-enrichment.js";
+
+// Schema - Notes (email-linked)
+export {
+  notes,
+  notesRelations,
+} from "./schema/notes.js";
+
+// Schema - Files (attachment management + cloud storage)
+export {
+  files,
+  fileSourceEnum,
+  filesRelations,
+} from "./schema/files.js";
+
+// Schema - Chat (secure internal messaging)
+export {
+  chatChannels,
+  chatMembers,
+  chatMessages,
+  chatChannelTypeEnum,
+  chatChannelsRelations,
+  chatMembersRelations,
+  chatMessagesRelations,
+} from "./schema/chat.js";
+
+// Schema - Link Previews (URL unfurling cache)
+export {
+  linkPreviews,
+} from "./schema/link-previews.js";
+export type { LinkPreviewData } from "./schema/link-previews.js";
+
+// Schema - Webhook Integrations (Zapier/Make/n8n connectors)
+export {
+  webhookIntegrations,
+  integrationPlatformEnum,
+  webhookIntegrationsRelations,
+} from "./schema/webhook-integrations.js";
+export type { IntegrationTriggerConfig } from "./schema/webhook-integrations.js";
 
 // ---------------------------------------------------------------------------
 // Inferred types from schemas
@@ -361,6 +496,21 @@ import type {
   voiceTrainingSamples,
 } from "./schema/voice-clone.js";
 import type { refreshTokens } from "./schema/refresh-tokens.js";
+import type { signatures } from "./schema/signatures.js";
+import type { contactGroups, contactGroupMembers } from "./schema/contact-groups.js";
+import type { smartFolders } from "./schema/smart-folders.js";
+import type { labels, emailLabels } from "./schema/labels.js";
+import type { threadMutes } from "./schema/thread-mutes.js";
+import type { autoResponders, autoResponderLog } from "./schema/auto-responder.js";
+import type { pushSubscriptions, pushNotificationPreferences } from "./schema/push-subscriptions.js";
+import type { abTests } from "./schema/ab-tests.js";
+import type { mailMerges } from "./schema/mail-merge.js";
+import type { contactEnrichments } from "./schema/contact-enrichment.js";
+import type { notes } from "./schema/notes.js";
+import type { files } from "./schema/files.js";
+import type { chatChannels, chatMembers, chatMessages } from "./schema/chat.js";
+import type { linkPreviews } from "./schema/link-previews.js";
+import type { webhookIntegrations } from "./schema/webhook-integrations.js";
 
 // Select types (what you get back from queries)
 export type Account = InferSelectModel<typeof accounts>;
@@ -457,3 +607,45 @@ export type ScriptRun = InferSelectModel<typeof scriptRuns>;
 export type NewScriptRun = InferInsertModel<typeof scriptRuns>;
 export type RefreshToken = InferSelectModel<typeof refreshTokens>;
 export type NewRefreshToken = InferInsertModel<typeof refreshTokens>;
+export type Signature = InferSelectModel<typeof signatures>;
+export type NewSignature = InferInsertModel<typeof signatures>;
+export type ContactGroup = InferSelectModel<typeof contactGroups>;
+export type NewContactGroup = InferInsertModel<typeof contactGroups>;
+export type ContactGroupMember = InferSelectModel<typeof contactGroupMembers>;
+export type NewContactGroupMember = InferInsertModel<typeof contactGroupMembers>;
+export type SmartFolder = InferSelectModel<typeof smartFolders>;
+export type NewSmartFolder = InferInsertModel<typeof smartFolders>;
+export type Label = InferSelectModel<typeof labels>;
+export type NewLabel = InferInsertModel<typeof labels>;
+export type EmailLabel = InferSelectModel<typeof emailLabels>;
+export type NewEmailLabel = InferInsertModel<typeof emailLabels>;
+export type ThreadMute = InferSelectModel<typeof threadMutes>;
+export type NewThreadMute = InferInsertModel<typeof threadMutes>;
+export type AutoResponder = InferSelectModel<typeof autoResponders>;
+export type NewAutoResponder = InferInsertModel<typeof autoResponders>;
+export type AutoResponderLogEntry = InferSelectModel<typeof autoResponderLog>;
+export type NewAutoResponderLogEntry = InferInsertModel<typeof autoResponderLog>;
+export type PushSubscription = InferSelectModel<typeof pushSubscriptions>;
+export type NewPushSubscription = InferInsertModel<typeof pushSubscriptions>;
+export type PushNotificationPreference = InferSelectModel<typeof pushNotificationPreferences>;
+export type NewPushNotificationPreference = InferInsertModel<typeof pushNotificationPreferences>;
+export type ABTest = InferSelectModel<typeof abTests>;
+export type NewABTest = InferInsertModel<typeof abTests>;
+export type MailMerge = InferSelectModel<typeof mailMerges>;
+export type NewMailMerge = InferInsertModel<typeof mailMerges>;
+export type ContactEnrichment = InferSelectModel<typeof contactEnrichments>;
+export type NewContactEnrichment = InferInsertModel<typeof contactEnrichments>;
+export type Note = InferSelectModel<typeof notes>;
+export type NewNote = InferInsertModel<typeof notes>;
+export type File = InferSelectModel<typeof files>;
+export type NewFile = InferInsertModel<typeof files>;
+export type ChatChannel = InferSelectModel<typeof chatChannels>;
+export type NewChatChannel = InferInsertModel<typeof chatChannels>;
+export type ChatMember = InferSelectModel<typeof chatMembers>;
+export type NewChatMember = InferInsertModel<typeof chatMembers>;
+export type ChatMessage = InferSelectModel<typeof chatMessages>;
+export type NewChatMessage = InferInsertModel<typeof chatMessages>;
+export type LinkPreview = InferSelectModel<typeof linkPreviews>;
+export type NewLinkPreview = InferInsertModel<typeof linkPreviews>;
+export type WebhookIntegration = InferSelectModel<typeof webhookIntegrations>;
+export type NewWebhookIntegration = InferInsertModel<typeof webhookIntegrations>;
