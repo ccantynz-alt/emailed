@@ -14,7 +14,6 @@ import {
   transcribeAudio,
   formatDuration,
   MAX_VOICE_AUDIO_SIZE,
-  type VoiceMessageResult,
 } from "@alecrae/ai-engine/voice/voice-message";
 
 // ─── In-memory store (production: persist in Neon + R2) ─────────────────────

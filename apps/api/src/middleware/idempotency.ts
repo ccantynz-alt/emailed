@@ -173,7 +173,9 @@ export function idempotency() {
  */
 export async function closeIdempotencyRedis(): Promise<void> {
   if (redisClient) {
-    await redisClient.quit().catch(() => {});
+    await redisClient.quit().catch(() => {
+      /* intentional no-op: best-effort shutdown */
+    });
     redisClient = null;
   }
 }

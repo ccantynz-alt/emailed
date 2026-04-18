@@ -281,7 +281,7 @@ export async function rotateRefreshToken(oldRefreshToken: string): Promise<Token
 export async function revokeAllUserTokens(userId: string): Promise<number> {
   const db = getDatabase();
 
-  const result = await db
+  await db
     .update(refreshTokens)
     .set({ revokedAt: new Date() })
     .where(

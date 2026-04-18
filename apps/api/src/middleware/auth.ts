@@ -216,8 +216,10 @@ async function validateBearerToken(
     try {
       const parts = token.split(".");
       if (parts.length !== 3) return null;
+      const segment = parts[1];
+      if (!segment) return null;
 
-      const payload = JSON.parse(atob(parts[1]!));
+      const payload = JSON.parse(atob(segment));
       const now = Math.floor(Date.now() / 1000);
 
       if (payload.exp && payload.exp < now) return null;

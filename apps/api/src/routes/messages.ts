@@ -525,7 +525,9 @@ async function handleSend(c: Context) {
   warmupOrchestrator.recordSend(domainRecord.id).catch(() => { /* fire-and-forget */ });
 
   // ── 6c. Increment quota counter in Redis (fire-and-forget) ──────
-  incrementQuota(auth.accountId).catch(() => {});
+  incrementQuota(auth.accountId).catch(() => {
+    /* fire-and-forget */
+  });
 
   // ── 7. Index in Meilisearch (fire-and-forget) ────────────────────
   indexEmail({
