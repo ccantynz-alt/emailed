@@ -608,6 +608,17 @@ export {
 } from "./schema/security-intelligence.js";
 export type { ThreatSignals } from "./schema/security-intelligence.js";
 
+// Schema - Attachment Intelligence (AI-powered attachment analysis + smart file organization)
+export {
+  attachmentAnalysis,
+  smartFileOrganization,
+  attachmentThreatLevelEnum,
+  attachmentVirusScanStatusEnum,
+  fileImportanceEnum,
+  attachmentAnalysisRelations,
+  smartFileOrganizationRelations,
+} from "./schema/attachment-intelligence.js";
+
 // ---------------------------------------------------------------------------
 // Inferred types from schemas
 // ---------------------------------------------------------------------------
@@ -926,3 +937,11 @@ export type SecurityPolicy = InferSelectModel<typeof securityPolicies>;
 export type NewSecurityPolicy = InferInsertModel<typeof securityPolicies>;
 export type SecurityAuditLogEntry = InferSelectModel<typeof securityAuditLog>;
 export type NewSecurityAuditLogEntry = InferInsertModel<typeof securityAuditLog>;
+
+// Attachment Intelligence types
+import type { attachmentAnalysis, smartFileOrganization } from "./schema/attachment-intelligence.js";
+
+export type AttachmentAnalysis = InferSelectModel<typeof attachmentAnalysis>;
+export type NewAttachmentAnalysis = InferInsertModel<typeof attachmentAnalysis>;
+export type SmartFileOrganization = InferSelectModel<typeof smartFileOrganization>;
+export type NewSmartFileOrganization = InferInsertModel<typeof smartFileOrganization>;
