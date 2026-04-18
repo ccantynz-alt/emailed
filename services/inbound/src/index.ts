@@ -10,8 +10,6 @@ import {
   shutdownTelemetry,
   recordEmailReceived,
   recordEmailFilterDuration,
-  recordActiveConnection,
-  SpanKind,
 } from "@alecrae/shared";
 import type { SmtpSession, SmtpEnvelope } from "./types.js";
 

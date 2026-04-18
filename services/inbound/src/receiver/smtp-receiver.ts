@@ -87,7 +87,7 @@ const DEFAULT_CONFIG: SmtpReceiverConfig = {
   requireTls: false,
   bannerDelay: 0,
   maxInboundPerDomainPerHour: 100,
-  onMessage: async () => {},
+  onMessage: () => Promise.resolve(),
 };
 
 /**

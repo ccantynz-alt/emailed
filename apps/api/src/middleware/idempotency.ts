@@ -164,6 +164,7 @@ export function idempotency() {
     } catch {
       // Cache write failed — the request succeeded, so this is non-critical
     }
+    return;
   });
 }
 
