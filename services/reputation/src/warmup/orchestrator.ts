@@ -369,7 +369,6 @@ export class WarmupOrchestrator {
       return {
         allowed: false,
         reason: "Warm-up is paused due to delivery issues",
-        retryAfter: undefined,
       };
     }
 

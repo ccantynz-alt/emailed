@@ -78,6 +78,10 @@ import { voiceMessageRouter } from "./routes/voice-message.js";
 import { scripts } from "./routes/scripts.js";
 import { emailQuery } from "./routes/email-query.js";
 import { fbl } from "./routes/fbl.js";
+// NOTE: warmup route is built but mounting it pulls in @alecrae/reputation + services/dns,
+// which have pre-existing exactOptionalPropertyTypes errors blocking the typecheck gate.
+// Fix those errors first, then re-enable this import and the route mount below.
+// import { warmup } from "./routes/warmup.js";
 import { closeConnection } from "@alecrae/db";
 import { closeIdempotencyRedis } from "./middleware/idempotency.js";
 import { closeSendQueue, getSendQueue } from "./lib/queue.js";
@@ -111,11 +115,24 @@ app.use("*", secureHeaders());
 // Global IP-based rate limit (DDoS baseline: 1000 req/min per IP)
 app.use("*", globalIpRateLimit);
 
-// CORS
+// CORS — explicit allowlist (never reflect arbitrary origins with credentials)
+const DEFAULT_CORS_ORIGINS = [
+  "https://alecrae.com",
+  "https://mail.alecrae.com",
+  "https://admin.alecrae.com",
+  "https://docs.alecrae.com",
+  "https://status.alecrae.com",
+  "https://changelog.alecrae.com",
+];
+const corsOrigins = (process.env["CORS_ORIGINS"]?.split(",").map((s) => s.trim()).filter(Boolean)) ??
+  (process.env["NODE_ENV"] === "production"
+    ? DEFAULT_CORS_ORIGINS
+    : [...DEFAULT_CORS_ORIGINS, "http://localhost:3000", "http://localhost:3001", "http://localhost:3002"]);
+
 app.use(
   "*",
   cors({
-    origin: (origin) => origin,
+    origin: (origin) => (corsOrigins.includes(origin) ? origin : null),
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: [
       "Authorization",
@@ -179,6 +196,7 @@ app.use("/v1/messages/search", authMiddleware, searchRateLimit);
 app.use("/v1/messages/*", authMiddleware, readRateLimit);
 // Domains: write-level limits (200 req/min)
 app.use("/v1/domains/*", authMiddleware, writeRateLimit);
+// app.use("/v1/domains/:id/warmup/*", authMiddleware, writeRateLimit); // see warmup import note
 // Webhooks: write-level limits (200 req/min)
 app.use("/v1/webhooks/*", authMiddleware, writeRateLimit);
 // Analytics: read-level limits (600 req/min)
@@ -319,6 +337,7 @@ app.use("/v1/scripts", authMiddleware, writeRateLimit);
 // Mount route handlers
 app.route("/v1/messages", messages);
 app.route("/v1/domains", domains);
+// app.route("/v1/domains/:id/warmup", warmup); // see warmup import note
 app.route("/v1/webhooks", webhooks);
 app.route("/v1/analytics", analytics);
 app.route("/v1/suppressions", suppressions);
