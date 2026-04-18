@@ -40,7 +40,6 @@ import {
   InboxAgent,
   type AgentEmail,
   type AgentReport,
-  type DraftedReply,
 } from "@alecrae/ai-engine/agent";
 import {
   getDatabase,

@@ -15,8 +15,6 @@
  *   5. Background worker keeps accounts in sync
  */
 
-import { getDatabase } from "@alecrae/db";
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type AccountProvider = "gmail" | "outlook" | "imap" | "yahoo" | "icloud";

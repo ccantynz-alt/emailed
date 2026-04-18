@@ -20,7 +20,6 @@ import {
   verifyAccessToken,
   TokenError,
 } from "../lib/jwt.js";
-import type { TokenPayload } from "../lib/jwt.js";
 
 const auth = new Hono();
 
@@ -286,7 +285,9 @@ auth.post("/logout", async (c) => {
     try {
       const parts = token.split(".");
       if (parts.length !== 3) throw new Error("Invalid token");
-      const payload = JSON.parse(atob(parts[1]!));
+      const segment = parts[1];
+      if (!segment) throw new Error("Invalid token");
+      const payload = JSON.parse(atob(segment));
       if (payload.userId) {
         await revokeAllUserTokens(payload.userId as string);
         return c.json({ data: { message: "All sessions revoked" } });

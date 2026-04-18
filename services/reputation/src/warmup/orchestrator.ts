@@ -73,7 +73,11 @@ export const AUTO_WARMUP_SCHEDULE: readonly AutoWarmupStep[] = [
  * Exported so unit tests can cover the schedule without a DB.
  */
 export function resolveAutoStep(currentDay: number): AutoWarmupStep {
-  let step: AutoWarmupStep = AUTO_WARMUP_SCHEDULE[0]!;
+  const first = AUTO_WARMUP_SCHEDULE[0];
+  if (!first) {
+    throw new Error("AUTO_WARMUP_SCHEDULE is empty");
+  }
+  let step: AutoWarmupStep = first;
   for (const s of AUTO_WARMUP_SCHEDULE) {
     if (s.day <= currentDay) step = s;
     else break;
@@ -429,7 +433,7 @@ export class WarmupOrchestrator {
       }));
       const id = crypto.randomUUID().replace(/-/g, "");
       const now = new Date();
-      const todayStr = now.toISOString().split("T")[0]!;
+      const todayStr = now.toISOString().split("T")[0] ?? "";
 
       try {
         await db.insert(warmupSessions).values({
