@@ -1,5 +1,4 @@
-import { checkSpf } from "@alecrae/mta/src/spf/validator.js";
-import { evaluateDmarc, determineAction } from "@alecrae/mta/src/dmarc/enforcer.js";
+import { checkSpf, evaluateDmarc, determineAction } from "@alecrae/mta/lib";
 import { verifyDkim } from "./dkim-verifier.js";
 import type { DkimVerifyResult } from "./dkim-verifier.js";
 import type { ParsedEmail, AuthenticationResult, FilterVerdict, SmtpEnvelope } from "../types.js";

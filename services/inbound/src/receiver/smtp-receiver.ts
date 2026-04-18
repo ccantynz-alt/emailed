@@ -629,4 +629,4 @@ export class SmtpReceiver {
 
 // Re-export for testing
 export { InboundRateLimiter };
-export type { SmtpReceiverConfig, DomainCheckResult, DomainVerifier };
+export type { SmtpReceiverConfig };
