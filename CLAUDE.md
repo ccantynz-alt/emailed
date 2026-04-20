@@ -140,6 +140,13 @@ Every tool here was chosen because it is the **best in its class right now**. If
 | **Mobile App** | React Native + Expo | Single codebase, native performance |
 | **PWA** | Built into Next.js | Day-one install on any device |
 
+### Testing & Quality
+| Layer | Choice | Why |
+|---|---|---|
+| **Unit / integration** | Vitest + bun:test | Fast, native TS, bun-compatible |
+| **E2E / browser smoke** | GateTest.ai | Craig's tool — best testing tool on the market |
+| **Linter/Formatter** | Biome | 50-100x faster than alternatives |
+
 
 ---
 
@@ -529,7 +536,6 @@ After writing the code:
 - Neon PostgreSQL setup SQL
 - Production .env template
 - Launch runbooks (`docs/infra/`): craig-go-live, neon-setup, upstash-setup, fly-mta-deploy, dns-zone-alecrae, deliverability, env-audit
-- Playwright smoke test skeleton (`apps/web/e2e/smoke.spec.ts`) — landing + /admin
 - MTA production hardening (bounce classifier, retry policy, health/ready endpoints, OTel facade, warmup scheduler, FBL/ARF parser)
 
 ### Total: 36/36 from original plan + 7 bonus features ✅ ALL TIERS COMPLETE
@@ -560,7 +566,7 @@ After writing the code:
 | 16 | MTA lacked production hardening (bounces, retries, health, telemetry, warmup, FBL) | HIGH | 2026-04-18 | FIXED 2026-04-18 — Wave 2 hardening: bounce classifier, retry policy w/ backoff+jitter, Hono /healthz + /readyz on :8080, OpenTelemetry facade, 7-week ISP warmup scheduler, RFC 5965 ARF parser, Dockerfile + fly.toml. Tests included for classifier, retry, health, telemetry, warmup, FBL. |
 | 17 | No launch runbooks — Craig had no step-by-step for going live | HIGH | 2026-04-18 | FIXED 2026-04-18 — 7 runbooks in docs/infra/: craig-go-live, neon-setup, upstash-setup, fly-mta-deploy, dns-zone-alecrae, deliverability, env-audit. |
 | 18 | Green-gate: typecheck/lint/tests not fully clean across monorepo | MEDIUM | 2026-04-18 | FIXED 2026-04-18 — typecheck 37/37 green, lint 0 errors, sentinel tests 41/41 green (scorer + cache recalibrated). 3 pre-existing ai-engine test failures (relationships-graph, sentiment-analyzer) flagged for follow-up. |
-| 19 | No E2E smoke test for web | LOW | 2026-04-18 | IN PROGRESS — Playwright skeleton added (apps/web/e2e/smoke.spec.ts); @playwright/test devDep + playwright.config.ts still to add before CI run. |
+| 19 | No E2E smoke test for web | LOW | 2026-04-18 | IN PROGRESS — E2E tool chosen: GateTest.ai (Craig's own). Prior competitor-tool skeleton removed 2026-04-20. Install + wiring pending GateTest.ai setup instructions from Craig. |
 | 20 | 3 pre-existing ai-engine test failures (relationships-graph, sentiment-analyzer) | LOW | 2026-04-18 | NOTED — not blocking launch; queued for follow-up. |
 
 ---
@@ -587,7 +593,7 @@ After writing the code:
 18. **Set up Stripe account** + configure webhook URLs (Craig action)
 19. **Add API keys** (Anthropic, OpenAI, Google, Microsoft) to production env (Craig action)
 20. **Deploy MTA to Fly** per `docs/infra/fly-mta-deploy.md` (Craig action, after DNS + env)
-21. **Finish Playwright CI wiring** (add @playwright/test devDep + playwright.config.ts)
+21. **Wire up GateTest.ai for web E2E smoke** (pending Craig's install + config instructions)
 22. **Fix 3 pre-existing ai-engine test failures** (relationships-graph, sentiment-analyzer)
 
 ---
@@ -667,7 +673,7 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 
 **Date last updated:** 2026-04-20
 **Current phase:** Phase 1 — Ready for Beta Launch
-**Current focus:** Launch prep Wave 2 shipped — MTA production-hardened (bounces, retries, health, OTel, warmup, FBL, Fly manifest), 7 launch runbooks in `docs/infra/`, full green-gate pass (typecheck 37/37, lint 0, sentinel 41/41), Playwright smoke skeleton. Production deployment awaiting Craig's infra setup (Neon, Upstash, DNS, Stripe, API keys, Fly MTA deploy).
+**Current focus:** Launch prep Wave 2 shipped — MTA production-hardened (bounces, retries, health, OTel, warmup, FBL, Fly manifest), 7 launch runbooks in `docs/infra/`, full green-gate pass (typecheck 37/37, lint 0, sentinel 41/41). E2E testing tool chosen: GateTest.ai (Craig's own) — wiring pending install instructions. Production deployment awaiting Craig's infra setup (Neon, Upstash, DNS, Stripe, API keys, Fly MTA deploy).
 **Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10) + launch runbooks + MTA hardening
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
