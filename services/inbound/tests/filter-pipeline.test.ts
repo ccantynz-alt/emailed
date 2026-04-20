@@ -62,6 +62,7 @@ describe("FilterPipeline", () => {
   beforeEach(() => {
     pipeline = new FilterPipeline();
     // Remove authentication stage for unit tests of content-based filters
+    // (authentication is tested indirectly; it depends on DNS/crypto mocks)
     pipeline.removeStage("authentication");
     pipeline.removeStage("aiClassification");
   });
@@ -89,6 +90,7 @@ describe("FilterPipeline", () => {
       }),
     );
 
+    // Score should be very high due to multiple spam signals
     expect(verdict.score).toBeGreaterThanOrEqual(8);
     expect(["reject", "quarantine"]).toContain(verdict.action);
   });
@@ -112,7 +114,7 @@ describe("FilterPipeline", () => {
       makeEnvelope(),
       makeEmail({
         subject: "Urgent account issue",
-        html: '<p>We detected unusual activity on your account. <a href=\"https://evil.com\">https://bank.com</a></p>',
+        html: '<p>We detected unusual activity on your account. <a href="https://evil.com">https://bank.com</a></p>',
         text: "Verify your account immediately.",
       }),
     );
@@ -143,6 +145,7 @@ describe("FilterPipeline", () => {
 
   it("defers on stage error instead of accepting", async () => {
     const pipeline = new FilterPipeline();
+    // Remove all default stages
     pipeline.removeStage("authentication");
     pipeline.removeStage("spam");
     pipeline.removeStage("aiClassification");
@@ -150,6 +153,7 @@ describe("FilterPipeline", () => {
     pipeline.removeStage("content");
     pipeline.removeStage("malware");
 
+    // Add a stage that throws
     pipeline.addStage("broken", async () => {
       throw new Error("stage exploded");
     });
