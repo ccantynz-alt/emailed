@@ -608,9 +608,58 @@ export const apiKeysApi = {
 
 // ─── Account ───────────────────────────────────────────────────────────────
 
+export interface PasskeyInfo {
+  id: string;
+  credentialId: string;
+  deviceName: string;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface NotificationPrefs {
+  emailNotifications: boolean;
+  aiDigest: boolean;
+  deliverabilityAlerts: boolean;
+}
+
 export const accountApi = {
   get() {
     return apiFetch<{ data: Account }>("/v1/account");
+  },
+
+  updateProfile(payload: { name?: string; email?: string }) {
+    return apiFetch<{ data: { id: string; name: string; email: string; role: string } }>(
+      "/v1/account/profile",
+      { method: "PATCH", body: JSON.stringify(payload) },
+    );
+  },
+
+  deleteAccount() {
+    return apiFetch<{ data: { deleted: boolean } }>("/v1/account", {
+      method: "DELETE",
+    });
+  },
+
+  listPasskeys() {
+    return apiFetch<{ data: PasskeyInfo[] }>("/v1/account/passkeys");
+  },
+
+  deletePasskey(id: string) {
+    return apiFetch<{ data: { deleted: boolean; id: string } }>(
+      `/v1/account/passkeys/${id}`,
+      { method: "DELETE" },
+    );
+  },
+
+  getNotificationPrefs() {
+    return apiFetch<{ data: NotificationPrefs }>("/v1/account/notifications");
+  },
+
+  updateNotificationPrefs(payload: Partial<NotificationPrefs>) {
+    return apiFetch<{ data: NotificationPrefs }>("/v1/account/notifications", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
   },
 };
 

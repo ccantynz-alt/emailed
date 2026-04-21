@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Text,
@@ -13,7 +13,7 @@ import {
   PageLayout,
 } from "@alecrae/ui";
 import { motion } from "motion/react";
-import { authApi, accountApi } from "../../../lib/api";
+import { authApi, accountApi, type PasskeyInfo, type NotificationPrefs } from "../../../lib/api";
 import { PressableScale } from "../../../components/PressableScale";
 import { AnimatedPresence } from "../../../components/AnimatedPresence";
 import {
@@ -63,7 +63,7 @@ export default function SettingsPage(): React.ReactNode {
         animate="animate"
       >
         <motion.div variants={itemVariants}>
-          <ProfileSection user={user} loading={loading} />
+          <ProfileSection user={user} loading={loading} onUpdate={setUser} />
         </motion.div>
         <motion.div variants={itemVariants}>
           <AccountOverview account={account} loading={loading} />
@@ -82,11 +82,20 @@ export default function SettingsPage(): React.ReactNode {
   );
 }
 
-function ProfileSection({ user, loading }: { user: UserData | null; loading: boolean }) {
+function ProfileSection({
+  user,
+  loading,
+  onUpdate,
+}: {
+  user: UserData | null;
+  loading: boolean;
+  onUpdate: (u: UserData) => void;
+}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -97,12 +106,18 @@ function ProfileSection({ user, loading }: { user: UserData | null; loading: boo
 
   const handleSave = async () => {
     setSaving(true);
-    setSaved(false);
-    // TODO: wire to profile update endpoint when available
-    await new Promise((r) => setTimeout(r, 500));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setStatus("idle");
+    try {
+      const res = await accountApi.updateProfile({ name, email });
+      onUpdate({ name: res.data.name, email: res.data.email });
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const initials = (name || "U")
@@ -131,14 +146,14 @@ function ProfileSection({ user, loading }: { user: UserData | null; loading: boo
               label="Full Name"
               variant="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
               disabled={loading}
             />
             <Input
               label="Email"
               variant="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               disabled={loading}
             />
           </Box>
@@ -146,9 +161,14 @@ function ProfileSection({ user, loading }: { user: UserData | null; loading: boo
       </CardContent>
       <CardFooter>
         <Box className="flex items-center justify-end gap-3">
-          <AnimatedPresence show={saved} presenceKey="saved-indicator">
+          <AnimatedPresence show={status === "saved"} presenceKey="saved-indicator">
             <Text variant="body-sm" className="text-status-success">
               Saved
+            </Text>
+          </AnimatedPresence>
+          <AnimatedPresence show={status === "error"} presenceKey="error-indicator">
+            <Text variant="body-sm" className="text-status-error">
+              {errorMsg}
             </Text>
           </AnimatedPresence>
           <PressableScale as="button" tapScale={0.95}>
@@ -193,6 +213,41 @@ function AccountOverview({ account, loading }: { account: AccountData | null; lo
 AccountOverview.displayName = "AccountOverview";
 
 function SecuritySection() {
+  const [passkeysData, setPasskeysData] = useState<PasskeyInfo[]>([]);
+  const [loadingPasskeys, setLoadingPasskeys] = useState(true);
+  const [showPasskeys, setShowPasskeys] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadPasskeys = useCallback(async () => {
+    try {
+      const res = await accountApi.listPasskeys();
+      setPasskeysData(res.data);
+    } catch {
+      setPasskeysData([]);
+    } finally {
+      setLoadingPasskeys(false);
+    }
+  }, []);
+
+  const handleDeletePasskey = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await accountApi.deletePasskey(id);
+      setPasskeysData((prev) => prev.filter((p) => p.id !== id));
+    } catch {
+      // silently fail — user can retry
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleManagePasskeys = () => {
+    if (!showPasskeys) {
+      loadPasskeys();
+    }
+    setShowPasskeys(!showPasskeys);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -200,25 +255,52 @@ function SecuritySection() {
       </CardHeader>
       <CardContent>
         <Box className="space-y-4">
-          <Box className="flex items-center justify-between">
-            <Box>
-              <Text variant="body-md" className="font-medium">
-                Passkeys
-              </Text>
-              <Text variant="body-sm" muted>
-                Use biometric or hardware key authentication for secure, passwordless login.
-              </Text>
+          <Box>
+            <Box className="flex items-center justify-between">
+              <Box>
+                <Text variant="body-md" className="font-medium">Passkeys</Text>
+                <Text variant="body-sm" muted>
+                  Use biometric or hardware key authentication for secure, passwordless login.
+                </Text>
+              </Box>
+              <Button variant="secondary" size="sm" onClick={handleManagePasskeys}>
+                {showPasskeys ? "Hide" : "Manage Passkeys"}
+              </Button>
             </Box>
-            <Button variant="secondary" size="sm">
-              Manage Passkeys
-            </Button>
+            {showPasskeys && (
+              <Box className="mt-4 space-y-2">
+                {loadingPasskeys ? (
+                  <Text variant="body-sm" muted>Loading passkeys...</Text>
+                ) : passkeysData.length === 0 ? (
+                  <Text variant="body-sm" muted>No passkeys registered yet.</Text>
+                ) : (
+                  passkeysData.map((pk) => (
+                    <Box key={pk.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-tertiary">
+                      <Box>
+                        <Text variant="body-sm" className="font-medium">{pk.deviceName}</Text>
+                        <Text variant="caption" muted>
+                          Added {pk.createdAt ? new Date(pk.createdAt).toLocaleDateString() : "—"}
+                          {pk.lastUsedAt ? ` · Last used ${new Date(pk.lastUsedAt).toLocaleDateString()}` : ""}
+                        </Text>
+                      </Box>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeletePasskey(pk.id)}
+                        disabled={deletingId === pk.id}
+                      >
+                        {deletingId === pk.id ? "Removing..." : "Remove"}
+                      </Button>
+                    </Box>
+                  ))
+                )}
+              </Box>
+            )}
           </Box>
           <Box as="hr" className="border-border" />
           <Box className="flex items-center justify-between">
             <Box>
-              <Text variant="body-md" className="font-medium">
-                Two-Factor Authentication
-              </Text>
+              <Text variant="body-md" className="font-medium">Two-Factor Authentication</Text>
               <Text variant="body-sm" muted>
                 Add an extra layer of security with TOTP-based 2FA.
               </Text>
@@ -230,9 +312,7 @@ function SecuritySection() {
           <Box as="hr" className="border-border" />
           <Box className="flex items-center justify-between">
             <Box>
-              <Text variant="body-md" className="font-medium">
-                Active Sessions
-              </Text>
+              <Text variant="body-md" className="font-medium">Active Sessions</Text>
               <Text variant="body-sm" muted>
                 Review and manage devices where you are currently signed in.
               </Text>
@@ -250,9 +330,29 @@ function SecuritySection() {
 SecuritySection.displayName = "SecuritySection";
 
 function NotificationSection() {
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [aiDigest, setAiDigest] = useState(true);
-  const [deliverabilityAlerts, setDeliverabilityAlerts] = useState(true);
+  const [prefs, setPrefs] = useState<NotificationPrefs>({
+    emailNotifications: true,
+    aiDigest: true,
+    deliverabilityAlerts: true,
+  });
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    accountApi.getNotificationPrefs().then((res) => {
+      setPrefs(res.data);
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, []);
+
+  const toggle = async (key: keyof NotificationPrefs) => {
+    const updated = { ...prefs, [key]: !prefs[key] };
+    setPrefs(updated);
+    try {
+      await accountApi.updateNotificationPrefs({ [key]: updated[key] });
+    } catch {
+      setPrefs(prefs);
+    }
+  };
 
   return (
     <Card>
@@ -263,53 +363,50 @@ function NotificationSection() {
         <Box className="space-y-4">
           <Box className="flex items-center justify-between">
             <Box>
-              <Text variant="body-md" className="font-medium">
-                Email Notifications
-              </Text>
+              <Text variant="body-md" className="font-medium">Email Notifications</Text>
               <Text variant="body-sm" muted>
                 Receive notifications about important account events.
               </Text>
             </Box>
             <Button
-              variant={emailNotifs ? "secondary" : "ghost"}
+              variant={prefs.emailNotifications ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setEmailNotifs(!emailNotifs)}
+              onClick={() => toggle("emailNotifications")}
+              disabled={!loaded}
             >
-              {emailNotifs ? "Enabled" : "Disabled"}
+              {prefs.emailNotifications ? "Enabled" : "Disabled"}
             </Button>
           </Box>
           <Box className="flex items-center justify-between">
             <Box>
-              <Text variant="body-md" className="font-medium">
-                AI Digest
-              </Text>
+              <Text variant="body-md" className="font-medium">AI Digest</Text>
               <Text variant="body-sm" muted>
                 Get a daily AI-generated summary of your inbox activity.
               </Text>
             </Box>
             <Button
-              variant={aiDigest ? "secondary" : "ghost"}
+              variant={prefs.aiDigest ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setAiDigest(!aiDigest)}
+              onClick={() => toggle("aiDigest")}
+              disabled={!loaded}
             >
-              {aiDigest ? "Enabled" : "Disabled"}
+              {prefs.aiDigest ? "Enabled" : "Disabled"}
             </Button>
           </Box>
           <Box className="flex items-center justify-between">
             <Box>
-              <Text variant="body-md" className="font-medium">
-                Deliverability Alerts
-              </Text>
+              <Text variant="body-md" className="font-medium">Deliverability Alerts</Text>
               <Text variant="body-sm" muted>
                 Be notified when domain reputation or deliverability drops.
               </Text>
             </Box>
             <Button
-              variant={deliverabilityAlerts ? "secondary" : "ghost"}
+              variant={prefs.deliverabilityAlerts ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setDeliverabilityAlerts(!deliverabilityAlerts)}
+              onClick={() => toggle("deliverabilityAlerts")}
+              disabled={!loaded}
             >
-              {deliverabilityAlerts ? "Enabled" : "Disabled"}
+              {prefs.deliverabilityAlerts ? "Enabled" : "Disabled"}
             </Button>
           </Box>
         </Box>
@@ -322,14 +419,22 @@ NotificationSection.displayName = "NotificationSection";
 
 function DangerZone() {
   const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirming) {
       setConfirming(true);
       return;
     }
-    // TODO: wire to account deletion endpoint
-    setConfirming(false);
+    setDeleting(true);
+    try {
+      await accountApi.deleteAccount();
+      authApi.logout();
+      window.location.href = "/";
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+    }
   };
 
   return (
@@ -352,14 +457,14 @@ function DangerZone() {
           <Box className="flex items-center gap-2">
             <AnimatedPresence show={confirming} presenceKey="cancel-delete">
               <PressableScale as="button" tapScale={0.95}>
-                <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+                <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deleting}>
                   Cancel
                 </Button>
               </PressableScale>
             </AnimatedPresence>
             <PressableScale as="button" tapScale={0.95}>
-              <Button variant="destructive" size="sm" onClick={handleDelete}>
-                {confirming ? "Confirm Delete" : "Delete Account"}
+              <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
+                {deleting ? "Deleting..." : confirming ? "Confirm Delete" : "Delete Account"}
               </Button>
             </PressableScale>
           </Box>
