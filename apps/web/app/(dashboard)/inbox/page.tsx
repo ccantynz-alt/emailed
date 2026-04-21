@@ -15,9 +15,10 @@ import {
   type EmailMessage,
 } from "@alecrae/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { messagesApi, type Message, type MessageDetail } from "../../../lib/api";
+import { messagesApi, authApi, type Message, type MessageDetail } from "../../../lib/api";
 import { NewsletterSummaryPreview } from "../../../components/NewsletterSummaryPreview";
 import { EmailExplainerPanel } from "../../../components/EmailExplainerPanel";
+import { QuickReply } from "../../../components/QuickReply";
 import { EmailListSkeleton } from "../../../components/AnimatedSkeleton";
 import { PressableScale } from "../../../components/PressableScale";
 import {
@@ -154,6 +155,8 @@ export default function InboxPage(): React.ReactNode {
   const [explainerOpen, setExplainerOpen] = useState(false);
   // Whether to show full email content (toggled from newsletter summary)
   const [showFullEmail, setShowFullEmail] = useState(true);
+  const [quickReplyOpen, setQuickReplyOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   const filteredEmails = useMemo(() => emailItems.filter((e) => {
     if (filter === "unread") return !e.read;
@@ -308,11 +311,13 @@ export default function InboxPage(): React.ReactNode {
 
   useEffect(() => {
     fetchEmails();
+    authApi.me().then((res) => setUserEmail(res.data.email)).catch(() => {});
   }, [fetchEmails]);
 
   useEffect(() => {
     if (selectedEmailId) {
       fetchDetail(selectedEmailId);
+      setQuickReplyOpen(false);
     }
   }, [selectedEmailId, fetchDetail]);
 
@@ -583,6 +588,35 @@ export default function InboxPage(): React.ReactNode {
               }}
             />
                 </Box>
+
+                {/* Quick Reply */}
+                {selectedEmail && !quickReplyOpen && (
+                  <Box className="border-t border-border p-3 bg-surface-secondary">
+                    <button
+                      type="button"
+                      onClick={() => setQuickReplyOpen(true)}
+                      className="w-full text-left px-4 py-2.5 rounded-lg border border-border bg-surface text-content-tertiary text-body-sm hover:border-border-strong hover:text-content-secondary transition-all"
+                    >
+                      Reply to {selectedEmail.sender.name || selectedEmail.sender.email}...
+                    </button>
+                  </Box>
+                )}
+
+                <AnimatePresence>
+                  {quickReplyOpen && selectedEmail && userEmail && (
+                    <QuickReply
+                      emailId={selectedEmailId ?? ""}
+                      toEmail={selectedEmail.sender.email}
+                      toName={selectedEmail.sender.name}
+                      subject={selectedEmail.subject}
+                      userEmail={userEmail}
+                      onSent={() => {
+                        setQuickReplyOpen(false);
+                      }}
+                      onClose={() => setQuickReplyOpen(false)}
+                    />
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
