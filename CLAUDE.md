@@ -553,6 +553,13 @@ After writing the code:
 | 12 | Full rebrand from Vienna/48co/@emailed to AlecRae/alecrae.com/@alecrae | HIGH | 2026-04-12 | DONE 2026-04-12 — all files updated |
 | 13 | No error boundaries in web app (error.tsx / not-found.tsx) | MEDIUM | 2026-04-12 | FIXED 2026-04-12 — root + dashboard error boundaries + 404 page |
 | 14 | No sitemap.xml or robots.txt for SEO | LOW | 2026-04-12 | FIXED 2026-04-12 — Next.js route-based sitemap.ts + robots.ts |
+| 15 | Landing page was "Coming Soon" placeholder | HIGH | 2026-04-21 | FIXED 2026-04-21 — full marketing site (11 sections) |
+| 16 | Settings page TODOs (profile/security/delete) | MEDIUM | 2026-04-21 | FIXED 2026-04-21 — all wired to real API endpoints |
+| 17 | Analytics page showing zero fallback data | MEDIUM | 2026-04-21 | FIXED 2026-04-21 — wired to real deliverability/heatmap APIs |
+| 18 | Inbox archive/delete/star client-side only | MEDIUM | 2026-04-21 | FIXED 2026-04-21 — PATCH/DELETE API + optimistic UI |
+| 19 | AI compose suggestions hardcoded | MEDIUM | 2026-04-21 | FIXED 2026-04-21 — wired to /v1/grammar/check API |
+| 20 | Keyboard shortcuts not connected to inbox | MEDIUM | 2026-04-21 | FIXED 2026-04-21 — j/k/e/#/s/r/a/f all wired |
+| 21 | No inline quick reply in inbox | LOW | 2026-04-21 | FIXED 2026-04-21 — QuickReply component with Cmd+Enter send |
 
 ---
 
