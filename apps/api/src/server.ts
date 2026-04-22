@@ -27,7 +27,7 @@ import {
   searchRateLimit,
   closeRateLimitRedis,
 } from "./middleware/rate-limit.js";
-import { messages } from "./routes/messages.js";
+import { messages, unifiedSend } from "./routes/messages.js";
 import { domains } from "./routes/domains.js";
 import { webhooks } from "./routes/webhooks.js";
 import { analytics } from "./routes/analytics.js";
@@ -238,7 +238,8 @@ app.use("/v1/connect/accounts", authMiddleware, readRateLimit);
 app.use("/v1/connect/accounts/*", authMiddleware, writeRateLimit);
 // Snooze: write-level (200 req/min)
 app.use("/v1/snooze/*", authMiddleware, writeRateLimit);
-// Schedule/Undo send: write-level (200 req/min)
+// Unified send + Schedule/Undo send: send-level (100 req/min for POST /v1/send), write-level for sub-routes
+app.use("/v1/send", authMiddleware, sendRateLimit);
 app.use("/v1/send/*", authMiddleware, writeRateLimit);
 // Import: write-level (200 req/min)
 app.use("/v1/import/*", authMiddleware, writeRateLimit);
@@ -338,6 +339,7 @@ app.route("/v1/translate", translate);
 app.route("/v1/collaborate", collaborate);
 app.route("/v1/connect", connect);
 app.route("/v1/snooze", snooze);
+app.route("/v1/send", unifiedSend);
 app.route("/v1/send", scheduleSend);
 app.route("/v1/import", importRouter);
 app.route("/v1/search", aiSearch);

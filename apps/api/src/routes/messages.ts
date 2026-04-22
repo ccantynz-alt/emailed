@@ -23,7 +23,7 @@ import type {
   PaginationParams,
   PaginatedResponse,
 } from "../types.js";
-import { getDatabase, emails, deliveryResults, domains, accounts, suppressionLists } from "@alecrae/db";
+import { getDatabase, emails, deliveryResults, domains, accounts, suppressionLists, templates } from "@alecrae/db";
 import { getSendQueue } from "../lib/queue.js";
 import { checkQuota, incrementQuota } from "../lib/quota.js";
 import { indexEmail, searchEmails } from "@alecrae/shared";
@@ -35,6 +35,10 @@ import {
   HEADER_INJECTION_REJECTED,
 } from "@alecrae/mta/lib";
 import { scanAttachment, isSafe } from "@alecrae/security";
+import {
+  renderTemplate,
+  validateVariables,
+} from "../lib/template-renderer.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -112,7 +116,7 @@ function buildRawMessage(
   }
 
   // Subject
-  lines.push(`Subject: ${input.subject}`);
+  lines.push(`Subject: ${input.subject ?? ""}`);
 
   // Message-ID
   lines.push(`Message-ID: ${messageId}`);
@@ -221,6 +225,80 @@ async function handleSend(c: Context) {
   const input = getValidatedBody<SendMessageInput>(c);
   const auth = c.get("auth");
   const db = getDatabase();
+
+  // ── 0a. message_id → Idempotency-Key promotion ───────────────────
+  // If the caller passes message_id in the body (Crontech contract),
+  // promote it to the standard Idempotency-Key header so the existing
+  // Redis-backed idempotency middleware catches replays automatically.
+  if (input.message_id && !c.req.header("Idempotency-Key")) {
+    c.req.raw.headers.set("Idempotency-Key", input.message_id);
+  }
+
+  // ── 0b. Template resolution ───────────────────────────────────────
+  // If template_id is provided, look it up by name (e.g. "crontech.verify-email"),
+  // render with variables, and merge subject/html/text into the input.
+  if (input.template_id) {
+    const [tmpl] = await db
+      .select()
+      .from(templates)
+      .where(
+        and(
+          eq(templates.name, input.template_id),
+          eq(templates.accountId, auth.accountId),
+        ),
+      )
+      .limit(1);
+
+    if (!tmpl) {
+      return c.json(
+        {
+          error: {
+            type: "not_found",
+            message: `Template "${input.template_id}" not found for this account.`,
+            code: "template_not_found",
+          },
+        },
+        404,
+      );
+    }
+
+    const vars = (input.variables ?? {}) as Record<string, unknown>;
+    const allContent = [tmpl.subject, tmpl.htmlBody ?? "", tmpl.textBody ?? ""].join(" ");
+    const missing = validateVariables(allContent, vars);
+    if (missing.length > 0) {
+      return c.json(
+        {
+          error: {
+            type: "validation_error",
+            message: `Missing template variables: ${missing.join(", ")}`,
+            code: "missing_variables",
+            missing,
+          },
+        },
+        400,
+      );
+    }
+
+    input.subject = input.subject ?? renderTemplate(tmpl.subject, vars);
+    input.html = input.html ?? (tmpl.htmlBody ? renderTemplate(tmpl.htmlBody, vars) : undefined);
+    input.text = input.text ?? (tmpl.textBody ? renderTemplate(tmpl.textBody, vars) : undefined);
+  }
+
+  // After template resolution, subject must exist
+  if (!input.subject) {
+    return c.json(
+      {
+        error: {
+          type: "validation_error",
+          message: "Subject is required (either directly or from template).",
+          code: "missing_subject",
+        },
+      },
+      400,
+    );
+  }
+
+  const resolvedSubject: string = input.subject;
 
   const id = generateId();
   const senderDomain = domainOf(input.from.email);
@@ -444,7 +522,7 @@ async function handleSend(c: Context) {
       : null,
     replyToAddress: input.replyTo?.email ?? null,
     replyToName: input.replyTo?.name ?? null,
-    subject: input.subject,
+    subject: resolvedSubject,
     textBody: input.text ?? null,
     htmlBody: input.html ?? null,
     customHeaders:
@@ -526,7 +604,7 @@ async function handleSend(c: Context) {
     id,
     accountId: auth.accountId,
     mailboxId: "sent",
-    subject: input.subject,
+    subject: resolvedSubject,
     textBody: input.text ?? null,
     fromAddress: input.from.email,
     fromName: input.from.name ?? null,
@@ -796,4 +874,8 @@ messages.get(
   },
 );
 
-export { messages };
+// POST /v1/send — Crontech-compatible unified send (mounted at /v1/send in server.ts)
+const unifiedSend = new Hono();
+unifiedSend.post("/", ...sendMiddleware, handleSend);
+
+export { messages, unifiedSend };
