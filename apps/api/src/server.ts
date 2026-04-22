@@ -78,6 +78,8 @@ import { voiceMessageRouter } from "./routes/voice-message.js";
 import { scripts } from "./routes/scripts.js";
 import { emailQuery } from "./routes/email-query.js";
 import { fbl } from "./routes/fbl.js";
+import { realtime, bunWebSocket } from "./routes/realtime.js";
+import { getConnectionManager } from "./lib/realtime.js";
 import { closeConnection } from "@alecrae/db";
 import { closeIdempotencyRedis } from "./middleware/idempotency.js";
 import { closeSendQueue, getSendQueue } from "./lib/queue.js";
@@ -167,6 +169,9 @@ app.route("/v1/sso", sso);
 
 // Tracking endpoints (no auth — embedded in emails)
 app.route("/t", tracking);
+
+// Real-time WebSocket endpoint (auth via query param token — no middleware)
+app.route("/v1/realtime", realtime);
 
 // ─── Authenticated routes ──────────────────────────────────────────────────
 
@@ -541,6 +546,7 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 export default {
   port,
   fetch: app.fetch,
+  websocket: bunWebSocket,
 };
 
 export { app };
