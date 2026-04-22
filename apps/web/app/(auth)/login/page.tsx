@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Text, Button, Input, Card, CardContent } from "@emailed/ui";
+import { Box, Text, Button, Input, Card, CardContent } from "@alecrae/ui";
 import { authApi } from "../../../lib/api";
 import {
   isWebAuthnSupported,

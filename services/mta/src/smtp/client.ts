@@ -19,7 +19,7 @@ import type { TlsManager } from "../tls/manager.js";
 const DEFAULT_CLIENT_CONFIG: SmtpClientConfig = {
   host: "",
   port: 25,
-  localHostname: "mail.emailed.dev",
+  localHostname: "mail.alecrae.dev",
   connectTimeout: 30_000,
   socketTimeout: 60_000,
   greetingTimeout: 30_000,

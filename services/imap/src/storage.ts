@@ -1,5 +1,5 @@
 /**
- * @emailed/imap — PostgreSQL Storage Adapter
+ * @alecrae/imap — PostgreSQL Storage Adapter
  *
  * Implements the MessageStore interface from handlers/messages.ts,
  * mapping IMAP concepts (UIDs, sequence numbers, flags, mailboxes)
@@ -23,8 +23,8 @@
  * For now, we emulate these with in-memory state and query-based UID assignment.
  */
 
-import { eq, asc } from "drizzle-orm";
-import { getDatabase, emails, domains } from "@emailed/db";
+import { eq, and, desc, asc, inArray, like, gte, lte, sql, or } from "drizzle-orm";
+import { getDatabase, emails } from "@alecrae/db";
 import type {
   ImapMessage,
   ImapEnvelope,
@@ -348,7 +348,7 @@ export class PostgresMessageStore implements MessageStore {
       fromAddress: "unknown@local",
       subject: "Appended message",
       textBody: message.rawMessage,
-      status: mailbox.toLowerCase() === "drafts" ? "queued" : "delivered", // "draft" not in enum; "queued" = not yet sent
+      status: mailbox.toLowerCase() === "drafts" ? "draft" : "delivered",
       createdAt: message.internalDate,
       updatedAt: new Date(),
       tags: [],

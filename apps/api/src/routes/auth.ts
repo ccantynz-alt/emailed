@@ -1,8 +1,10 @@
 /**
  * Authentication Routes
  *
- * POST /v1/auth/login     — Email + password login, returns session token
- * POST /v1/auth/register  — Create account + user, returns session token
+ * POST /v1/auth/login     — Email + password login, returns access + refresh tokens
+ * POST /v1/auth/register  — Create account + user, returns access + refresh tokens
+ * POST /v1/auth/refresh   — Rotate refresh token, returns new token pair
+ * POST /v1/auth/logout    — Revoke all refresh tokens for the user
  * GET  /v1/auth/me        — Get current user from session token
  */
 
@@ -10,7 +12,15 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { validateBody, getValidatedBody } from "../middleware/validator.js";
-import { getDatabase, users, accounts } from "@emailed/db";
+import { getDatabase, users, accounts } from "@alecrae/db";
+import {
+  issueTokenPair,
+  rotateRefreshToken,
+  revokeAllUserTokens,
+  verifyAccessToken,
+  TokenError,
+} from "../lib/jwt.js";
+import type { TokenPayload } from "../lib/jwt.js";
 
 const auth = new Hono();
 
@@ -22,30 +32,25 @@ function generateId(): string {
 }
 
 async function hashPassword(password: string): Promise<string> {
-  const data = new TextEncoder().encode(password);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return Bun.password.hash(password, { algorithm: "argon2id", memoryCost: 19456, timeCost: 2 });
 }
 
-/**
- * Create a minimal JWT (no external library required).
- * In production, use a proper JWT library with RS256.
- */
-function createToken(payload: Record<string, unknown>): string {
-  const secret = process.env["JWT_SECRET"] ?? "dev_secret";
-  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const body = btoa(
-    JSON.stringify({
-      ...payload,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 86400 * 7, // 7 days
-    }),
-  );
-  // Simplified HMAC — in production use crypto.subtle.sign
-  const signature = btoa(`${header}.${body}.${secret}`);
-  return `${header}.${body}.${signature}`;
+async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  if (storedHash.startsWith("$argon2")) {
+    return Bun.password.verify(password, storedHash);
+  }
+  // Legacy SHA-256 hashes (pre-Argon2 migration) — verify constant-time and auto-upgrade handled by caller
+  const data = new TextEncoder().encode(password);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  const legacyHex = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  if (legacyHex.length !== storedHash.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < legacyHex.length; i++) {
+    mismatch |= legacyHex.charCodeAt(i) ^ storedHash.charCodeAt(i);
+  }
+  return mismatch === 0;
 }
 
 // ─── Schemas ───────────────────────────────────────────────────────────────
@@ -86,8 +91,8 @@ auth.post("/login", validateBody(LoginSchema), async (c) => {
     );
   }
 
-  const passwordHash = await hashPassword(input.password);
-  if (user.passwordHash !== passwordHash) {
+  const valid = user.passwordHash ? await verifyPassword(input.password, user.passwordHash) : false;
+  if (!valid) {
     return c.json(
       {
         error: {
@@ -100,22 +105,39 @@ auth.post("/login", validateBody(LoginSchema), async (c) => {
     );
   }
 
-  // Update last login
-  await db
-    .update(users)
-    .set({ lastLoginAt: new Date() })
-    .where(eq(users.id, user.id));
+  // Transparent upgrade: legacy SHA-256 hashes migrate to Argon2id on successful login
+  const updates: Record<string, unknown> = { lastLoginAt: new Date() };
+  if (user.passwordHash && !user.passwordHash.startsWith("$argon2")) {
+    updates.passwordHash = await hashPassword(input.password);
+  }
+  await db.update(users).set(updates).where(eq(users.id, user.id));
 
-  const token = createToken({
+  // Look up account tier
+  let tier = "free";
+  try {
+    const [account] = await db
+      .select({ planTier: accounts.planTier })
+      .from(accounts)
+      .where(eq(accounts.id, user.accountId))
+      .limit(1);
+    if (account) tier = account.planTier ?? "free";
+  } catch {
+    // fall through
+  }
+
+  const tokenPair = await issueTokenPair({
     sub: user.accountId,
     userId: user.id,
     email: user.email,
     role: user.role,
+    tier,
   });
 
   return c.json({
     data: {
-      token,
+      token: tokenPair.accessToken,
+      refreshToken: tokenPair.refreshToken,
+      expiresIn: tokenPair.expiresIn,
       user: {
         id: user.id,
         email: user.email,
@@ -186,17 +208,20 @@ auth.post("/register", validateBody(RegisterSchema), async (c) => {
     },
   });
 
-  const token = createToken({
+  const tokenPair = await issueTokenPair({
     sub: accountId,
     userId,
     email: input.email.toLowerCase(),
     role: "owner",
+    tier: "free",
   });
 
   return c.json(
     {
       data: {
-        token,
+        token: tokenPair.accessToken,
+        refreshToken: tokenPair.refreshToken,
+        expiresIn: tokenPair.expiresIn,
         user: {
           id: userId,
           email: input.email.toLowerCase(),
@@ -210,83 +235,130 @@ auth.post("/register", validateBody(RegisterSchema), async (c) => {
   );
 });
 
-interface SessionPayload {
-  readonly userId: string;
-  readonly accountId: string;
-}
+// ─── Schemas for new endpoints ────────────��───────────────────────────────
 
-function verifyBearerToken(authHeader: string | undefined): SessionPayload | null {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  const token = authHeader.slice(7);
-  const parts = token.split(".");
-  if (parts.length !== 3 || !parts[1]) return null;
+const RefreshSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+
+// POST /v1/auth/refresh — Rotate refresh token, return new token pair
+auth.post("/refresh", validateBody(RefreshSchema), async (c) => {
+  const input = getValidatedBody<z.infer<typeof RefreshSchema>>(c);
+
   try {
-    const payload = JSON.parse(atob(parts[1])) as {
-      exp?: number;
-      userId?: string;
-      sub?: string;
-    };
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
-    if (!payload.userId || !payload.sub) return null;
-    return { userId: payload.userId, accountId: payload.sub };
-  } catch {
-    return null;
-  }
-}
+    const tokenPair = await rotateRefreshToken(input.refreshToken);
 
-function unauthenticatedResponse() {
-  return {
-    error: {
-      type: "authentication_error" as const,
-      message: "Invalid or expired token",
-      code: "invalid_token" as const,
-    },
-  };
-}
+    return c.json({
+      data: {
+        token: tokenPair.accessToken,
+        refreshToken: tokenPair.refreshToken,
+        expiresIn: tokenPair.expiresIn,
+      },
+    });
+  } catch (err) {
+    const code = err instanceof TokenError ? err.code : "invalid_refresh_token";
+    const message = err instanceof Error ? err.message : "Invalid refresh token";
+
+    return c.json(
+      {
+        error: {
+          type: "authentication_error",
+          message,
+          code,
+        },
+      },
+      401,
+    );
+  }
+});
+
+// POST /v1/auth/logout — Revoke all refresh tokens for the authenticated user
+auth.post("/logout", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json(
+      {
+        error: {
+          type: "authentication_error",
+          message: "Missing token",
+          code: "unauthenticated",
+        },
+      },
+      401,
+    );
+  }
+
+  const token = authHeader.slice(7);
+  try {
+    const payload = await verifyAccessToken(token);
+    const userId = payload.userId as string;
+
+    await revokeAllUserTokens(userId);
+
+    return c.json({ data: { message: "All sessions revoked" } });
+  } catch {
+    // Try legacy decode as fallback
+    try {
+      const parts = token.split(".");
+      if (parts.length !== 3) throw new Error("Invalid token");
+      const payload = JSON.parse(atob(parts[1]!));
+      if (payload.userId) {
+        await revokeAllUserTokens(payload.userId as string);
+        return c.json({ data: { message: "All sessions revoked" } });
+      }
+    } catch {
+      // fall through
+    }
+
+    return c.json(
+      {
+        error: {
+          type: "authentication_error",
+          message: "Invalid or expired token",
+          code: "invalid_token",
+        },
+      },
+      401,
+    );
+  }
+});
 
 // GET /v1/auth/me — Get current user from bearer token
 auth.get("/me", async (c) => {
   const session = verifyBearerToken(c.req.header("Authorization"));
   if (!session) return c.json(unauthenticatedResponse(), 401);
 
-  const db = getDatabase();
-  const [user] = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      name: users.name,
-      role: users.role,
-      accountId: users.accountId,
-    })
-    .from(users)
-    .where(eq(users.id, session.userId))
-    .limit(1);
+  const token = authHeader.slice(7);
+  try {
+    // Try verified JWT first
+    let userId: string | undefined;
+    try {
+      const payload = await verifyAccessToken(token);
+      userId = payload.userId as string;
+    } catch {
+      // Fallback to raw decode for legacy tokens
+      const parts = token.split(".");
+      if (parts.length !== 3) throw new Error("Invalid token");
+      const payload = JSON.parse(atob(parts[1]!));
+      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+        throw new Error("Token expired");
+      }
+      userId = payload.userId as string;
+    }
 
-  if (!user) return c.json(unauthenticatedResponse(), 401);
+    if (!userId) throw new Error("No userId in token");
 
-  return c.json({ data: user });
-});
-
-// PATCH /v1/auth/me — Update the authenticated user's profile
-const UpdateProfileSchema = z.object({
-  name: z.string().min(1).max(256).optional(),
-  email: z.string().email().optional(),
-});
-
-auth.patch("/me", validateBody(UpdateProfileSchema), async (c) => {
-  const session = verifyBearerToken(c.req.header("Authorization"));
-  if (!session) return c.json(unauthenticatedResponse(), 401);
-
-  const input = getValidatedBody<z.infer<typeof UpdateProfileSchema>>(c);
-  const db = getDatabase();
-
-  // If email is being changed, make sure the new address isn't already claimed.
-  if (input.email) {
-    const lower = input.email.toLowerCase();
-    const [existing] = await db
-      .select({ id: users.id })
+    const db = getDatabase();
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        role: users.role,
+        accountId: users.accountId,
+      })
       .from(users)
-      .where(eq(users.email, lower))
+      .where(eq(users.id, userId))
       .limit(1);
     if (existing && existing.id !== session.userId) {
       return c.json(

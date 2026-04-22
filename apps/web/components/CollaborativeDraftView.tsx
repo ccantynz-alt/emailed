@@ -11,8 +11,11 @@ import {
   type CollabInvite,
   type CollabHistoryEntry,
   type Collaborator,
-} from "@emailed/ui";
-import { useCollaborativeDraft } from "../lib/use-collaborative-draft";
+} from "@alecrae/ui";
+import {
+  useCollaborativeDraft,
+  type UseCollaborativeDraftOptions,
+} from "../lib/use-collaborative-draft";
 import { collaborationApi } from "../lib/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────────

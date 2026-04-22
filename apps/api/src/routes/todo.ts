@@ -39,13 +39,14 @@ import {
   type TodoProviderName,
   type TodoTaskInput,
   type ThreadForExtraction,
-} from "@emailed/ai-engine/todo";
+  type ExtractedTask,
+} from "@alecrae/ai-engine/todo";
 import {
   getDatabase,
   tasks as tasksTable,
   taskProviderConfigs as configsTable,
-} from "@emailed/db";
-import type { TaskSource, ProviderCredentials } from "@emailed/db";
+} from "@alecrae/db";
+import type { TaskSource, ProviderCredentials } from "@alecrae/db";
 import { getCommitmentsForAccount } from "./inbox.js";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────
@@ -637,7 +638,7 @@ taskRoutes.get("/providers", requireScope("inbox:read"), async (c) => {
   // Add the built-in provider at the top
   providers.unshift({
     name: "builtin" as TodoProviderName,
-    displayName: "Vienna Tasks",
+    displayName: "AlecRae Tasks",
     authType: "api_key" as const,
     description: "Built-in task list — no configuration needed.",
     supportsProjects: false,

@@ -5,6 +5,7 @@ import {
   boolean,
   pgEnum,
   integer,
+  bigint,
   jsonb,
   uniqueIndex,
   index,
@@ -52,6 +53,8 @@ export const accounts = pgTable(
       .notNull()
       .defaultNow(),
     billingEmail: text("billing_email").notNull(),
+    /** Total storage used in R2 (bytes) for this account */
+    storageUsedBytes: bigint("storage_used_bytes", { mode: "number" }).notNull().default(0),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     status: accountStatusEnum("status").notNull().default("active"),

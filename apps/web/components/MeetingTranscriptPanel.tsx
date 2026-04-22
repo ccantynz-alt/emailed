@@ -16,7 +16,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   MeetingLinkCard,
   type MeetingLinkData,
-} from "@emailed/ui";
+} from "@alecrae/ui";
 import {
   meetingsApi,
   type MeetingLinkData as ApiMeetingLinkData,

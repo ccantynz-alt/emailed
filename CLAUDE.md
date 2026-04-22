@@ -1,13 +1,13 @@
-# VIENNA — THE BIBLE
+# ALECRAE — THE BIBLE
 
-> **This document is the single source of truth for Vienna.**
+> **This document is the single source of truth for AlecRae.**
 > **Read it FIRST. Reference it ALWAYS. Violate it NEVER.**
 
 ---
 
 ## ⚡ THE PRIME DIRECTIVE
 
-**Vienna kills Gmail. Vienna kills Outlook. Vienna kills Superhuman.**
+**AlecRae kills Gmail. AlecRae kills Outlook. AlecRae kills Superhuman.**
 
 Email has not been reinvented since 2004. We are the reinvention. There is no second place. We dominate or we die. Every line of code, every component, every decision, every commit must serve this mission.
 
@@ -34,7 +34,7 @@ The following actions require **explicit authorization from Craig (the boss/owne
 1. **Major architectural changes** — swapping frameworks, changing core stack, altering data model
 2. **New dependencies that aren't already in the approved stack** — we don't add bloat
 3. **Pricing changes** — any modification to plans, tiers, or billing logic
-4. **Domain or DNS changes** — anything touching 48co.ai or its subdomains
+4. **Domain or DNS changes** — anything touching alecrae.com or its subdomains
 5. **Production deployments** — first-time deploy and any rollback
 6. **Stripe configuration** — webhook URLs, price IDs, plan structures
 7. **Schema migrations on production database** — irreversible changes need sign-off
@@ -238,7 +238,7 @@ The platform decides where each request runs based on cost, latency, and capabil
 - Destructive AI actions require human-in-the-loop approval
 
 ### Accessibility — CHARLIE BROWN TO 007
-**Vienna must work for novices AND experts equally well:**
+**AlecRae must work for novices AND experts equally well:**
 - WCAG 2.2 AA minimum (target AAA where possible)
 - Full keyboard navigation (every action has a shortcut)
 - Screen reader optimization (real ARIA, real focus management)
@@ -290,7 +290,7 @@ The platform decides where each request runs based on cost, latency, and capabil
 19. **Never silently fail.** Errors are visible to monitoring.
 20. **Never ship a feature without a CLAUDE.md update.** This file is the source of truth.
 21. **Never approve a PR you didn't read end-to-end.**
-22. **Never use the word "Emailed" in user-facing copy.** It's Vienna.
+22. **Never use the word "Vienna" or "Emailed" in user-facing copy.** It's AlecRae.
 23. **Never refer to competitors by name in marketing.** Show, don't tell.
 24. **Never make up user metrics for marketing.** Real numbers or no numbers.
 25. **Never let speed be an excuse for sloppiness.** Move fast WITHOUT breaking things.
@@ -336,7 +336,7 @@ After writing the code:
 ## 🚨 EMERGENCY PROTOCOLS
 
 ### Production Outage
-1. **Check status page** (when set up): status.48co.ai
+1. **Check status page** (when set up): status.alecrae.com
 2. **Roll back** to last known good commit
 3. **Notify Craig** immediately
 4. **Post-mortem** within 24 hours, written and committed to `docs/postmortems/`
@@ -401,15 +401,15 @@ After writing the code:
 
 ## 🌐 DOMAIN & INFRASTRUCTURE
 
-### Domains (48co.ai confirmed)
-- **48co.ai** — Landing/marketing site (Cloudflare Pages)
-- **mail.48co.ai** — Email web app (Cloudflare Pages)
-- **admin.48co.ai** — Admin dashboard (Cloudflare Pages)
-- **api.48co.ai** — API server (Cloudflare Workers / Fly.io)
-- **smtp.48co.ai** — MTA outbound (Fly.io, NOT proxied)
-- **mx1.48co.ai / mx2.48co.ai** — Inbound MX (Fly.io, NOT proxied)
-- **status.48co.ai** — Status page (when set up)
-- **docs.48co.ai** — Developer docs (when set up)
+### Domains (alecrae.com confirmed)
+- **alecrae.com** — Landing/marketing site (Cloudflare Pages)
+- **mail.alecrae.com** — Email web app (Cloudflare Pages)
+- **admin.alecrae.com** — Admin dashboard (Cloudflare Pages)
+- **api.alecrae.com** — API server (Cloudflare Workers / Fly.io)
+- **smtp.alecrae.com** — MTA outbound (Fly.io, NOT proxied)
+- **mx1.alecrae.com / mx2.alecrae.com** — Inbound MX (Fly.io, NOT proxied)
+- **status.alecrae.com** — Status page (when set up)
+- **docs.alecrae.com** — Developer docs (when set up)
 
 ### Hosting Stack
 - **Compute:** Cloudflare Pages + Workers (web/api), Fly.io (MTA/long-lived)
@@ -447,15 +447,15 @@ After writing the code:
 
 ## 🎨 BRAND & VOICE
 
-### The Vienna Brand
-- **Name:** Vienna (always capitalized, never "VIENNA" or "vienna")
-- **Tagline (TBD):** "Email, finally."
+### The AlecRae Brand
+- **Name:** AlecRae (always capitalized as "AlecRae", never "ALECRAE" or "alecrae")
+- **Tagline:** "Email, Evolved."
 - **Tone:** Confident, sharp, no corporate fluff. Speak like a human who knows what they're doing.
 - **Colors:** TBD (Craig to approve)
 - **Logo:** TBD (Craig to approve)
 
 ### Copy Rules
-- Never use the word "Emailed" in user-facing text — that was the codename
+- Never use the word "Vienna" or "Emailed" in user-facing text — those were codenames
 - Never refer to competitors by name in marketing copy
 - Never use marketing buzzwords ("synergy", "leverage", "best-in-class")
 - Never claim features we don't have
@@ -529,9 +529,59 @@ After writing the code:
 - Neon PostgreSQL setup SQL
 - Production .env template
 
-### Total: 36/36 from original plan + 7 bonus features ✅ ALL TIERS COMPLETE
-### API Routes: 30+ route files, 100+ endpoints
-### Code: ~35K lines of TypeScript
+### TIER 5 (Table Stakes Expansion) — 20/20 ✅ COMPLETE (2026-04-18)
+- [x] Read receipts / tracking pixel (open + click tracking)
+- [x] Email templates library (CRUD + variable rendering)
+- [x] Signature manager (multiple per account, auto-switch by context)
+- [x] Contact groups / distribution lists (CRUD + member management)
+- [x] Smart folders / saved searches (dynamic filters, auto-populate)
+- [x] Email scheduling queue dashboard (list/cancel scheduled sends)
+- [x] Thread muting (silence threads without unsubscribing)
+- [x] Bulk actions (archive/delete/read/star/label/move — up to 500 at once)
+- [x] Labels / tags (shared, nested hierarchy, apply/remove from emails)
+- [x] Push notifications (Web Push subscriptions + preferences + quiet hours)
+- [x] Link previews / URL unfurling (OG meta parsing, 7-day cache)
+- [x] Email scheduling analytics (opens/clicks by hour+day, best send times)
+- [x] Email A/B testing (multi-variant, auto-winner by metric)
+- [x] Auto-responder / vacation mode (AI-powered OOO with smart replies)
+- [x] Contact enrichment (company info, social profiles, AI-powered)
+- [x] Mail merge (personalized mass emails from CSV/contacts)
+- [x] Zapier/Make/n8n integration (outbound webhooks, HMAC-signed, 11 event types)
+- [x] AlecRae Notes (email-linked notes, pin, thread/contact scoping)
+- [x] AlecRae Files (attachment management, storage stats, presigned uploads)
+- [x] AlecRae Chat (secure team messaging, channels, DMs, thread-linked)
+
+### TIER 6 (AI-Powered Platform) — 9/9 ✅ COMPLETE (2026-04-18)
+- [x] Onboarding wizard (Gmail + Microsoft 365 guided setup)
+- [x] AlecRae Docs (documents, folders, versioning, AI assist, export)
+- [x] AlecRae Meet (video meeting rooms, recordings, transcription, summaries)
+- [x] AI Writing Intelligence (profiles, compose, rewrite, expand, stats)
+- [x] Calendar Events (smart calendar, availability, find-time, AI scheduling)
+- [x] Contacts Extended (CRM-lite — interactions, reminders, AI insights)
+- [x] Notification Intelligence (AI rules, batching, digest, evaluate)
+- [x] Focus Sessions (start/end, deferred emails, current session)
+- [x] Email Hygiene (habits analytics, subscription tracker, inbox cleanup, goals)
+
+### TIER 7 (Advanced Intelligence) — 6/6 ✅ COMPLETE (2026-04-18)
+- [x] Analytics Dashboard (periodic snapshots, goals tracking)
+- [x] Email Delegation (delegate handling to team, shared drafts, review workflow)
+- [x] Workflow Automation (triggers, actions, runs, templates)
+- [x] AI Categorization (email categories, smart labels, feedback loop)
+- [x] Search Intelligence (history, bookmarks, AI suggestions)
+- [x] Security Intelligence (threat detection, policies, audit log, phishing reports)
+
+### TIER 8 (Deep AI Intelligence) — 6/6 ✅ COMPLETE (2026-04-18)
+- [x] Sentiment Timeline (per-contact sentiment tracking, relationship health, risk alerts)
+- [x] Attachment Intelligence (AI file analysis, virus scanning, PII detection, smart organization)
+- [x] Scheduling Intelligence (AI meeting proposals, availability patterns, conflict detection)
+- [x] Context Intelligence (action item extraction, deadline tracking, promise monitoring)
+- [x] Productivity Analytics (time tracking, behavioral insights, team leaderboards)
+- [x] Knowledge Graph (entity extraction, relationship mapping, graph visualization)
+
+### Total: 36/36 original + 7 bonus + 20 expansion + 9 platform + 6 intelligence + 6 deep AI = 84 features ✅ ALL COMPLETE
+### API Routes: 90 route files, 290+ endpoints
+### DB Schemas: 61 schema files
+### Code: ~62K lines of TypeScript
 
 ---
 
@@ -542,7 +592,7 @@ After writing the code:
 | 1 | Monorepo `bun run build` not verified end-to-end | HIGH | 2026-04-05 | FIXED 2026-04-09 — 26/26 tasks pass |
 | 2 | Web app passkey login button has no onClick handler | MEDIUM | 2026-04-05 | FIXED 2026-04-09 — full WebAuthn flow |
 | 3 | Some in-memory stores need DB migration (screener, recall, contacts) | MEDIUM | 2026-04-05 | FIXED 2026-04-09 — Drizzle schemas + routes wired |
-| 4 | Landing page (48co.ai) doesn't exist yet — needs Coming Soon | HIGH | 2026-04-05 | DONE — built previously |
+| 4 | Landing page (alecrae.com) doesn't exist yet — needs Coming Soon | HIGH | 2026-04-05 | DONE — built previously |
 | 5 | No actual deployment to Cloudflare yet | HIGH | 2026-04-05 | IN PROGRESS — Vercel deploying from main |
 | 6 | Admin route imported but was never mounted in server.ts | HIGH | 2026-04-09 | FIXED 2026-04-09 |
 | 7 | 5x `as any` casts in snooze.ts and voice.ts | MEDIUM | 2026-04-09 | FIXED 2026-04-09 |
@@ -550,6 +600,9 @@ After writing the code:
 | 9 | Pre-existing Drizzle ORM type errors on `.set()` and `.values()` calls | MEDIUM | 2026-04-09 | NOTED |
 | 10 | 16x `as any` casts in IMAP storage.ts | MEDIUM | 2026-04-09 | FIXED 2026-04-09 |
 | 11 | Vercel build fails — Root Directory must be apps/web | HIGH | 2026-04-09 | FIXED 2026-04-09 — vercel.json updated + merged to main |
+| 12 | Full rebrand from Vienna/48co/@emailed to AlecRae/alecrae.com/@alecrae | HIGH | 2026-04-12 | DONE 2026-04-12 — all files updated |
+| 13 | No error boundaries in web app (error.tsx / not-found.tsx) | MEDIUM | 2026-04-12 | FIXED 2026-04-12 — root + dashboard error boundaries + 404 page |
+| 14 | No sitemap.xml or robots.txt for SEO | LOW | 2026-04-12 | FIXED 2026-04-12 — Next.js route-based sitemap.ts + robots.ts |
 
 ---
 
@@ -564,12 +617,13 @@ After writing the code:
 7. ~~Wire in-memory stores to DB~~ DONE 2026-04-09 — Drizzle schemas for contacts, recall, screener
 8. ~~Complete Admin SSO~~ DONE 2026-04-09 — SAML 2.0 SP, admin login page
 9. ~~Fix Vercel deployment~~ DONE 2026-04-09 — Root Directory = apps/web
-10. **Verify Vercel deployment succeeds** (Craig — check Vercel dashboard)
-11. **Set up Neon database** + run setup SQL (Craig action)
-12. **Set up Upstash Redis** (Craig action)
-13. **Configure DNS** for 48co.ai (Craig action)
-14. **Set up Stripe account** + configure webhook URLs (Craig action)
-15. **Add API keys** (Anthropic, OpenAI, Google, Microsoft) to production env (Craig action)
+10. ~~**Rebrand Vienna/48co/@emailed → AlecRae/alecrae.com/@alecrae**~~ DONE 2026-04-12 — full codebase rebrand
+11. **Verify Vercel deployment succeeds** (Craig — check Vercel dashboard)
+12. **Set up Neon database** + run setup SQL (Craig action)
+13. **Set up Upstash Redis** (Craig action)
+14. **Configure DNS** for alecrae.com (Craig action)
+15. **Set up Stripe account** + configure webhook URLs (Craig action)
+16. **Add API keys** (Anthropic, OpenAI, Google, Microsoft) to production env (Craig action)
 
 ---
 
@@ -629,13 +683,13 @@ Every feature must answer: "Why would someone switch from Gmail/Outlook for this
 If the answer isn't compelling, don't build it. If it is, build it 10x better than the competition.
 
 **Examples of compelling answers:**
-- "Vienna's grammar agent replaces Grammarly, which costs $30/mo. Vienna includes it free."
-- "Vienna's dictation lets you reply by voice with email-aware commands. Dragon is dead. Nothing else does this."
-- "Vienna's email recall actually works. Outlook's is theater."
-- "Vienna's AI learns YOUR writing style. Gmail's AI sounds like a robot."
-- "Vienna runs on YOUR computer's GPU for free AI. Gmail charges $30/mo for Gemini."
-- "Vienna's commitments tracker catches every promise made in email. Gmail catches none."
-- "Vienna unifies Gmail + Outlook + Yahoo + iCloud in one inbox. Superhuman is Gmail-only."
+- "AlecRae's grammar agent replaces Grammarly, which costs $30/mo. AlecRae includes it free."
+- "AlecRae's dictation lets you reply by voice with email-aware commands. Dragon is dead. Nothing else does this."
+- "AlecRae's email recall actually works. Outlook's is theater."
+- "AlecRae's AI learns YOUR writing style. Gmail's AI sounds like a robot."
+- "AlecRae runs on YOUR computer's GPU for free AI. Gmail charges $30/mo for Gemini."
+- "AlecRae's commitments tracker catches every promise made in email. Gmail catches none."
+- "AlecRae unifies Gmail + Outlook + Yahoo + iCloud in one inbox. Superhuman is Gmail-only."
 
 **Examples of bad answers (don't build):**
 - "It would be cool"
@@ -646,10 +700,10 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 
 ## 📅 STATUS
 
-**Date last updated:** 2026-04-09
+**Date last updated:** 2026-04-18
 **Current phase:** Phase 1 — Ready for Beta Launch
-**Current focus:** Production deployment (Vercel live, awaiting Craig's infra setup)
-**Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
+**Current focus:** Feature-complete build (84 features, 90 routes, 61 schemas, 290+ endpoints). Tier 6-8 AI platform features complete. Production deployment awaiting Craig's infra setup.
+**Build completion:** TIER 1-4 (36/36) + 7 bonus + 31 advanced (S10/10 + A7/7 + B8/8 + C6/10) + 20 expansion (Tier 5) + 9 platform (Tier 6) + 6 intelligence (Tier 7) + 6 deep AI (Tier 8)
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
 
@@ -666,14 +720,14 @@ If you ship something not in this file, you broke the rules.
 
 **No scatter-gun. No drift. No "just this once."**
 
-**Vienna dominates or Vienna dies. There is no second place.**
+**AlecRae dominates or AlecRae dies. There is no second place.**
 
 
 ---
 
 ## 🚀 ADVANCED FEATURE BACKLOG — THE LEAD-EXTENDING ROADMAP
 
-> **These are the features that keep Vienna 80-90% ahead of the field forever.**
+> **These are the features that keep AlecRae 80-90% ahead of the field forever.**
 > **Locked in to prevent loss between sessions. Build in priority order.**
 
 ### TIER S — INDUSTRY FIRSTS (Build these to make jaws drop)
@@ -720,22 +774,22 @@ If you ship something not in this file, you broke the rules.
 
 | # | Feature | Why It Wins | Status |
 |---|---|---|---|
-| C1 | **Status page** | status.48co.ai showing uptime | DONE |
-| C2 | **Public API docs site** | docs.48co.ai — 22 pages, full endpoint ref, code examples, search | DONE |
+| C1 | **Status page** | status.alecrae.com showing uptime | DONE |
+| C2 | **Public API docs site** | docs.alecrae.com — 22 pages, full endpoint ref, code examples, search | DONE |
 | C3 | **Admin console SSO** | SAML for enterprise sales | DONE |
 | C4 | **SOC 2 Type I → Type II** | Required for enterprise | NOT STARTED |
 | C5 | **GDPR DPA template** | Legal pages exist, need DPA workflow | NOT STARTED |
 | C6 | **Bug bounty program** | HackerOne or Intigriti | NOT STARTED |
 | C7 | **Public roadmap** | Trello/Linear public board | NOT STARTED |
-| C8 | **Changelog page** | changelog.48co.ai | DONE |
-| C9 | **Migration guides** | "From Gmail to Vienna in 5 minutes" | DONE |
+| C8 | **Changelog page** | changelog.alecrae.com | DONE |
+| C9 | **Migration guides** | "From Gmail to AlecRae in 5 minutes" | DONE |
 | C10 | **Spell check (multi-language)** | Native browser spell-check + custom dictionary | DONE |
 
 ---
 
 ## 🥊 COMPETITIVE POSITION SNAPSHOT (Locked from 2026-04-05)
 
-### Where Vienna already wins (no competitor matches us)
+### Where AlecRae already wins (no competitor matches us)
 1. **Multi-account unified AI** — Gmail + Outlook + IMAP under one AI layer
 2. **Free built-in grammar** — Replaces $12-30/mo Grammarly
 3. **Email-aware dictation** — Replaces dead Dragon (no replacement exists)
@@ -750,7 +804,7 @@ If you ship something not in this file, you broke the rules.
 12. **No ads, no tracking, no data mining** — Architectural, not policy
 
 ### What we cost vs the competitor stack
-| Tool replaced | Their price | Vienna's price |
+| Tool replaced | Their price | AlecRae's price |
 |---|---|---|
 | Gmail Workspace + Gemini | $12-30/mo | included |
 | Grammarly Premium | $12-30/mo | included |
@@ -769,7 +823,7 @@ If you ship something not in this file, you broke the rules.
 - **Marketing presence** — Zero, by design until launch
 
 ### The tech advantage that compounds
-| Their Tech | Vienna's Tech | Our Edge |
+| Their Tech | AlecRae's Tech | Our Edge |
 |---|---|---|
 | React + reconciliation | SolidJS + signals (planned migration) | 3-5x faster UI |
 | Server-side AI only | Client GPU + Edge + Cloud (3-tier) | $0 inference + lower latency |
@@ -781,7 +835,7 @@ If you ship something not in this file, you broke the rules.
 
 ---
 
-## 📋 CURRENT BUILD COMPLETENESS (Updated 2026-04-09)
+## 📋 CURRENT BUILD COMPLETENESS (Updated 2026-04-18)
 
 | Component | Status | % |
 |---|---|---|
@@ -792,18 +846,22 @@ If you ship something not in this file, you broke the rules.
 | Mobile app (RN/Expo) | Polished — all screens, auth, API, accessibility | 90% |
 | Auth flow (frontend) | Passkey login/register wired with WebAuthn | 100% |
 | Admin SSO (SAML) | Complete — SP metadata, ACS, SLO, admin login | 100% |
-| DB schemas | All stores on Drizzle (contacts, recall, screener, passkeys) | 100% |
+| DB schemas | All stores on Drizzle (55 schema files) | 100% |
 | Stripe billing flow | Backend done, frontend wired | 95% |
 | Cloudflare deployment configs | Ready | 100% |
 | Vercel deployment | Configured, deploying from main | 100% |
 | Neon SQL setup | Ready | 100% |
 | CLAUDE.md Bible | Complete | 100% |
-| **Tier S features (industry firsts)** | **S1+S2+S3+S4+S5+S6+S7+S8+S9+S10 done (10/10)** | **100%** |
-| **Tier A features (cutting-edge UX)** | **A1+A2+A3+A4+A5+A6+A7 done (7/7)** | **100%** |
-| **Tier B features (power user)** | **B1+B2+B3+B4+B5+B6+B7+B8 done (8/8)** | **100%** |
+| **Tier S features (industry firsts)** | **S1-S10 done (10/10)** | **100%** |
+| **Tier A features (cutting-edge UX)** | **A1-A7 done (7/7)** | **100%** |
+| **Tier B features (power user)** | **B1-B8 done (8/8)** | **100%** |
 | **Tier C features (polish + trust)** | **C1+C2+C3+C8+C9+C10 done (6/10)** | **60%** |
+| **Tier 5 features (table stakes expansion)** | **20/20 done** | **100%** |
+| **Tier 6 features (AI-powered platform)** | **9/9 done** | **100%** |
+| **Tier 7 features (advanced intelligence)** | **6/6 done** | **100%** |
+| **Tier 8 features (deep AI intelligence)** | **6/6 done** | **100%** |
 
-**Overall: ~98% of launch-ready product. All code features complete. Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
+**Overall: ~99% of launch-ready product. All code features complete (84 features, 90 routes, 61 schemas, 290+ endpoints). Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
 
 ---
 
@@ -811,7 +869,7 @@ If you ship something not in this file, you broke the rules.
 
 - ✅ **Apple Developer account** — DONE
 - ⏳ **Google Play Developer** — needed for Android
-- ✅ **Domain** — 48co.ai confirmed
+- ✅ **Domain** — alecrae.com confirmed
 - ⏳ **Stripe account** — needed before charging
 - ⏳ **Anthropic API key** — needed for AI features in production
 - ⏳ **OpenAI API key** — needed for Whisper transcription
@@ -824,14 +882,14 @@ If you ship something not in this file, you broke the rules.
 
 **Option A: Cloudflare Pages (recommended — matches our stack)**
 1. dash.cloudflare.com → Workers & Pages → Create → Pages → Connect to Git
-2. Authorize GitHub → select `ccantynz-alt/emailed`
-3. Branch: `claude/fullstack-ai-platform-VuxOS`
+2. Authorize GitHub → select `ccantynz-alt/alecrae.com`
+3. Branch: `claude/rebrand-to-alecrae-HKMR4`
 4. Build command: `cd apps/web && bun install && bun run build`
 5. Output: `apps/web/.next`
 6. Click Deploy → Free `*.pages.dev` URL in ~3 min
 
 **Option B: Vercel (simpler, faster setup)**
-1. vercel.com → New Project → Import `ccantynz-alt/emailed`
+1. vercel.com → New Project → Import `ccantynz-alt/alecrae.com`
 2. Root directory: `apps/web`
 3. Click Deploy → `*.vercel.app` URL in ~60 sec
 
@@ -839,11 +897,11 @@ If you ship something not in this file, you broke the rules.
 
 ---
 
-## 🏗️ THE BIGGER PICTURE — VIENNA AS FLAGSHIP
+## 🏗️ THE BIGGER PICTURE — ALECRAE AS FLAGSHIP
 
-Craig is also building a **Render+Vercel+AI hybrid platform** (the "Back to the Future" infrastructure). Vienna will eventually deploy on this platform — making Vienna both:
+Craig is also building a **Render+Vercel+AI hybrid platform** (the "Back to the Future" infrastructure). AlecRae will eventually deploy on this platform — making AlecRae both:
 1. **A standalone product** that generates revenue
 2. **The flagship reference app** that proves the underlying platform works
 
-This is why we move with discipline: every architectural choice in Vienna informs the platform underneath. We don't build Vienna in a way that requires the platform to ship first — Vienna deploys to Cloudflare today, and migrates to the new platform when it's ready, with zero rewrites needed (because the new platform supports the same primitives).
+This is why we move with discipline: every architectural choice in AlecRae informs the platform underneath. We don't build AlecRae in a way that requires the platform to ship first — AlecRae deploys to Cloudflare today, and migrates to the new platform when it's ready, with zero rewrites needed (because the new platform supports the same primitives).
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Box, Text, Button, Input } from "@emailed/ui";
+import { Box, Text, Button, Input } from "@alecrae/ui";
 import { ssoClient } from "../../lib/sso";
 
 function SsoIcon(): React.ReactElement {

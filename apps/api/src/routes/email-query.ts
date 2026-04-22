@@ -30,7 +30,7 @@ import {
   emails,
   savedQueries,
   queryHistory,
-} from "@emailed/db";
+} from "@alecrae/db";
 import {
   translateQuery,
   explainQuery,
@@ -39,7 +39,7 @@ import {
   type QueryResult,
   type QueryCondition,
   type QueryableField,
-} from "@emailed/ai-engine/query/email-sql";
+} from "@alecrae/ai-engine/query/email-sql";
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────
 

@@ -11,14 +11,14 @@
  *   - Urgency level badge
  *
  * Fetches the explanation lazily when the panel is opened.
- * Uses Vienna design language: dark gradient, spring animations,
+ * Uses AlecRae design language: dark gradient, spring animations,
  * accessible keyboard navigation, reduced-motion support.
  */
 
 import type { ReactElement } from "react";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Card, CardContent, Text, Box, Button } from "@emailed/ui";
+import { Card, CardContent, Text, Box, Button } from "@alecrae/ui";
 import {
   emailExplainerApi,
   type EmailExplanationData,
@@ -27,7 +27,7 @@ import {
   drawerEnterRight,
   staggerChildren,
   listItemEnter,
-  useViennaReducedMotion,
+  useAlecRaeReducedMotion,
   withReducedMotion,
 } from "../lib/animations";
 
@@ -69,7 +69,7 @@ export function EmailExplainerPanel({
   const [state, setState] = useState<LoadState>("idle");
   const [explanation, setExplanation] = useState<EmailExplanationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
-  const reduced = useViennaReducedMotion();
+  const reduced = useAlecRaeReducedMotion();
   const panelRef = useRef<HTMLDivElement>(null);
   const previousEmailIdRef = useRef<string>("");
 

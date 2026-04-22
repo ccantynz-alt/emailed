@@ -10,7 +10,9 @@ import {
   shutdownTelemetry,
   recordEmailReceived,
   recordEmailFilterDuration,
-} from "@emailed/shared";
+  recordActiveConnection,
+  SpanKind,
+} from "@alecrae/shared";
 import type { SmtpSession, SmtpEnvelope } from "./types.js";
 
 /**
@@ -136,7 +138,7 @@ async function handleInboundMessage(
 
 // --- Service Startup ---
 
-const hostname = process.env["SMTP_HOSTNAME"] ?? "mx.emailed.dev";
+const hostname = process.env["SMTP_HOSTNAME"] ?? "mx.alecrae.dev";
 const smtpPort = parseInt(process.env["SMTP_PORT"] ?? "25", 10);
 const httpPort = parseInt(process.env["HTTP_PORT"] ?? "8025", 10);
 const enableSmtp = process.env["DISABLE_SMTP"] !== "true";
@@ -162,7 +164,7 @@ async function main(): Promise<void> {
   console.log(`[Inbound] Starting inbound email processing service`);
 
   // Initialize OpenTelemetry
-  await initTelemetry("emailed-inbound").catch((err) => {
+  await initTelemetry("alecrae-inbound").catch((err) => {
     console.warn("[Inbound] OpenTelemetry init failed:", err);
   });
 

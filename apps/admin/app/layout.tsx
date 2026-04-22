@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Italianno, Inter } from "next/font/google";
-import { ThemeProvider, Box } from "@emailed/ui";
+import { ThemeProvider, Box } from "@alecrae/ui";
 import "./globals.css";
 
 /**
@@ -25,9 +24,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AlecRae Admin — Operational Dashboard",
-  description:
-    "Monitor and manage the AlecRae platform. AI-powered insights, reputation management, and real-time operational intelligence.",
+  title: "AlecRae Admin - AI-Powered Email Infrastructure Dashboard",
+  description: "Monitor and manage the AlecRae platform. AI-powered insights, reputation management, and real-time operational intelligence.",
 };
 
 export default function AdminLayout({

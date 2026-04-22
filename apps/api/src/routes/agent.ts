@@ -1,7 +1,7 @@
 /**
  * AI Inbox Agent — REST API (S3: Industry First)
  *
- * Vienna's flagship overnight agent. While the user sleeps, the agent
+ * AlecRae's flagship overnight agent. While the user sleeps, the agent
  * triages every new email, drafts replies in the user's voice, identifies
  * commitments, flags suspicious senders, and produces a one-tap morning
  * briefing.
@@ -40,7 +40,8 @@ import {
   InboxAgent,
   type AgentEmail,
   type AgentReport,
-} from "@emailed/ai-engine/agent";
+  type DraftedReply,
+} from "@alecrae/ai-engine/agent";
 import {
   getDatabase,
   agentRuns,
@@ -52,11 +53,7 @@ import {
   type StoredAgentSuggestion,
   type AgentCategoryRule,
   type AgentScheduleConfig,
-} from "@emailed/db";
-import {
-  enqueueAgentDraftForSend,
-  AgentSendError,
-} from "../lib/agent-send.js";
+} from "@alecrae/db";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -259,23 +256,17 @@ function getAgent(): InboxAgent {
     },
   };
 
-  // Email loader.
-  //
-  // The agent reads from the account's IMAP-synced inbox, which lives in the
-  // imap service (services/imap) rather than in @emailed/db's outbound
-  // `emails` table. When the imap service exposes a projection API the loader
-  // will call it here. Until then loadEmails returns an empty list so the
-  // agent still runs end-to-end (triage + briefing paths) and unit-level
-  // integrations can inject a test loader via `setAgentEmailLoader` below.
-  const loadEmails: (
-    accountId: string,
-    since: Date,
-    limit: number,
-  ) => Promise<AgentEmail[]> =
-    _emailLoaderOverride ??
-    (async () => {
-      return [];
-    });
+  // Email loader — production should query the messages table for the
+  // account. For now we return an empty list so the agent runs cleanly in
+  // dev without a DB. Wire this to your DB layer in production.
+  const loadEmails = async (
+    _accountId: string,
+    _since: Date,
+    _limit: number,
+  ): Promise<AgentEmail[]> => {
+    // TODO: integrate with @alecrae/db messages query.
+    return [];
+  };
 
   // Draft queueing is intentionally omitted from the agent factory. Drafts in
   // Vienna ALWAYS require explicit user approval (DraftedReply.requiresApproval

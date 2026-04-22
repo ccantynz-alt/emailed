@@ -1,5 +1,5 @@
 /**
- * API Client for the Emailed backend.
+ * API Client for the AlecRae backend.
  *
  * Typed fetch wrapper that communicates with the /v1/* endpoints.
  * Handles auth tokens, error responses, and response parsing.
@@ -212,8 +212,8 @@ export const authApi = {
 
     // Store token
     if (typeof window !== "undefined") {
-      localStorage.setItem("emailed_api_key", data.data.token);
-      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+      localStorage.setItem("alecrae_api_key", data.data.token);
+      document.cookie = `alecrae_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
     }
 
     return data.data;
@@ -239,8 +239,8 @@ export const authApi = {
     const data = (await res.json()) as { data: AuthResponse };
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("emailed_api_key", data.data.token);
-      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+      localStorage.setItem("alecrae_api_key", data.data.token);
+      document.cookie = `alecrae_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
     }
 
     return data.data;
@@ -248,8 +248,8 @@ export const authApi = {
 
   logout() {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("emailed_api_key");
-      document.cookie = "emailed_session=; path=/; max-age=0";
+      localStorage.removeItem("alecrae_api_key");
+      document.cookie = "alecrae_session=; path=/; max-age=0";
     }
   },
 
@@ -317,8 +317,8 @@ export const authApi = {
     const data = (await res.json()) as { data: AuthResponse };
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("emailed_api_key", data.data.token);
-      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+      localStorage.setItem("alecrae_api_key", data.data.token);
+      document.cookie = `alecrae_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
     }
 
     return data.data;
@@ -362,8 +362,8 @@ export const authApi = {
     const data = (await res.json()) as { data: AuthResponse };
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("emailed_api_key", data.data.token);
-      document.cookie = `emailed_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
+      localStorage.setItem("alecrae_api_key", data.data.token);
+      document.cookie = `alecrae_session=${data.data.token}; path=/; max-age=${7 * 86400}; SameSite=Lax`;
     }
 
     return data.data;
@@ -378,7 +378,7 @@ async function apiFetch<T>(
 ): Promise<T> {
   const token =
     typeof window !== "undefined"
-      ? localStorage.getItem("emailed_api_key") ?? ""
+      ? localStorage.getItem("alecrae_api_key") ?? ""
       : "";
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -631,6 +631,12 @@ export const apiKeysApi = {
 export const accountApi = {
   get() {
     return apiFetch<{ data: Account }>("/v1/account");
+  },
+  update(input: { name?: string; accountName?: string; billingEmail?: string }) {
+    return apiFetch<{ data: { success: boolean } }>("/v1/account", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
   },
 };
 
