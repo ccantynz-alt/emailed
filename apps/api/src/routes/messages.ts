@@ -677,7 +677,25 @@ async function handleSend(c: Context) {
     .where(eq(accounts.id, auth.accountId))
     .catch(() => {});
 
-  // ── 9. Return response ────────────────────────────────────────────
+  // ── 9. Broadcast real-time event (fire-and-forget) ────────────────
+  try {
+    const { getConnectionManager } = await import("../lib/realtime.js");
+    getConnectionManager().broadcast(auth.accountId, {
+      type: "email.sent",
+      payload: {
+        id,
+        messageId,
+        subject: resolvedSubject,
+        to: allRecipients,
+        status: "queued",
+      },
+      timestamp: now.toISOString(),
+    });
+  } catch {
+    // Non-critical — don't fail the send if broadcast errors
+  }
+
+  // ── 10. Return response ───────────────────────────────────────────
   return c.json({ id, messageId, status: "queued" as const }, 202);
 }
 

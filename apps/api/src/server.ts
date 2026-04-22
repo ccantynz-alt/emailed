@@ -500,6 +500,10 @@ async function shutdown(signal: string): Promise<void> {
   }, 15_000);
 
   try {
+    // Close all real-time WebSocket connections
+    getConnectionManager().closeAll();
+    console.log("[api] WebSocket connections closed");
+
     // Stop the semantic search auto-indexer (drains remaining queue)
     await stopAutoIndexer();
     console.log("[api] Auto-indexer stopped");
