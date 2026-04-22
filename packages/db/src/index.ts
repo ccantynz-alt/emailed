@@ -638,7 +638,7 @@ export {
   availabilityPatternsRelations,
 } from "./schema/scheduling-intelligence.js";
 export type {
-  ProposedTime,
+  ProposedTimeSlot,
   MeetingPreferences,
   BusyBlock,
 } from "./schema/scheduling-intelligence.js";
@@ -663,7 +663,7 @@ export {
   productivityInsights,
   emailBehaviorPatterns,
   emailActivityTypeEnum,
-  productivityInsightTypeEnum,
+  insightTypeEnum,
   insightSeverityEnum,
   emailTimeTrackingRelations,
   productivityInsightsRelations,

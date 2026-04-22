@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Italianno, Inter } from "next/font/google";
 import { ThemeProvider, Box } from "@alecrae/ui";
 import "./globals.css";
 

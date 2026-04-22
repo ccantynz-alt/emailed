@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Box, Text, Card, CardContent } from "@emailed/ui";
+import { Box, Text, Card, CardContent } from "@alecrae/ui";
 
 export const metadata: Metadata = {
-  title: "Security & Responsible Disclosure | 48co.ai",
+  title: "Security & Responsible Disclosure | alecrae.com",
   description:
-    "48co.ai security policy, responsible disclosure process, scope, bounty tiers, PGP key, and hall of fame.",
+    "alecrae.com security policy, responsible disclosure process, scope, bounty tiers, PGP key, and hall of fame.",
 };
 
 function Section({
@@ -63,10 +63,10 @@ export default function SecurityPage(): React.JSX.Element {
             We welcome security research.
           </Text>
           <Text className="text-sm">
-            If you believe you have discovered a security vulnerability in 48co.ai,
+            If you believe you have discovered a security vulnerability in alecrae.com,
             please report it privately to{" "}
             <Text as="span" className="font-mono font-semibold text-content">
-              security@48co.ai
+              security@alecrae.com
             </Text>
             . We will acknowledge your report within 72 hours and work with you
             to verify and fix the issue. We do not take legal action against
@@ -79,7 +79,7 @@ export default function SecurityPage(): React.JSX.Element {
         <Text>
           Send a detailed report to{" "}
           <Text as="span" className="font-mono font-semibold text-content">
-            security@48co.ai
+            security@alecrae.com
           </Text>
           . A good report includes:
         </Text>
@@ -125,23 +125,23 @@ export default function SecurityPage(): React.JSX.Element {
       <Section number="3" title="In-Scope Assets">
         <Text>The following assets are in scope for our disclosure program:</Text>
         <Sub label="Primary domains.">
-          48co.ai, mail.48co.ai, admin.48co.ai, api.48co.ai
+          alecrae.com, mail.alecrae.com, admin.alecrae.com, api.alecrae.com
         </Sub>
         <Sub label="Mail infrastructure.">
-          smtp.48co.ai, mx1.48co.ai, mx2.48co.ai (SMTP, DKIM, SPF, DMARC, TLS)
+          smtp.alecrae.com, mx1.alecrae.com, mx2.alecrae.com (SMTP, DKIM, SPF, DMARC, TLS)
         </Sub>
         <Sub label="Public API.">
-          All REST, tRPC, and OpenAPI endpoints documented at docs.48co.ai
+          All REST, tRPC, and OpenAPI endpoints documented at docs.alecrae.com
         </Sub>
         <Sub label="Mobile and desktop apps.">
-          iOS, Android, macOS, Windows, and Linux clients published under 48co.ai
+          iOS, Android, macOS, Windows, and Linux clients published under alecrae.com
         </Sub>
         <Sub label="Web app.">
-          The full web experience at mail.48co.ai including auth, inbox, compose,
+          The full web experience at mail.alecrae.com including auth, inbox, compose,
           settings, and collaboration.
         </Sub>
         <Sub label="Source code.">
-          Any public repository under the 48co.ai organization.
+          Any public repository under the alecrae.com organization.
         </Sub>
       </Section>
 
@@ -290,7 +290,7 @@ export default function SecurityPage(): React.JSX.Element {
       <Section number="9" title="Contact">
         <Box className="ml-6 mt-2 space-y-1">
           <Text className="font-semibold">Security Team</Text>
-          <Text>Email: security@48co.ai</Text>
+          <Text>Email: security@alecrae.com</Text>
           <Text>PGP: /.well-known/pgp-key.txt</Text>
           <Text>security.txt: /.well-known/security.txt</Text>
         </Box>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Box, Text, Card, CardContent } from "@emailed/ui";
+import { Box, Text, Card, CardContent } from "@alecrae/ui";
 import {
   ROADMAP,
   computeStats,
@@ -8,9 +8,9 @@ import {
 } from "../../lib/roadmap-data";
 
 export const metadata: Metadata = {
-  title: "Roadmap | 48co.ai",
+  title: "Roadmap | alecrae.com",
   description:
-    "The 48co.ai public roadmap. Everything we've shipped, everything we're working on, and what's coming next.",
+    "The alecrae.com public roadmap. Everything we've shipped, everything we're working on, and what's coming next.",
 };
 
 const STATUS_META: Record<
@@ -90,7 +90,7 @@ export default function RoadmapPage(): React.JSX.Element {
         <Box className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Box as="a" href="/" className="flex items-center gap-2">
             <Text variant="heading-md" className="text-brand-600 font-bold">
-              48co.ai
+              alecrae.com
             </Text>
           </Box>
           <Text variant="body-sm" className="text-content-secondary">
@@ -234,7 +234,7 @@ export default function RoadmapPage(): React.JSX.Element {
             <Box className="flex flex-wrap gap-3">
               <Box
                 as="a"
-                href="mailto:hello@48co.ai?subject=Roadmap%20feedback"
+                href="mailto:hello@alecrae.com?subject=Roadmap%20feedback"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors"
               >
                 <Text className="text-white">Email us</Text>
@@ -256,7 +256,7 @@ export default function RoadmapPage(): React.JSX.Element {
       <Box as="footer" className="border-t border-border mt-16 py-8">
         <Box className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Text variant="caption" className="text-content-tertiary">
-            &copy; 2026 48co.ai. All rights reserved.
+            &copy; 2026 alecrae.com. All rights reserved.
           </Text>
           <Box className="flex gap-6">
             <Box as="a" href="/">
