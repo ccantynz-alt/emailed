@@ -40,7 +40,6 @@ import {
   InboxAgent,
   type AgentEmail,
   type AgentReport,
-  type DraftedReply,
 } from "@alecrae/ai-engine/agent";
 import { getSendQueue } from "../lib/queue.js";
 import {
@@ -56,6 +55,10 @@ import {
   type AgentCategoryRule,
   type AgentScheduleConfig,
 } from "@alecrae/db";
+import {
+  enqueueAgentDraftForSend,
+  AgentSendError,
+} from "../lib/agent-send.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

@@ -23,8 +23,8 @@
  * For now, we emulate these with in-memory state and query-based UID assignment.
  */
 
-import { eq, and, desc, asc, inArray, like, gte, lte, sql, or } from "drizzle-orm";
-import { getDatabase, emails } from "@alecrae/db";
+import { eq, asc } from "drizzle-orm";
+import { getDatabase, emails, domains } from "@alecrae/db";
 import type {
   ImapMessage,
   ImapEnvelope,

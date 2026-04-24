@@ -64,7 +64,7 @@ export class DecisionCache {
     // Update access tracking
     entry.hitCount++;
     entry.lastSeen = now;
-    this.accessOrder.set(fingerprint, now);
+    this.accessOrder.set(fingerprint, ++this.accessCounter);
     this.stats.hits++;
 
     return entry;
@@ -107,7 +107,7 @@ export class DecisionCache {
     };
 
     this.cache.set(fingerprint, entry);
-    this.accessOrder.set(fingerprint, now);
+    this.accessOrder.set(fingerprint, ++this.accessCounter);
   }
 
   /**

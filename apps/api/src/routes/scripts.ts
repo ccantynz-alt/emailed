@@ -427,9 +427,9 @@ scripts.post(
     const emailContext: EmailContextData = body.sampleEmail
       ? createSampleEmailContext({
           id: body.sampleEmail.id ?? "test_email_001",
-          from: body.sampleEmail.from,
-          to: body.sampleEmail.to ?? [{ address: "you@alecrae.com" }],
-          cc: body.sampleEmail.cc ?? [],
+          from: normalizeAddress(body.sampleEmail.from),
+          to: (body.sampleEmail.to ?? [{ address: "you@alecrae.com" }]).map(normalizeAddress),
+          cc: (body.sampleEmail.cc ?? []).map(normalizeAddress),
           subject: body.sampleEmail.subject,
           body: body.sampleEmail.body,
           headers: body.sampleEmail.headers ?? {},

@@ -124,7 +124,7 @@ import { productivityAnalyticsRouter } from "./routes/productivity-analytics.js"
 import { knowledgeGraphRouter } from "./routes/knowledge-graph.js";
 import { closeConnection } from "@alecrae/db";
 import { closeIdempotencyRedis } from "./middleware/idempotency.js";
-import { closeSendQueue, getSendQueue } from "./lib/queue.js";
+import { closeSendQueue } from "./lib/queue.js";
 import { startWebhookWorker, stopWebhookWorker } from "./lib/webhook-dispatcher.js";
 import { initSearchIndex, initTelemetry, shutdownTelemetry, telemetryMiddleware } from "@alecrae/shared";
 import { startAutoIndexer, stopAutoIndexer } from "@alecrae/ai-engine/embeddings/auto-indexer";

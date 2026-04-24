@@ -29,7 +29,7 @@ export interface SpfDnsResolver {
   resolveTxt: (domain: string) => Promise<string[][]>;
   resolve4?: (domain: string) => Promise<string[]>;
   resolve6?: (domain: string) => Promise<string[]>;
-  resolveMx?: (domain: string) => Promise<Array<{ exchange: string; priority: number }>>;
+  resolveMx?: (domain: string) => Promise<{ exchange: string; priority: number }[]>;
   reverse?: (ip: string) => Promise<string[]>;
 }
 

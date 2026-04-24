@@ -20,7 +20,7 @@ import { signMessage, addSignatureToMessage } from "./dkim/signer.js";
 import { SmtpClient } from "./smtp/client.js";
 import { RelayClient, relayConfigFromEnv } from "./relay/relay.js";
 import { DeliveryOptimizer } from "./delivery/optimizer.js";
-import { getTracer, recordEmailSent, recordEmailSendDuration, recordActiveConnection, SpanKind } from "@alecrae/shared";
+import { recordEmailSent, recordEmailSendDuration, recordActiveConnection } from "@alecrae/shared";
 import type { QueuedEmail, DkimSignOptions } from "./types.js";
 
 // ─── Job payload as stored in Redis ─────────────────────────────────────────
