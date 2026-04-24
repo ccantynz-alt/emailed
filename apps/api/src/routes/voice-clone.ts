@@ -25,7 +25,7 @@ import {
   voiceStyleProfiles,
   voiceTrainingSamples,
 } from "@alecrae/db";
-import type { StyleFingerprintData, ExtractedFeaturesData } from "@alecrae/db";
+import type { StyleFingerprintData } from "@alecrae/db";
 import {
   buildStyleFingerprint,
   extractEmailFeatures,

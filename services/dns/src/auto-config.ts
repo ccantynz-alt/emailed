@@ -28,7 +28,8 @@ const SPF_MAX_LOOKUPS = 10;
 const MX_SERVERS = [
   { host: "mx1.alecrae.dev", priority: 10 },
   { host: "mx2.alecrae.dev", priority: 20 },
-];
+] as const;
+const [MX_PRIMARY, MX_SECONDARY] = MX_SERVERS;
 
 const SPF_VALUE = "v=spf1 include:spf.alecrae.dev ~all";
 const DMARC_VALUE =

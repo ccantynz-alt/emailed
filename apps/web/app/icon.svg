@@ -39,15 +39,14 @@
   <!-- Outer envelope border (subtle definition) -->
   <rect x="76" y="146" width="360" height="220" rx="12" fill="none" stroke="#6a5118" stroke-width="2" opacity="0.55"/>
 
-  <!-- AR monogram: italic serif, tight kerning, deep bronze -->
+  <!-- AR monogram: elegant handwriting, deep bronze -->
   <text
     x="256"
-    y="352"
+    y="360"
     text-anchor="middle"
-    font-family="Georgia, 'Times New Roman', serif"
-    font-size="98"
+    font-family="Italianno, 'Snell Roundhand', 'Apple Chancery', cursive"
+    font-size="140"
     font-weight="400"
-    font-style="italic"
     fill="#1a1205"
     letter-spacing="-6"
   <!-- AR monogram: elegant handwriting, deep bronze -->

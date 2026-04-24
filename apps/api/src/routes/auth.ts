@@ -20,7 +20,6 @@ import {
   verifyAccessToken,
   TokenError,
 } from "../lib/jwt.js";
-import type { TokenPayload } from "../lib/jwt.js";
 
 const auth = new Hono();
 
@@ -301,7 +300,9 @@ auth.post("/logout", async (c) => {
     try {
       const parts = token.split(".");
       if (parts.length !== 3) throw new Error("Invalid token");
-      const payload = JSON.parse(atob(parts[1]!));
+      const segment = parts[1];
+      if (!segment) throw new Error("Invalid token");
+      const payload = JSON.parse(atob(segment));
       if (payload.userId) {
         await revokeAllUserTokens(payload.userId as string);
         return c.json({ data: { message: "All sessions revoked" } });
@@ -323,42 +324,85 @@ auth.post("/logout", async (c) => {
   }
 });
 
+// ─── Helper for lightweight bearer token verification ───────────────────────
+
+interface SessionPayload {
+  readonly userId: string;
+  readonly accountId: string;
+}
+
+function verifyBearerToken(authHeader: string | undefined): SessionPayload | null {
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7);
+  const parts = token.split(".");
+  if (parts.length !== 3 || !parts[1]) return null;
+  try {
+    const payload = JSON.parse(atob(parts[1])) as {
+      exp?: number;
+      userId?: string;
+      sub?: string;
+    };
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    if (!payload.userId || !payload.sub) return null;
+    return { userId: payload.userId, accountId: payload.sub };
+  } catch {
+    return null;
+  }
+}
+
+function unauthenticatedResponse() {
+  return {
+    error: {
+      type: "authentication_error" as const,
+      message: "Invalid or expired token",
+      code: "invalid_token" as const,
+    },
+  };
+}
+
 // GET /v1/auth/me — Get current user from bearer token
 auth.get("/me", async (c) => {
   const session = verifyBearerToken(c.req.header("Authorization"));
   if (!session) return c.json(unauthenticatedResponse(), 401);
 
-  const token = authHeader.slice(7);
-  try {
-    // Try verified JWT first
-    let userId: string | undefined;
-    try {
-      const payload = await verifyAccessToken(token);
-      userId = payload.userId as string;
-    } catch {
-      // Fallback to raw decode for legacy tokens
-      const parts = token.split(".");
-      if (parts.length !== 3) throw new Error("Invalid token");
-      const payload = JSON.parse(atob(parts[1]!));
-      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-        throw new Error("Token expired");
-      }
-      userId = payload.userId as string;
-    }
+  const db = getDatabase();
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: users.role,
+      accountId: users.accountId,
+    })
+    .from(users)
+    .where(eq(users.id, session.userId))
+    .limit(1);
 
-    if (!userId) throw new Error("No userId in token");
+  if (!user) return c.json(unauthenticatedResponse(), 401);
 
-    const db = getDatabase();
-    const [user] = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        role: users.role,
-        accountId: users.accountId,
-      })
+  return c.json({ data: user });
+});
+
+// PATCH /v1/auth/me — Update the authenticated user's profile
+const UpdateProfileSchema = z.object({
+  name: z.string().min(1).max(256).optional(),
+  email: z.string().email().optional(),
+});
+
+auth.patch("/me", validateBody(UpdateProfileSchema), async (c) => {
+  const session = verifyBearerToken(c.req.header("Authorization"));
+  if (!session) return c.json(unauthenticatedResponse(), 401);
+
+  const input = getValidatedBody<z.infer<typeof UpdateProfileSchema>>(c);
+  const db = getDatabase();
+
+  // If email is being changed, make sure the new address isn't already claimed.
+  if (input.email) {
+    const lower = input.email.toLowerCase();
+    const [existing] = await db
+      .select({ id: users.id })
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.email, lower))
       .limit(1);
     if (existing && existing.id !== session.userId) {
       return c.json(
