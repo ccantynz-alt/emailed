@@ -609,6 +609,14 @@ After writing the code:
 | 18 | next.config.ts used experimental.typedRoutes — deprecated in Next.js 15 | LOW | 2026-04-24 | FIXED 2026-04-24 — moved to top-level typedRoutes in both apps/web and apps/admin |
 | 19 | GateTest CI gate was advisory (continue-on-error: true) | MEDIUM | 2026-04-24 | FIXED 2026-04-24 — now a hard gate, failures block merges |
 | 20 | E2E test suite was a 2-test skeleton | LOW | 2026-04-24 | FIXED 2026-04-24 — expanded to 20 tests across 6 describe blocks (landing, login, auth guard, health, robots, sitemap) |
+| 21 | No cookie/consent banner — GDPR/ePrivacy/CCPA exposure | CRITICAL | 2026-04-16 | FIXED 2026-04-16 — typed consent lib + banner, GPC/DNT auto-respect, 11 tests |
+| 22 | No /.well-known/security.txt (RFC 9116) or responsible-disclosure policy | HIGH | 2026-04-16 | FIXED 2026-04-16 — security.txt + SECURITY.md + /security page with scope + safe harbour |
+| 23 | Register page had no affirmative age gate (GDPR Art 7, COPPA, UK Children's Code) | HIGH | 2026-04-16 | FIXED 2026-04-16 — ConsentGatedRegistration (13+/16+EEA, terms acceptance, optional marketing) |
+| 24 | No CCPA/CPRA "Do Not Sell or Share" page or GPC signal endpoint | HIGH | 2026-04-16 | FIXED 2026-04-16 — /do-not-sell, /california-notice, /.well-known/gpc.json |
+| 25 | No EU AI Act transparency disclosure (Art 52, model inventory) | HIGH | 2026-04-16 | FIXED 2026-04-16 — /ai-transparency with per-model inventory + Art 22 rights |
+| 26 | No WCAG / EAA / ADA accessibility statement | MEDIUM | 2026-04-16 | FIXED 2026-04-16 — /accessibility page (WCAG 2.2 AA target, EAA, ADA, Section 508) |
+| 27 | Missing Impressum, Children's Privacy, Refund, Corporate Compliance pages | HIGH | 2026-04-16 | FIXED 2026-04-16 — 4 new pages (TMG §5, COPPA, EU 14-day withdrawal, FCPA/Modern Slavery/OFAC) |
+| 28 | Domain inconsistency — 32x `alecrae.dev` emails in legal copy should be `alecrae.com` | MEDIUM | 2026-04-16 | FIXED 2026-04-16 — normalised across terms/privacy/aup/dmca/dpa/sla/cookies/subprocessors/domains |
 
 ---
 
@@ -707,13 +715,10 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 ## 📅 STATUS
 
 **Date last updated:** 2026-04-16
-**Current phase:** Phase 1 — Ready for Beta Launch
-**Current focus:** Admin preview (`/admin` on web app) added so Craig can SEE the admin surface from his iPad ahead of admin.alecrae.com cutover. Production deployment still awaiting Craig's infra setup.
-**Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
-**Date last updated:** 2026-04-24
 **Current phase:** Phase 1 — Launch Imminent
-**Current focus:** Build is 100% clean (29/29 static pages). Landing page merge conflict fixed. Admin console rebuilt as full live dashboard. CI gate hardened. E2E suite expanded. All code done — blocked only on Craig's infra provisioning (Neon, Upstash, Stripe, API keys, DNS, Crontec deploy).
-**Build completion:** TIER 1-4 (36/36) + 7 bonus + 31 advanced (S10/10 + A7/7 + B8/8 + C6/10) + 20 expansion (Tier 5) + 9 platform (Tier 6) + 6 intelligence (Tier 7) + 6 deep AI (Tier 8) = 84 features total
+**Current focus:** Build 100% clean (29/29 static pages). Legal compliance merged (9 new legal pages, consent banner, GDPR/CCPA/EU AI Act coverage, RFC 9116 security.txt). Landing page rewritten, admin console live. CI hardened. All code complete — blocked only on Craig's infra (Neon, Upstash, Stripe, API keys, DNS, Crontec deploy).
+**Build completion:** TIER 1-4 (36/36) + 7 bonus + 31 advanced (S10/10 + A7/7 + B8/8 + C6/10) + 20 expansion (Tier 5) + 9 platform (Tier 6) + 6 intelligence (Tier 7) + 6 deep AI (Tier 8) = 84 features total + full legal compliance surface
+**Date last updated:** 2026-04-24
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
 
