@@ -629,7 +629,7 @@ After writing the code:
 13. **Configure DNS** for alecrae.com — MX, SPF, DKIM, DMARC, CNAMEs (Craig)
 14. **Set up Stripe** live keys + webhook URL → api.alecrae.com/billing/webhook (Craig)
 15. **Add API keys** — Anthropic, OpenAI, Google OAuth, Microsoft OAuth (Craig)
-16. **Deploy to Crontec** — connect repo, set env vars, point domain (Craig + Claude)
+16. **Deploy to Crontech** — runbook + tenant env template ready (`docs/CRONTECH-ONBOARDING.md`, `infrastructure/crontech/.env.alecrae.tenant.template`). Craig runs the wizard at https://crontech.ai/admin/onboard, registers the tenant, points DNS. AlecRae stays a standalone product — Crontech is hosting only.
 
 ---
 
@@ -710,9 +710,9 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 **Current phase:** Phase 1 — Ready for Beta Launch
 **Current focus:** Admin preview (`/admin` on web app) added so Craig can SEE the admin surface from his iPad ahead of admin.alecrae.com cutover. Production deployment still awaiting Craig's infra setup.
 **Build completion:** TIER 1-4 ALL DONE (36/36) + 7 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
-**Date last updated:** 2026-04-24
+**Date last updated:** 2026-04-25
 **Current phase:** Phase 1 — Launch Imminent
-**Current focus:** Build is 100% clean (29/29 static pages). Landing page merge conflict fixed. Admin console rebuilt as full live dashboard. CI gate hardened. E2E suite expanded. All code done — blocked only on Craig's infra provisioning (Neon, Upstash, Stripe, API keys, DNS, Crontec deploy).
+**Current focus:** Production-blocking build error fixed (orphaned `error` refs in settings/page.tsx — `next build` was exiting 1, killing every Vercel deploy). Auth pages (login/register/forgot-password) rebranded to landing visual language (ivory + Italianno + Inter, no more indigo @alecrae/ui mismatch). Crontech onboarding deliverables prepped: `docs/CRONTECH-ONBOARDING.md` (runbook) + `infrastructure/crontech/.env.alecrae.tenant.template` (wizard input). All code done — blocked only on Craig's infra provisioning (Neon, Upstash, Stripe, API keys, DNS) + running the Crontech wizard.
 **Build completion:** TIER 1-4 (36/36) + 7 bonus + 31 advanced (S10/10 + A7/7 + B8/8 + C6/10) + 20 expansion (Tier 5) + 9 platform (Tier 6) + 6 intelligence (Tier 7) + 6 deep AI (Tier 8) = 84 features total
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
@@ -909,9 +909,13 @@ If you ship something not in this file, you broke the rules.
 
 ## 🏗️ THE BIGGER PICTURE — ALECRAE AS FLAGSHIP
 
-Craig is also building a **Render+Vercel+AI hybrid platform** (the "Back to the Future" infrastructure). AlecRae will eventually deploy on this platform — making AlecRae both:
-1. **A standalone product** that generates revenue
-2. **The flagship reference app** that proves the underlying platform works
+Craig is also building **Crontech** (https://crontech.ai) — a full-stack AI developer platform that replaces Vercel + Supabase + Render + GitHub Actions. AlecRae will deploy on Crontech, making AlecRae both:
+1. **A standalone product** that generates revenue (own brand, own users, own billing)
+2. **The flagship reference app** that proves Crontech works under real production load
 
-This is why we move with discipline: every architectural choice in AlecRae informs the platform underneath. We don't build AlecRae in a way that requires the platform to ship first — AlecRae deploys to Cloudflare today, and migrates to the new platform when it's ready, with zero rewrites needed (because the new platform supports the same primitives).
+**AlecRae stays standalone.** Crontech is hosting infrastructure — not a product merger. Brand, users, pricing, billing, marketing, and source code all stay in AlecRae's name. The same way Gmail running on Google Cloud doesn't make Gmail "Google Cloud", AlecRae running on Crontech doesn't make AlecRae "Crontech".
+
+This is why we move with discipline: every architectural choice in AlecRae informs Crontech underneath. We don't build AlecRae in a way that requires Crontech to ship first — AlecRae's code is portable (Bun + Next.js + Hono + Drizzle Postgres + standard env vars) and runs anywhere. Onboarding to Crontech is a hosting decision, reversible at the DNS layer.
+
+See `docs/CRONTECH-ONBOARDING.md` for the operator runbook and `infrastructure/crontech/.env.alecrae.tenant.template` for the wizard input.
 
