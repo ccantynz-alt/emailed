@@ -16,26 +16,64 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun run lint
-      - run: bun run typecheck
-      - run: bun run build
-      - uses: actions/upload-artifact@v4
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Pull env vars from Vercel
+        run: bunx vercel env pull .env.local --environment=preview --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build
+        run: bun run build
+
+  deploy:
+    name: Deploy via Vercel
+    needs: quality
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && needs.quality.result == 'success'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
         with:
-          name: build-${{ github.sha }}
-          path: apps/web/.next/
-          retention-days: 7
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Pull production env vars from Vercel
+        run: bunx vercel env pull .env.local --environment=production --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy to Vercel (production)
+        run: bunx vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
   gate:
-    name: GateTest Quality Gate
+    name: GateTest Report
     needs: quality
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Report result to GateTest
+      - name: Report to GateTest
         env:
           GATETEST_API_URL: ${{ secrets.GATETEST_API_URL }}
           FLYWHEEL_API_KEY: ${{ secrets.FLYWHEEL_API_KEY }}
@@ -45,21 +83,3 @@ jobs:
             -H "Authorization: Bearer ${FLYWHEEL_API_KEY}" \
             -d '{"repo":"${{ github.repository }}","commit_sha":"${{ github.sha }}","status":"${{ needs.quality.result }}","product":"alecrae"}' \
             --max-time 10 || true
-
-  deploy:
-    name: Deploy to Crontech
-    needs: quality
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && needs.quality.result == 'success'
-    environment: production
-    steps:
-      - name: Trigger Crontech deploy
-        env:
-          CRONTECH_DEPLOY_WEBHOOK: ${{ secrets.CRONTECH_DEPLOY_WEBHOOK }}
-          CRONTECH_DEPLOY_TOKEN: ${{ secrets.CRONTECH_DEPLOY_TOKEN }}
-        run: |
-          curl -s -X POST "${CRONTECH_DEPLOY_WEBHOOK}" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${CRONTECH_DEPLOY_TOKEN}" \
-            -d '{"repo":"alecrae.com","commit_sha":"${{ github.sha }}","environment":"production"}' \
-            --max-time 30
