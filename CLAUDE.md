@@ -528,60 +528,29 @@ After writing the code:
 - Cloudflare deployment config (DNS setup script, wrangler.toml)
 - Neon PostgreSQL setup SQL
 - Production .env template
+- Undo toast system (5s undo for archive/delete/snooze)
+- Batch email selection with bulk actions
+- Snooze picker with presets + custom date/time
+- Sent page with read receipt indicators
+- Drafts page with click-to-resume editing
+- Snoozed page with countdown timers
+- Contacts page with search, notes, avatars
+- Templates page with CRUD, variable tags, preview/render
+- Email Signature Manager (create/edit/delete, default selection)
+- Recipient Autocomplete (contact API search in compose)
+- Keyboard Shortcut Help Modal (press ? for reference)
+- Cmd+K Command Palette (Superhuman-style navigation)
+- Full Offline-First Stack (IndexedDB + sync engine + service worker)
+- PWA Support (manifest, install prompt, push notifications)
+- Cache-first inbox loading (sub-50ms from IndexedDB)
+- Sync Status Bar (offline/syncing/outbox/error states)
+- Desktop notifications for new emails
+- Favicon badge for unread count
+- Offline compose with outbox queue
 
-### TIER 5 (Table Stakes Expansion) — 20/20 ✅ COMPLETE (2026-04-18)
-- [x] Read receipts / tracking pixel (open + click tracking)
-- [x] Email templates library (CRUD + variable rendering)
-- [x] Signature manager (multiple per account, auto-switch by context)
-- [x] Contact groups / distribution lists (CRUD + member management)
-- [x] Smart folders / saved searches (dynamic filters, auto-populate)
-- [x] Email scheduling queue dashboard (list/cancel scheduled sends)
-- [x] Thread muting (silence threads without unsubscribing)
-- [x] Bulk actions (archive/delete/read/star/label/move — up to 500 at once)
-- [x] Labels / tags (shared, nested hierarchy, apply/remove from emails)
-- [x] Push notifications (Web Push subscriptions + preferences + quiet hours)
-- [x] Link previews / URL unfurling (OG meta parsing, 7-day cache)
-- [x] Email scheduling analytics (opens/clicks by hour+day, best send times)
-- [x] Email A/B testing (multi-variant, auto-winner by metric)
-- [x] Auto-responder / vacation mode (AI-powered OOO with smart replies)
-- [x] Contact enrichment (company info, social profiles, AI-powered)
-- [x] Mail merge (personalized mass emails from CSV/contacts)
-- [x] Zapier/Make/n8n integration (outbound webhooks, HMAC-signed, 11 event types)
-- [x] AlecRae Notes (email-linked notes, pin, thread/contact scoping)
-- [x] AlecRae Files (attachment management, storage stats, presigned uploads)
-- [x] AlecRae Chat (secure team messaging, channels, DMs, thread-linked)
-
-### TIER 6 (AI-Powered Platform) — 9/9 ✅ COMPLETE (2026-04-18)
-- [x] Onboarding wizard (Gmail + Microsoft 365 guided setup)
-- [x] AlecRae Docs (documents, folders, versioning, AI assist, export)
-- [x] AlecRae Meet (video meeting rooms, recordings, transcription, summaries)
-- [x] AI Writing Intelligence (profiles, compose, rewrite, expand, stats)
-- [x] Calendar Events (smart calendar, availability, find-time, AI scheduling)
-- [x] Contacts Extended (CRM-lite — interactions, reminders, AI insights)
-- [x] Notification Intelligence (AI rules, batching, digest, evaluate)
-- [x] Focus Sessions (start/end, deferred emails, current session)
-- [x] Email Hygiene (habits analytics, subscription tracker, inbox cleanup, goals)
-
-### TIER 7 (Advanced Intelligence) — 6/6 ✅ COMPLETE (2026-04-18)
-- [x] Analytics Dashboard (periodic snapshots, goals tracking)
-- [x] Email Delegation (delegate handling to team, shared drafts, review workflow)
-- [x] Workflow Automation (triggers, actions, runs, templates)
-- [x] AI Categorization (email categories, smart labels, feedback loop)
-- [x] Search Intelligence (history, bookmarks, AI suggestions)
-- [x] Security Intelligence (threat detection, policies, audit log, phishing reports)
-
-### TIER 8 (Deep AI Intelligence) — 6/6 ✅ COMPLETE (2026-04-18)
-- [x] Sentiment Timeline (per-contact sentiment tracking, relationship health, risk alerts)
-- [x] Attachment Intelligence (AI file analysis, virus scanning, PII detection, smart organization)
-- [x] Scheduling Intelligence (AI meeting proposals, availability patterns, conflict detection)
-- [x] Context Intelligence (action item extraction, deadline tracking, promise monitoring)
-- [x] Productivity Analytics (time tracking, behavioral insights, team leaderboards)
-- [x] Knowledge Graph (entity extraction, relationship mapping, graph visualization)
-
-### Total: 36/36 original + 7 bonus + 20 expansion + 9 platform + 6 intelligence + 6 deep AI = 84 features ✅ ALL COMPLETE
-### API Routes: 90 route files, 290+ endpoints
-### DB Schemas: 61 schema files
-### Code: ~62K lines of TypeScript
+### Total: 36/36 from original plan + 27 bonus features ✅ ALL TIERS COMPLETE
+### API Routes: 30+ route files, 100+ endpoints
+### Code: ~45K lines of TypeScript
 
 ---
 
