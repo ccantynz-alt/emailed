@@ -1814,3 +1814,194 @@ export const templatesApi = {
     );
   },
 };
+
+// ─── AI Autopilot ─────────────────────────────────────────────────────────
+
+export interface AutopilotRun {
+  id: string;
+  status: "completed" | "running" | "failed";
+  startedAt: string;
+  completedAt: string | null;
+  emailsProcessed: number;
+  draftsCreated: number;
+  newslettersSummarized: number;
+  followUpsFlagged: number;
+}
+
+export interface AutopilotDraft {
+  id: string;
+  recipientName: string;
+  recipientEmail: string;
+  subject: string;
+  preview: string;
+  confidence: number;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
+export interface AutopilotConfig {
+  enabled: boolean;
+  scheduleHour: number;
+  triageEnabled: boolean;
+  draftReplies: boolean;
+  summarizeNewsletters: boolean;
+}
+
+export const autopilotApi = {
+  getLatestRun() {
+    return apiFetch<{ data: AutopilotRun }>("/v1/autopilot/runs/latest");
+  },
+
+  getDrafts() {
+    return apiFetch<{ data: AutopilotDraft[] }>("/v1/autopilot/drafts");
+  },
+
+  approveDraft(id: string) {
+    return apiFetch<{ data: { sent: boolean } }>(`/v1/autopilot/drafts/${id}/approve`, { method: "POST" });
+  },
+
+  rejectDraft(id: string) {
+    return apiFetch<{ data: { rejected: boolean } }>(`/v1/autopilot/drafts/${id}/reject`, { method: "POST" });
+  },
+
+  getConfig() {
+    return apiFetch<{ data: AutopilotConfig }>("/v1/autopilot/config");
+  },
+
+  updateConfig(config: Partial<AutopilotConfig>) {
+    return apiFetch<{ data: AutopilotConfig }>("/v1/autopilot/config", {
+      method: "PATCH",
+      body: JSON.stringify(config),
+    });
+  },
+};
+
+// ─── Smart Categories ─────────────────────────────────────────────────────
+
+export interface SmartCategory {
+  id: string;
+  label: string;
+  count: number;
+  color: string;
+}
+
+export const categoriesApi = {
+  list() {
+    return apiFetch<{ data: SmartCategory[] }>("/v1/categories");
+  },
+
+  categorize(emailId: string) {
+    return apiFetch<{ data: { category: string; confidence: number } }>(`/v1/categories/classify/${emailId}`, { method: "POST" });
+  },
+};
+
+// ─── Attachments ──────────────────────────────────────────────────────────
+
+export interface Attachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  emailId: string;
+  from: EmailAddress;
+  subject: string;
+  receivedAt: string;
+}
+
+export const attachmentsApi = {
+  list(params?: { type?: string; sort?: string; limit?: number; cursor?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.type) qs.set("type", params.type);
+    if (params?.sort) qs.set("sort", params.sort);
+    if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.cursor) qs.set("cursor", params.cursor);
+    const query = qs.toString();
+    return apiFetch<PaginatedResponse<Attachment>>(`/v1/attachments${query ? `?${query}` : ""}`);
+  },
+
+  search(q: string) {
+    return apiFetch<{ data: Attachment[] }>(`/v1/attachments/search?q=${encodeURIComponent(q)}`);
+  },
+
+  getDownloadUrl(id: string) {
+    return apiFetch<{ data: { url: string } }>(`/v1/attachments/${id}/download`);
+  },
+};
+
+// ─── Email Health ─────────────────────────────────────────────────────────
+
+export interface HealthScore {
+  overall: number;
+  avgResponseTime: number;
+  inboxZeroStreak: number;
+  sentReceivedRatio: number;
+  unreadBacklog: number;
+  trends: {
+    responseTime: "up" | "down" | "stable";
+    streak: "up" | "down" | "stable";
+    backlog: "up" | "down" | "stable";
+  };
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  icon: string;
+  earned: boolean;
+  earnedAt: string | null;
+}
+
+export const healthApi = {
+  getScore() {
+    return apiFetch<{ data: HealthScore }>("/v1/health/score");
+  },
+
+  getActivity(params?: { days?: number }) {
+    const qs = params?.days ? `?days=${params.days}` : "";
+    return apiFetch<{ data: { day: string; sent: number; received: number }[] }>(`/v1/health/activity${qs}`);
+  },
+
+  getAchievements() {
+    return apiFetch<{ data: Achievement[] }>("/v1/health/achievements");
+  },
+};
+
+// ─── Meeting Prep ─────────────────────────────────────────────────────────
+
+export interface MeetingBrief {
+  meetingId: string;
+  title: string;
+  context: string[];
+  threads: { subject: string; date: string; participants: string[]; excerpt: string }[];
+  openItems: { description: string; owner: string; status: "done" | "due" | "overdue" }[];
+  talkingPoints: string[];
+}
+
+export const meetingPrepApi = {
+  getUpcoming() {
+    return apiFetch<{ data: { id: string; title: string; time: string; duration: number; attendees: EmailAddress[] }[] }>("/v1/meetings/upcoming");
+  },
+
+  getBrief(meetingId: string) {
+    return apiFetch<{ data: MeetingBrief }>(`/v1/meetings/${meetingId}/brief`);
+  },
+};
+
+// ─── Contact Intelligence ─────────────────────────────────────────────────
+
+export interface ContactInsights {
+  totalEmails: number;
+  avgResponseTimeThem: number;
+  avgResponseTimeYou: number;
+  lastContact: string;
+  monthlyActivity: { month: string; count: number }[];
+  recentThreads: { subject: string; date: string; direction: "sent" | "received"; preview: string }[];
+  aiInsights: string[];
+  tags: string[];
+}
+
+export const contactIntelApi = {
+  getInsights(email: string) {
+    return apiFetch<{ data: ContactInsights }>(`/v1/contacts/${encodeURIComponent(email)}/insights`);
+  },
+};

@@ -103,7 +103,7 @@ function PasskeyRegistration(): React.ReactElement {
         credential,
         _registration: challengeResponse._registration,
       });
-      window.location.href = "/inbox";
+      window.location.href = "/onboarding";
     } catch (err) {
       if (err instanceof DOMException && err.name === "NotAllowedError") {
         setError("Passkey creation was cancelled. Please try again.");
@@ -240,7 +240,7 @@ function EmailRegistration(): React.ReactElement {
     try {
       const name = lastName ? `${firstName} ${lastName}` : firstName;
       await authApi.register({ email, password, name });
-      window.location.href = "/inbox";
+      window.location.href = "/onboarding";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

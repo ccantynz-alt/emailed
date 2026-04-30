@@ -1,0 +1,503 @@
+/* ─── Dashboard Dark Theme Overrides ─────────────────────────────────────────
+ *
+ * Applied via a parent class: add `className="dashboard-dark"` to the
+ * dashboard layout wrapper to flip everything to dark mode without touching
+ * individual components.
+ *
+ * Uses CSS custom properties where possible for design-token consistency,
+ * plus Tailwind-compatible class overrides for the most common patterns.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/* ─── Design Token Overrides ─────────────────────────────────────────────── */
+
+.dashboard-dark {
+  --color-surface: #0f1117;
+  --color-surface-secondary: #161923;
+  --color-surface-tertiary: #1c2030;
+  --color-content: #e2e8f0;
+  --color-content-secondary: #94a3b8;
+  --color-content-tertiary: #64748b;
+  --color-border: #1e293b;
+  --color-border-strong: #334155;
+  --color-border-focus: #6366f1;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+
+.dashboard-dark {
+  background-color: #0f1117;
+  color: #e2e8f0;
+}
+
+/* ─── Surface Colors ─────────────────────────────────────────────────────── */
+
+.dashboard-dark .bg-surface {
+  background-color: #0f1117;
+}
+
+.dashboard-dark .bg-surface-secondary {
+  background-color: #161923;
+}
+
+.dashboard-dark .bg-surface\/50 {
+  background-color: rgba(15, 17, 23, 0.5);
+}
+
+.dashboard-dark .bg-surface-secondary\/50 {
+  background-color: rgba(22, 25, 35, 0.5);
+}
+
+.dashboard-dark .bg-surface-tertiary {
+  background-color: #1c2030;
+}
+
+.dashboard-dark .hover\:bg-surface-secondary:hover {
+  background-color: #161923;
+}
+
+.dashboard-dark .hover\:bg-surface-secondary\/50:hover {
+  background-color: rgba(22, 25, 35, 0.5);
+}
+
+.dashboard-dark .hover\:bg-surface-tertiary:hover {
+  background-color: #1c2030;
+}
+
+/* ─── Text Colors ────────────────────────────────────────────────────────── */
+
+.dashboard-dark .text-content {
+  color: #e2e8f0;
+}
+
+.dashboard-dark .text-content-secondary {
+  color: #94a3b8;
+}
+
+.dashboard-dark .text-content-tertiary {
+  color: #64748b;
+}
+
+.dashboard-dark .placeholder\:text-content-tertiary::placeholder {
+  color: #64748b;
+}
+
+/* ─── Border Colors ──────────────────────────────────────────────────────── */
+
+.dashboard-dark .border-border {
+  border-color: #1e293b;
+}
+
+.dashboard-dark .border-border\/50 {
+  border-color: rgba(30, 41, 59, 0.5);
+}
+
+.dashboard-dark .border-border-strong {
+  border-color: #334155;
+}
+
+.dashboard-dark .divide-border > :not(:first-child) {
+  border-color: #1e293b;
+}
+
+.dashboard-dark .ring-surface {
+  --tw-ring-color: #0f1117;
+}
+
+/* ─── Brand Colors (adjusted for dark background) ────────────────────────── */
+
+.dashboard-dark .bg-brand-50 {
+  background-color: rgba(139, 92, 246, 0.08);
+}
+
+.dashboard-dark .bg-brand-100 {
+  background-color: rgba(139, 92, 246, 0.15);
+}
+
+.dashboard-dark .text-brand-600 {
+  color: #a78bfa;
+}
+
+.dashboard-dark .text-brand-700 {
+  color: #8b5cf6;
+}
+
+.dashboard-dark .border-brand-100 {
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.dashboard-dark .border-brand-200 {
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+.dashboard-dark .border-l-brand-500 {
+  border-left-color: #8b5cf6;
+}
+
+.dashboard-dark .focus-visible\:ring-brand-500:focus-visible {
+  --tw-ring-color: #8b5cf6;
+}
+
+/* ─── Status Colors (vibrant on dark) ────────────────────────────────────── */
+
+.dashboard-dark .text-status-success {
+  color: #34d399;
+}
+
+.dashboard-dark .text-status-error {
+  color: #f87171;
+}
+
+.dashboard-dark .text-status-warning {
+  color: #fbbf24;
+}
+
+.dashboard-dark .bg-status-error {
+  background-color: #dc2626;
+}
+
+.dashboard-dark .text-green-600 {
+  color: #34d399;
+}
+
+.dashboard-dark .text-green-700 {
+  color: #10b981;
+}
+
+.dashboard-dark .bg-green-50 {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.dashboard-dark .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.15);
+}
+
+.dashboard-dark .border-green-200 {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.dashboard-dark .text-red-600 {
+  color: #f87171;
+}
+
+.dashboard-dark .text-amber-600 {
+  color: #fbbf24;
+}
+
+.dashboard-dark .bg-amber-100 {
+  background-color: rgba(251, 191, 36, 0.15);
+}
+
+.dashboard-dark .text-amber-700 {
+  color: #f59e0b;
+}
+
+/* ─── Semantic avatar backgrounds for dark mode ──────────────────────────── */
+
+.dashboard-dark .bg-purple-100 {
+  background-color: rgba(139, 92, 246, 0.15);
+}
+
+.dashboard-dark .text-purple-700 {
+  color: #a78bfa;
+}
+
+.dashboard-dark .bg-orange-100 {
+  background-color: rgba(251, 146, 60, 0.15);
+}
+
+.dashboard-dark .text-orange-700 {
+  color: #fb923c;
+}
+
+.dashboard-dark .bg-pink-100 {
+  background-color: rgba(236, 72, 153, 0.15);
+}
+
+.dashboard-dark .text-pink-700 {
+  color: #f472b6;
+}
+
+.dashboard-dark .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+.dashboard-dark .text-blue-700 {
+  color: #60a5fa;
+}
+
+.dashboard-dark .bg-teal-100 {
+  background-color: rgba(20, 184, 166, 0.15);
+}
+
+.dashboard-dark .text-teal-700 {
+  color: #2dd4bf;
+}
+
+/* ─── Card Overrides ─────────────────────────────────────────────────────── */
+
+.dashboard-dark [class*="bg-surface border border-border rounded-xl"] {
+  background-color: #161923;
+  border-color: #1e293b;
+}
+
+.dashboard-dark [data-component="card"] {
+  background-color: #161923;
+  border-color: #1e293b;
+}
+
+/* ─── Input / Textarea / Select ──────────────────────────────────────────── */
+
+.dashboard-dark input,
+.dashboard-dark textarea,
+.dashboard-dark select {
+  background-color: #1c2030;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.dashboard-dark input::placeholder,
+.dashboard-dark textarea::placeholder {
+  color: #64748b;
+}
+
+.dashboard-dark input:focus,
+.dashboard-dark textarea:focus,
+.dashboard-dark select:focus {
+  border-color: #6366f1;
+  outline-color: #6366f1;
+}
+
+/* ─── Button Overrides ───────────────────────────────────────────────────── */
+
+.dashboard-dark .bg-surface-secondary.text-content.border.border-border {
+  background-color: #1c2030;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.dashboard-dark .bg-surface-secondary.text-content.border.border-border:hover {
+  background-color: #252a3a;
+}
+
+.dashboard-dark .bg-transparent.text-content:hover {
+  background-color: rgba(28, 32, 48, 0.8);
+}
+
+/* ─── Sidebar Overrides ──────────────────────────────────────────────────── */
+
+.dashboard-dark nav,
+.dashboard-dark [data-sidebar],
+.dashboard-dark aside {
+  background-color: #0c0e15;
+  border-color: #1e293b;
+}
+
+.dashboard-dark nav a:hover,
+.dashboard-dark [data-sidebar] a:hover {
+  background-color: #161923;
+}
+
+.dashboard-dark nav a.active,
+.dashboard-dark [data-sidebar] a.active {
+  background-color: rgba(139, 92, 246, 0.12);
+}
+
+/* ─── Table Overrides ────────────────────────────────────────────────────── */
+
+.dashboard-dark table {
+  border-color: #1e293b;
+}
+
+.dashboard-dark th {
+  background-color: #161923;
+  border-color: #1e293b;
+  color: #94a3b8;
+}
+
+.dashboard-dark td {
+  border-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.dashboard-dark tr:hover td {
+  background-color: rgba(22, 25, 35, 0.5);
+}
+
+.dashboard-dark tbody tr:nth-child(even) {
+  background-color: rgba(22, 25, 35, 0.3);
+}
+
+/* ─── Dropdown / Popover ─────────────────────────────────────────────────── */
+
+.dashboard-dark [data-radix-popper-content-wrapper] > *,
+.dashboard-dark [role="listbox"],
+.dashboard-dark [role="menu"],
+.dashboard-dark [role="dialog"] {
+  background-color: #161923;
+  border-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.dashboard-dark [role="option"]:hover,
+.dashboard-dark [role="menuitem"]:hover {
+  background-color: #1c2030;
+}
+
+/* ─── Badge / Tag / Chip ─────────────────────────────────────────────────── */
+
+.dashboard-dark .bg-brand-50.text-brand-700 {
+  background-color: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+}
+
+/* ─── Tooltip ────────────────────────────────────────────────────────────── */
+
+.dashboard-dark [role="tooltip"] {
+  background-color: #252a3a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+/* ─── Divider / Separator ────────────────────────────────────────────────── */
+
+.dashboard-dark hr,
+.dashboard-dark [role="separator"] {
+  border-color: #1e293b;
+}
+
+/* ─── Focus Ring ─────────────────────────────────────────────────────────── */
+
+.dashboard-dark :focus-visible {
+  outline-color: #6366f1;
+}
+
+.dashboard-dark .focus\:ring-border-focus:focus {
+  --tw-ring-color: #6366f1;
+}
+
+/* ─── Shadow Overrides ───────────────────────────────────────────────────── */
+
+.dashboard-dark .shadow-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-dark .shadow-card-hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.dashboard-dark .shadow-sm {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-dark .shadow-md {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+}
+
+.dashboard-dark .shadow-lg {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Code / Pre ─────────────────────────────────────────────────────────── */
+
+.dashboard-dark code {
+  background-color: #1c2030;
+  color: #a78bfa;
+}
+
+.dashboard-dark pre {
+  background-color: #0c0e15;
+  border-color: #1e293b;
+  color: #e2e8f0;
+}
+
+/* ─── Skeleton / Loading ─────────────────────────────────────────────────── */
+
+.dashboard-dark .animate-pulse {
+  background-color: #1c2030;
+}
+
+/* ─── Chart / Analytics ──────────────────────────────────────────────────── */
+
+.dashboard-dark .recharts-cartesian-grid line {
+  stroke: #1e293b;
+}
+
+.dashboard-dark .recharts-text {
+  fill: #64748b;
+}
+
+/* ─── Scrollbar Styling ──────────────────────────────────────────────────── */
+
+.dashboard-dark ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dashboard-dark ::-webkit-scrollbar-track {
+  background: #0f1117;
+}
+
+.dashboard-dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+.dashboard-dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Firefox scrollbar */
+.dashboard-dark * {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f1117;
+}
+
+/* ─── Selection ──────────────────────────────────────────────────────────── */
+
+.dashboard-dark ::selection {
+  background-color: rgba(139, 92, 246, 0.3);
+  color: #f1f5f9;
+}
+
+/* ─── Modal / Overlay Backdrop ───────────────────────────────────────────── */
+
+.dashboard-dark [data-overlay],
+.dashboard-dark .fixed.inset-0.bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* ─── Transition Overrides ───────────────────────────────────────────────── */
+
+.dashboard-dark .transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+}
+
+/* ─── Empty / Placeholder States ─────────────────────────────────────────── */
+
+.dashboard-dark .bg-gray-50 {
+  background-color: #161923;
+}
+
+.dashboard-dark .bg-gray-100 {
+  background-color: #1c2030;
+}
+
+.dashboard-dark .text-gray-500 {
+  color: #64748b;
+}
+
+.dashboard-dark .text-gray-400 {
+  color: #475569;
+}
+
+/* ─── Link overrides ─────────────────────────────────────────────────────── */
+
+.dashboard-dark a:not([class]) {
+  color: #a78bfa;
+}
+
+.dashboard-dark a:not([class]):hover {
+  color: #c4b5fd;
+}

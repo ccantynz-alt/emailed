@@ -14,6 +14,7 @@ import { KeyboardShortcutHelp } from "../../components/KeyboardShortcutHelp";
 import { CommandPalette } from "../../components/CommandPalette";
 import { OfflineBadge } from "../../components/SyncStatusBar";
 import { InstallPrompt } from "../../components/InstallPrompt";
+import "./dashboard-dark.css";
 
 const navigationSections: AnimatedSidebarSection[] = [
   {
@@ -26,10 +27,18 @@ const navigationSections: AnimatedSidebarSection[] = [
     ],
   },
   {
+    title: "AI",
+    items: [
+      { id: "autopilot", label: "Autopilot", href: "/autopilot" },
+      { id: "meeting-prep", label: "Meeting Prep", href: "/meeting-prep" },
+    ],
+  },
+  {
     title: "Tools",
     items: [
       { id: "templates", label: "Templates", href: "/templates" },
       { id: "contacts", label: "Contacts", href: "/contacts" },
+      { id: "attachments", label: "Attachments", href: "/attachments" },
     ],
   },
   {
@@ -37,6 +46,7 @@ const navigationSections: AnimatedSidebarSection[] = [
     items: [
       { id: "domains", label: "Domains", href: "/domains" },
       { id: "analytics", label: "Analytics", href: "/analytics" },
+      { id: "health", label: "Email Health", href: "/health" },
       { id: "settings", label: "Settings", href: "/settings" },
     ],
   },
@@ -159,7 +169,7 @@ export default function DashboardLayout({
   const focusModeEmails: FocusModeOverlayEmail[] = [];
 
   return (
-    <Box className="flex h-full">
+    <Box className="flex h-full dashboard-dark">
       <AnimatedSidebar
         brand={brand}
         sections={sectionsWithActive}

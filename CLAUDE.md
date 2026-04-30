@@ -547,10 +547,22 @@ After writing the code:
 - Desktop notifications for new emails
 - Favicon badge for unread count
 - Offline compose with outbox queue
+- Bold landing page redesign (dark-mode-first, typewriter hero, bento grid features, animated demos)
+- Multi-step onboarding wizard (account connection, preferences, confetti celebration)
+- AI Autopilot Dashboard (morning briefing, drafted replies, triage summary, newsletter digests)
+- Attachment Hub (search, filter by type, sort, storage stats, card grid)
+- Email Health Score (circular progress ring, weekly activity chart, busiest hours heatmap, achievements)
+- AI Meeting Prep (upcoming meetings, AI-generated briefs, open items, talking points)
+- Dashboard dark theme (CSS custom property overrides, full token system)
+- Smart Categories bar (8 AI categories with animated sliding indicator)
+- Quick Actions toolbar (7 contextual email actions with color-coded hover)
+- Contact Intelligence panel (relationship stats, communication timeline, AI insights)
+- Interactive Email Cards (flight/calendar/receipt/package/newsletter card types)
+- Command Palette expanded (autopilot, meeting-prep, attachments, health commands)
 
-### Total: 36/36 from original plan + 27 bonus features ✅ ALL TIERS COMPLETE
+### Total: 36/36 from original plan + 39 bonus features ✅ ALL TIERS COMPLETE
 ### API Routes: 30+ route files, 100+ endpoints
-### Code: ~45K lines of TypeScript
+### Code: ~50K lines of TypeScript
 
 ---
 
@@ -690,8 +702,8 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 
 **Date last updated:** 2026-04-30
 **Current phase:** Phase 1 — Ready for Beta Launch
-**Current focus:** Full offline-first stack shipped. Inbox loads from cache in <50ms. PWA installable. All major productivity features wired. Production deployment awaiting Craig's infra setup.
-**Build completion:** TIER 1-4 ALL DONE (36/36) + 27 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
+**Current focus:** Bold landing page redesign shipped. 10 killer features built (onboarding wizard, autopilot dashboard, attachment hub, email health score, meeting prep, dark theme, smart categories, quick actions, contact intelligence, interactive email cards). Full offline-first stack. Production deployment awaiting Craig's infra setup.
+**Build completion:** TIER 1-4 ALL DONE (36/36) + 39 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
 
@@ -823,13 +835,13 @@ If you ship something not in this file, you broke the rules.
 
 ---
 
-## 📋 CURRENT BUILD COMPLETENESS (Updated 2026-04-18)
+## 📋 CURRENT BUILD COMPLETENESS (Updated 2026-04-30)
 
 | Component | Status | % |
 |---|---|---|
 | Backend (API + MTA) | Production-ready | 100% |
 | Web app (Coming Soon landing) | Production-ready, builds clean | 100% |
-| Web app (full inbox UI) | Built, needs backend live | 95% |
+| Web app (full inbox UI) | Built, dark theme, onboarding, all dashboard pages | 98% |
 | Desktop app (Electron) | Polished — native menus, tray, IPC, builds clean | 95% |
 | Mobile app (RN/Expo) | Polished — all screens, auth, API, accessibility | 90% |
 | Auth flow (frontend) | Passkey login/register wired with WebAuthn | 100% |
@@ -849,7 +861,7 @@ If you ship something not in this file, you broke the rules.
 | **Tier 7 features (advanced intelligence)** | **6/6 done** | **100%** |
 | **Tier 8 features (deep AI intelligence)** | **6/6 done** | **100%** |
 
-**Overall: ~99% of launch-ready product. All code features complete (84 features, 90 routes, 61 schemas, 290+ endpoints). Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
+**Overall: ~99% of launch-ready product. All code features complete (96 features, 90 routes, 61 schemas, 290+ endpoints). Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
 
 ---
 
