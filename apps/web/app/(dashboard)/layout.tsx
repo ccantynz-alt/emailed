@@ -56,6 +56,15 @@ const navigationSections: AnimatedSidebarSection[] = [
     ],
   },
   {
+    title: "Documents",
+    items: [
+      { id: "documents", label: "All Documents", href: "/documents" },
+      { id: "doc-templates", label: "Templates", href: "/documents/templates" },
+      { id: "doc-import", label: "Import / Export", href: "/documents/import" },
+      { id: "doc-search", label: "Search Docs", href: "/documents/search" },
+    ],
+  },
+  {
     title: "Manage",
     items: [
       { id: "domains", label: "Domains", href: "/domains" },

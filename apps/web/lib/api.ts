@@ -2234,3 +2234,98 @@ export const networkApi = {
     return apiFetch<{ data: NetworkData }>(`/v1/analytics/network?period=${period}`);
   },
 };
+
+// ─── Documents ────────────────────────────────────────────────────────────
+
+export type DocFileType = "document" | "spreadsheet" | "presentation" | "pdf";
+
+export interface DocFile {
+  id: string;
+  name: string;
+  type: DocFileType;
+  size: string;
+  owner: string;
+  modified: string;
+  shared: boolean;
+  starred: boolean;
+  folder?: string;
+  content?: string;
+}
+
+export interface DocVersion {
+  id: string;
+  number: string;
+  author: string;
+  timestamp: string;
+  description: string;
+  additions: number;
+  deletions: number;
+}
+
+export interface DocTemplate {
+  id: string;
+  name: string;
+  category: string;
+  type: DocFileType;
+  description: string;
+  uses: number;
+}
+
+export const documentsApi = {
+  list(filter?: string) {
+    const params = filter && filter !== "all" ? `?filter=${filter}` : "";
+    return apiFetch<{ data: DocFile[] }>(`/v1/documents${params}`);
+  },
+  get(id: string) {
+    return apiFetch<{ data: DocFile }>(`/v1/documents/${id}`);
+  },
+  create(doc: { name: string; type: DocFileType; content?: string; templateId?: string }) {
+    return apiFetch<{ data: DocFile }>("/v1/documents", {
+      method: "POST",
+      body: JSON.stringify(doc),
+    });
+  },
+  update(id: string, updates: Partial<DocFile>) {
+    return apiFetch<{ data: DocFile }>(`/v1/documents/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
+  },
+  delete(id: string) {
+    return apiFetch<{ data: { ok: boolean } }>(`/v1/documents/${id}`, { method: "DELETE" });
+  },
+  share(id: string, email: string, role: "editor" | "commenter" | "viewer") {
+    return apiFetch<{ data: { ok: boolean } }>(`/v1/documents/${id}/share`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+  },
+  versions(id: string) {
+    return apiFetch<{ data: DocVersion[] }>(`/v1/documents/${id}/versions`);
+  },
+  restoreVersion(id: string, versionId: string) {
+    return apiFetch<{ data: DocFile }>(`/v1/documents/${id}/versions/${versionId}/restore`, {
+      method: "POST",
+    });
+  },
+  search(query: string, type?: DocFileType) {
+    const params = type ? `&type=${type}` : "";
+    return apiFetch<{ data: DocFile[] }>(`/v1/documents/search?q=${encodeURIComponent(query)}${params}`);
+  },
+  templates(category?: string) {
+    const params = category && category !== "all" ? `?category=${category}` : "";
+    return apiFetch<{ data: DocTemplate[] }>(`/v1/documents/templates${params}`);
+  },
+  importFile(file: File, source: string) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("source", source);
+    return apiFetch<{ data: DocFile }>("/v1/documents/import", {
+      method: "POST",
+      body: formData,
+    });
+  },
+  exportFile(id: string, format: string) {
+    return apiFetch<{ data: { url: string } }>(`/v1/documents/${id}/export?format=${format}`);
+  },
+};

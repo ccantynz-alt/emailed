@@ -569,10 +569,20 @@ After writing the code:
 - Thread Timeline Visualization (vertical timeline, response gaps, decisions, action items)
 - AI Writing Style Switcher (6 presets, before/after preview, custom style, confidence score)
 - Email Network Graph (CSS force-directed viz, clusters, top connections, relationship strength)
+- Document Suite — Full office productivity suite (AlecRae Docs):
+  - Documents Dashboard (file manager, folders, grid/list view, search, 18 file types)
+  - Rich Document Editor (toolbar, formatting, AI sidebar, comments, outline, word count)
+  - Spreadsheet Editor (formula bar, cell grid, financial mock data, sheet tabs, AI assistant)
+  - Presentation Editor (slide thumbnails, 6 slide layouts, speaker notes, AI assistant)
+  - Document Templates Gallery (24 templates — legal, finance, business, HR, marketing)
+  - Import/Export Hub (Google Drive, OneDrive, Dropbox, local upload, 10 formats, drag-drop)
+  - Document Collaboration (invite, roles, comments, suggestions, activity feed)
+  - Version History (diff view, additions/deletions, restore, named versions)
+  - Document Search (full-text, AI search, type filters, relevance scoring)
 
-### Total: 36/36 from original plan + 49 bonus features ✅ ALL TIERS COMPLETE
+### Total: 36/36 from original plan + 58 bonus features ✅ ALL TIERS COMPLETE
 ### API Routes: 30+ route files, 100+ endpoints
-### Code: ~55K lines of TypeScript
+### Code: ~62K lines of TypeScript
 
 ---
 
@@ -712,8 +722,8 @@ If the answer isn't compelling, don't build it. If it is, build it 10x better th
 
 **Date last updated:** 2026-04-30
 **Current phase:** Phase 1 — Ready for Beta Launch
-**Current focus:** 20 killer features shipped across two sessions. AI Email Coach, Follow-Up Tracker, Workflow Builder, Sentiment Dashboard, Split View, Notification Center, Link Library, Thread Timeline, Writing Style Switcher, Network Graph all built. Production deployment awaiting Craig's infra setup.
-**Build completion:** TIER 1-4 ALL DONE (36/36) + 49 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
+**Current focus:** Full document suite (AlecRae Docs) shipped — doc editor, spreadsheet, presentations, templates, import/export, collaboration, version history, search. 30 killer features shipped across three sessions. AlecRae is now email + docs + AI. Production deployment awaiting Craig's infra setup.
+**Build completion:** TIER 1-4 ALL DONE (36/36) + 58 bonus + 31 advanced features (S10/10 + A7/7 + B8/8 + C6/10)
 
 **Next review:** Before any major architectural change, before any production deployment, at the start of every session.
 
@@ -871,7 +881,7 @@ If you ship something not in this file, you broke the rules.
 | **Tier 7 features (advanced intelligence)** | **6/6 done** | **100%** |
 | **Tier 8 features (deep AI intelligence)** | **6/6 done** | **100%** |
 
-**Overall: ~99% of launch-ready product. All code features complete (106 features, 90 routes, 61 schemas, 290+ endpoints). Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
+**Overall: ~99% of launch-ready product. All code features complete (115 features, 90 routes, 61 schemas, 290+ endpoints). Full document suite built. Remaining: Craig infra setup (Neon/Upstash/Stripe/DNS/API keys) + C4/C5/C6/C7 (compliance/legal — not code tasks).**
 
 ---
 
