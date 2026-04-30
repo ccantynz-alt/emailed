@@ -27,6 +27,7 @@ const STORE_EMAILS = "emails" as const;
 const STORE_DRAFTS = "drafts" as const;
 const STORE_OUTBOX = "outbox" as const;
 const STORE_SYNC_META = "sync_meta" as const;
+const STORE_QUEUED_ACTIONS = "queued_actions" as const;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,15 @@ export interface OutboxEmail {
   queuedAt: number;
   retryCount: number;
   lastError?: string;
+}
+
+export type QueuedActionType = "star" | "unstar" | "archive" | "delete" | "read" | "unread";
+
+export interface QueuedAction {
+  id: string;
+  emailId: string;
+  action: QueuedActionType;
+  queuedAt: number;
 }
 
 interface SyncMeta {
@@ -146,6 +156,11 @@ export function openDB(): Promise<IDBDatabase> {
       // ── sync_meta store ───────────────────────────────────────────────
       if (!db.objectStoreNames.contains(STORE_SYNC_META)) {
         db.createObjectStore(STORE_SYNC_META, { keyPath: "storeName" });
+      }
+
+      // ── queued_actions store (offline action queue for sync) ────────
+      if (!db.objectStoreNames.contains(STORE_QUEUED_ACTIONS)) {
+        db.createObjectStore(STORE_QUEUED_ACTIONS, { keyPath: "id" });
       }
     };
 
@@ -230,18 +245,16 @@ export async function getCachedEmails(options?: {
 
   let results: CachedEmail[];
 
+  const allEmails: CachedEmail[] = await reqResult<CachedEmail[]>(store.getAll());
+
   if (filter === "unread") {
-    const index: IDBIndex = store.index("by-read");
-    // IndexedDB stores booleans — false means unread
-    results = await reqResult<CachedEmail[]>(index.getAll(false));
+    results = allEmails.filter((e: CachedEmail): boolean => !e.read);
   } else if (filter === "starred") {
-    const index: IDBIndex = store.index("by-starred");
-    results = await reqResult<CachedEmail[]>(index.getAll(true));
+    results = allEmails.filter((e: CachedEmail): boolean => e.starred);
   } else if (filter === "sent") {
-    const index: IDBIndex = store.index("by-status");
-    results = await reqResult<CachedEmail[]>(index.getAll("sent"));
+    results = allEmails.filter((e: CachedEmail): boolean => e.status === "sent");
   } else {
-    results = await reqResult<CachedEmail[]>(store.getAll());
+    results = allEmails;
   }
 
   // Sort newest first by ISO date string (lexicographic comparison works for ISO 8601)
@@ -411,6 +424,62 @@ export async function setSyncCursor(storeName: string, cursor: string): Promise<
   await txComplete(tx);
 }
 
+// ─── Queued Actions (Offline Conflict Resolution) ───────────────────────────
+
+/**
+ * Queue an offline action (star, archive, delete, etc.) for later sync.
+ * Deduplicates by emailId + action type — the latest action wins.
+ */
+export async function queueAction(action: QueuedAction): Promise<void> {
+  const db: IDBDatabase = await openDB();
+  const tx: IDBTransaction = db.transaction(STORE_QUEUED_ACTIONS, "readwrite");
+  const store: IDBObjectStore = tx.objectStore(STORE_QUEUED_ACTIONS);
+
+  // Remove any existing action for the same email + action type
+  const existing: QueuedAction[] = await reqResult<QueuedAction[]>(store.getAll());
+  for (const item of existing) {
+    if (item.emailId === action.emailId && item.action === action.action) {
+      store.delete(item.id);
+    }
+  }
+
+  store.put(action);
+  await txComplete(tx);
+}
+
+/**
+ * Get all queued offline actions, oldest first.
+ */
+export async function getQueuedActions(): Promise<QueuedAction[]> {
+  const db: IDBDatabase = await openDB();
+  const tx: IDBTransaction = db.transaction(STORE_QUEUED_ACTIONS, "readonly");
+  const results: QueuedAction[] = await reqResult<QueuedAction[]>(
+    tx.objectStore(STORE_QUEUED_ACTIONS).getAll(),
+  );
+  results.sort((a: QueuedAction, b: QueuedAction): number => a.queuedAt - b.queuedAt);
+  return results;
+}
+
+/**
+ * Remove a specific queued action after it has been applied to the server.
+ */
+export async function removeQueuedAction(id: string): Promise<void> {
+  const db: IDBDatabase = await openDB();
+  const tx: IDBTransaction = db.transaction(STORE_QUEUED_ACTIONS, "readwrite");
+  tx.objectStore(STORE_QUEUED_ACTIONS).delete(id);
+  await txComplete(tx);
+}
+
+/**
+ * Clear all queued actions (e.g. after a full sync).
+ */
+export async function clearQueuedActions(): Promise<void> {
+  const db: IDBDatabase = await openDB();
+  const tx: IDBTransaction = db.transaction(STORE_QUEUED_ACTIONS, "readwrite");
+  tx.objectStore(STORE_QUEUED_ACTIONS).clear();
+  await txComplete(tx);
+}
+
 // ─── Utilities ──────────────────────────────────────────────────────────────
 
 /**
@@ -419,7 +488,13 @@ export async function setSyncCursor(storeName: string, cursor: string): Promise<
  */
 export async function clearAllData(): Promise<void> {
   const db: IDBDatabase = await openDB();
-  const storeNames: string[] = [STORE_EMAILS, STORE_DRAFTS, STORE_OUTBOX, STORE_SYNC_META];
+  const storeNames: string[] = [
+    STORE_EMAILS,
+    STORE_DRAFTS,
+    STORE_OUTBOX,
+    STORE_SYNC_META,
+    STORE_QUEUED_ACTIONS,
+  ];
   const tx: IDBTransaction = db.transaction(storeNames, "readwrite");
 
   for (const name of storeNames) {
@@ -435,7 +510,12 @@ export async function clearAllData(): Promise<void> {
 export async function getCacheStats(): Promise<CacheStats> {
   const db: IDBDatabase = await openDB();
 
-  const storeNames: string[] = [STORE_EMAILS, STORE_DRAFTS, STORE_OUTBOX, STORE_SYNC_META];
+  const storeNames: string[] = [
+    STORE_EMAILS,
+    STORE_DRAFTS,
+    STORE_OUTBOX,
+    STORE_SYNC_META,
+  ];
   const tx: IDBTransaction = db.transaction(storeNames, "readonly");
 
   const emailCountReq: IDBRequest<number> = tx.objectStore(STORE_EMAILS).count();
@@ -453,12 +533,13 @@ export async function getCacheStats(): Promise<CacheStats> {
   let lastSyncAt: string | null = null;
 
   if (syncRecords.length > 0) {
-    const mostRecent: SyncMeta = syncRecords.reduce<SyncMeta>(
-      (latest: SyncMeta, record: SyncMeta): SyncMeta =>
-        record.updatedAt > latest.updatedAt ? record : latest,
-      syncRecords[0],
-    );
-    lastSyncAt = new Date(mostRecent.updatedAt).toISOString();
+    let mostRecentTimestamp = 0;
+    for (const record of syncRecords) {
+      if (record.updatedAt > mostRecentTimestamp) {
+        mostRecentTimestamp = record.updatedAt;
+      }
+    }
+    lastSyncAt = new Date(mostRecentTimestamp).toISOString();
   }
 
   return { emailCount, draftCount, outboxCount, lastSyncAt };

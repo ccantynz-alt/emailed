@@ -18,12 +18,10 @@
 
 import {
   cacheEmails,
-  getCachedEmails,
   getOutboxEmails,
   removeOutboxEmail,
   getSyncCursor,
   setSyncCursor,
-  updateCachedEmail,
   getQueuedActions,
   removeQueuedAction,
   type CachedEmail,
@@ -97,39 +95,33 @@ type SyncEventCallback = (event: SyncEvent) => void;
 // ─── Message → CachedEmail Mapper ───────────────────────────────────────────
 
 function mapMessageToCachedEmail(message: Message): CachedEmail {
-  const tags = message.tags ?? [];
+  const tags: string[] = message.tags ?? [];
   return {
     id: message.id,
-    accountId: "",
-    threadId: message.messageId,
+    messageId: message.messageId,
     from: {
-      name: message.from.name ?? null,
+      name: message.from.name,
       email: message.from.email,
     },
     to: message.to.map((addr) => ({
-      name: addr.name ?? null,
+      name: addr.name,
       email: addr.email,
     })),
     cc: (message.cc ?? []).map((addr) => ({
-      name: addr.name ?? null,
+      name: addr.name,
       email: addr.email,
     })),
     subject: message.subject,
-    snippet: message.preview,
-    textBody: null,
-    htmlBody: null,
-    date: new Date(message.createdAt).getTime(),
-    isRead: !tags.includes("unread"),
-    isStarred: tags.includes("starred"),
-    isDraft: message.status === "draft",
-    isArchived: tags.includes("archived"),
-    isTrashed: tags.includes("trashed"),
-    isSpam: tags.includes("spam"),
-    folders: tags.includes("archived") ? ["ARCHIVE"] : ["INBOX"],
-    labels: tags,
+    preview: message.preview,
+    status: message.status,
+    tags,
     hasAttachments: message.hasAttachments,
-    attachments: [],
-    syncedAt: Date.now(),
+    starred: tags.includes("starred"),
+    read: !tags.includes("unread"),
+    createdAt: message.createdAt,
+    updatedAt: message.updatedAt,
+    sentAt: message.sentAt,
+    cachedAt: Date.now(),
   };
 }
 
@@ -269,7 +261,7 @@ export class SyncEngine {
       syncedActions = await this.applyQueuedActions();
 
       // 2. Fetch new emails since last cursor
-      const cursor = await getSyncCursor();
+      const cursor = await getSyncCursor("emails");
       let hasMore = true;
       let currentCursor: string | null | undefined = cursor;
       const allNewEmails: CachedEmail[] = [];
@@ -292,7 +284,7 @@ export class SyncEngine {
 
         // Update the cursor to the latest position
         if (response.cursor) {
-          await setSyncCursor(response.cursor);
+          await setSyncCursor("emails", response.cursor);
         }
       }
 
@@ -348,7 +340,7 @@ export class SyncEngine {
       cached.textBody = message.textBody;
       cached.htmlBody = message.htmlBody;
 
-      await updateCachedEmail(cached);
+      await cacheEmails([cached]);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to sync email";
       this.emit({
@@ -370,7 +362,15 @@ export class SyncEngine {
 
     for (const email of outboxEmails) {
       try {
-        await messagesApi.send(email.payload);
+        await messagesApi.send({
+          from: email.to[0] ?? { email: "" },
+          to: email.to,
+          cc: email.cc,
+          bcc: email.bcc,
+          subject: email.subject,
+          text: email.bodyFormat === "text" ? email.body : undefined,
+          html: email.bodyFormat === "html" ? email.body : undefined,
+        });
         await removeOutboxEmail(email.id);
 
         this.emit({
