@@ -23,14 +23,17 @@ import {
   meetingProposals,
   availabilityPatterns,
 } from "@alecrae/db";
-import { generateId } from "../lib/id.js";
 import { requireScope } from "../middleware/auth.js";
 import {
   validateBody,
   validateQuery,
   getValidatedBody,
   getValidatedQuery,
-} from "../middleware/validation.js";
+} from "../middleware/validator.js";
+
+function generateId(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -219,7 +222,7 @@ schedulingIntelligenceRouter.post(
   requireScope("messages:write"),
   validateBody(DetectBodySchema),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<z.infer<typeof DetectBodySchema>>(c);
     const result = detectSchedulingIntent(body.content);
 
     return c.json({
@@ -242,7 +245,7 @@ schedulingIntelligenceRouter.post(
   requireScope("messages:write"),
   validateBody(ProposeBodySchema),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<z.infer<typeof ProposeBodySchema>>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -370,7 +373,7 @@ schedulingIntelligenceRouter.put(
   requireScope("messages:write"),
   validateBody(UpdateProposalBodySchema),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<z.infer<typeof UpdateProposalBodySchema>>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
     const id = c.req.param("id");
@@ -434,7 +437,7 @@ schedulingIntelligenceRouter.put(
   requireScope("messages:write"),
   validateBody(UpdatePatternsBodySchema),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<z.infer<typeof UpdatePatternsBodySchema>>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -490,7 +493,7 @@ schedulingIntelligenceRouter.post(
   requireScope("messages:write"),
   validateBody(LearnPatternsBodySchema),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<z.infer<typeof LearnPatternsBodySchema>>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -745,7 +748,7 @@ schedulingIntelligenceRouter.post(
   requireScope("messages:write"),
   validateBody(AutoRespondBodySchema),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<z.infer<typeof AutoRespondBodySchema>>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 

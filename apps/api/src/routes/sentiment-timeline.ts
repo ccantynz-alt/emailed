@@ -2,9 +2,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { eq, and, desc, gt, lt, gte, sql, count } from "drizzle-orm";
 import { getDatabase, sentimentTimeline, relationshipHealth } from "@alecrae/db";
-import { generateId } from "../lib/id.js";
 import { requireScope } from "../middleware/auth.js";
-import { validateBody, validateQuery, getValidatedBody, getValidatedQuery } from "../middleware/validation.js";
+import { validateBody, validateQuery, getValidatedBody, getValidatedQuery } from "../middleware/validator.js";
+
+function generateId(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
 
 const sentimentTimelineRouter = new Hono();
 
@@ -24,7 +27,7 @@ sentimentTimelineRouter.post(
     }),
   ),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<{ emailId: string; content: string; senderEmail: string; senderName?: string }>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -48,9 +51,9 @@ sentimentTimelineRouter.post(
     else if (net === -1) sentimentIdx = 3;
     else if (net <= -2) sentimentIdx = 4;
 
-    const sentiment = sentimentLevels[sentimentIdx];
+    const sentiment = sentimentLevels[sentimentIdx] ?? "neutral";
     const score = Math.max(0, Math.min(1, 0.5 + net * 0.15));
-    const emotionalTone = tones[Math.abs(net) % tones.length];
+    const emotionalTone = tones[Math.abs(net) % tones.length] ?? null;
     const topics = topicKeywords.filter((t) => contentLower.includes(t));
 
     const id = generateId();
@@ -136,7 +139,7 @@ sentimentTimelineRouter.get(
     }),
   ),
   async (c) => {
-    const query = getValidatedQuery(c);
+    const query = getValidatedQuery<{ contactEmail?: string; days: number; limit: number; cursor?: string }>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -207,7 +210,7 @@ sentimentTimelineRouter.get(
     }),
   ),
   async (c) => {
-    const query = getValidatedQuery(c);
+    const query = getValidatedQuery<{ riskLevel?: "none" | "low" | "medium" | "high"; sortBy: "healthScore" | "totalInteractions" | "updatedAt"; limit: number; cursor?: string }>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -278,7 +281,7 @@ sentimentTimelineRouter.get(
     }),
   ),
   async (c) => {
-    const query = getValidatedQuery(c);
+    const query = getValidatedQuery<{ period: "daily" | "weekly" | "monthly"; days: number }>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -355,7 +358,7 @@ sentimentTimelineRouter.post(
     }),
   ),
   async (c) => {
-    const body = getValidatedBody(c);
+    const body = getValidatedBody<{ emails: { emailId: string; content: string; senderEmail: string; senderName?: string }[] }>(c);
     const accountId = c.get("accountId" as never) as string;
     const db = getDatabase();
 
@@ -378,17 +381,18 @@ sentimentTimelineRouter.post(
       else if (net <= -2) idx = 4;
       const score = Math.max(0, Math.min(1, 0.5 + net * 0.15));
 
+      const idxSentiment = sentimentLevels[idx] ?? "neutral";
       await db.insert(sentimentTimeline).values({
         id: generateId(),
         accountId,
         contactEmail: email.senderEmail,
         emailId: email.emailId,
-        sentiment: sentimentLevels[idx],
+        sentiment: idxSentiment,
         score,
         topics: [],
       });
 
-      results.push({ emailId: email.emailId, sentiment: sentimentLevels[idx], score });
+      results.push({ emailId: email.emailId, sentiment: idxSentiment, score });
     }
 
     return c.json({ success: true, analyzed: results.length, data: results });
