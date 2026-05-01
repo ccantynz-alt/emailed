@@ -99,7 +99,7 @@ export const users = pgTable(
         viewAnalytics: boolean;
         manageAccount: boolean;
         manageTeamMembers: boolean;
-      }>(),
+      } & Record<string, unknown>>(),
     emailVerified: boolean("email_verified").notNull().default(false),
     emailVerificationToken: text("email_verification_token"),
     avatarUrl: text("avatar_url"),

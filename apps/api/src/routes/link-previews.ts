@@ -104,13 +104,20 @@ function parseMetaTags(html: string): LinkPreviewData {
   }
 
   // OG tags take priority
-  data.title = getMetaContent("og:title") ?? getTitle();
-  data.description = getMetaContent("og:description") ?? getMetaContent("description");
-  data.image = getMetaContent("og:image");
-  data.siteName = getMetaContent("og:site_name");
-  data.type = getMetaContent("og:type");
-  data.author = getMetaContent("author") ?? getMetaContent("article:author");
-  data.publishedDate = getMetaContent("article:published_time");
+  const title = getMetaContent("og:title") ?? getTitle();
+  if (title) data.title = title;
+  const description = getMetaContent("og:description") ?? getMetaContent("description");
+  if (description) data.description = description;
+  const image = getMetaContent("og:image");
+  if (image) data.image = image;
+  const siteName = getMetaContent("og:site_name");
+  if (siteName) data.siteName = siteName;
+  const type = getMetaContent("og:type");
+  if (type) data.type = type;
+  const author = getMetaContent("author") ?? getMetaContent("article:author");
+  if (author) data.author = author;
+  const publishedDate = getMetaContent("article:published_time");
+  if (publishedDate) data.publishedDate = publishedDate;
 
   return data;
 }
@@ -189,9 +196,10 @@ async function fetchPreview(url: string): Promise<{
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
       // Non-HTML content — return minimal preview
+      const ctType = contentType.split(";")[0]?.trim();
       const data: LinkPreviewData = {
         title: url,
-        type: contentType.split(";")[0]?.trim(),
+        ...(ctType ? { type: ctType } : {}),
       };
 
       return storeAndReturn(db, cached?.id, url, urlHash, data, now);

@@ -65,6 +65,13 @@ account.patch(
   validateBody(UpdateProfileSchema),
   async (c) => {
     const auth = c.get("auth");
+    if (!auth.userId) {
+      return c.json(
+        { error: { type: "auth", message: "User context required", code: "user_required" } },
+        401,
+      );
+    }
+    const userId = auth.userId;
     const body = getValidatedBody<z.infer<typeof UpdateProfileSchema>>(c);
     const db = getDatabase();
 
@@ -79,12 +86,12 @@ account.patch(
     if (body.name) updates["name"] = body.name;
     if (body.email) updates["email"] = body.email;
 
-    await db.update(users).set(updates).where(eq(users.id, auth.userId));
+    await db.update(users).set(updates).where(eq(users.id, userId));
 
     const [updated] = await db
       .select({ id: users.id, name: users.name, email: users.email, role: users.role })
       .from(users)
-      .where(eq(users.id, auth.userId))
+      .where(eq(users.id, userId))
       .limit(1);
 
     return c.json({ data: updated });
@@ -95,6 +102,13 @@ account.patch(
 
 account.get("/passkeys", requireScope("messages:read"), async (c) => {
   const auth = c.get("auth");
+  if (!auth.userId) {
+    return c.json(
+      { error: { type: "auth", message: "User context required", code: "user_required" } },
+      401,
+    );
+  }
+  const userId = auth.userId;
   const db = getDatabase();
 
   const rows = await db
@@ -107,7 +121,7 @@ account.get("/passkeys", requireScope("messages:read"), async (c) => {
       lastUsedAt: passkeys.lastUsedAt,
     })
     .from(passkeys)
-    .where(eq(passkeys.userId, auth.userId));
+    .where(eq(passkeys.userId, userId));
 
   return c.json({
     data: rows.map((r) => ({
@@ -153,12 +167,19 @@ const NotificationPrefsSchema = z.object({
 
 account.get("/notifications", requireScope("messages:read"), async (c) => {
   const auth = c.get("auth");
+  if (!auth.userId) {
+    return c.json(
+      { error: { type: "auth", message: "User context required", code: "user_required" } },
+      401,
+    );
+  }
+  const userId = auth.userId;
   const db = getDatabase();
 
   const [user] = await db
     .select({ permissions: users.permissions })
     .from(users)
-    .where(eq(users.id, auth.userId))
+    .where(eq(users.id, userId))
     .limit(1);
 
   const prefs = (user?.permissions as Record<string, unknown>) ?? {};
@@ -178,19 +199,26 @@ account.put(
   validateBody(NotificationPrefsSchema),
   async (c) => {
     const auth = c.get("auth");
+    if (!auth.userId) {
+      return c.json(
+        { error: { type: "auth", message: "User context required", code: "user_required" } },
+        401,
+      );
+    }
+    const userId = auth.userId;
     const body = getValidatedBody<z.infer<typeof NotificationPrefsSchema>>(c);
     const db = getDatabase();
 
     const [user] = await db
       .select({ permissions: users.permissions })
       .from(users)
-      .where(eq(users.id, auth.userId))
+      .where(eq(users.id, userId))
       .limit(1);
 
     const current = (user?.permissions as Record<string, unknown>) ?? {};
-    const merged = { ...current, ...body };
+    const merged = { ...current, ...body } as typeof users.$inferInsert.permissions;
 
-    await db.update(users).set({ permissions: merged, updatedAt: new Date() }).where(eq(users.id, auth.userId));
+    await db.update(users).set({ permissions: merged, updatedAt: new Date() }).where(eq(users.id, userId));
 
     return c.json({
       data: {
@@ -206,12 +234,19 @@ account.put(
 
 account.delete("/", requireScope("messages:read"), async (c) => {
   const auth = c.get("auth");
+  if (!auth.userId) {
+    return c.json(
+      { error: { type: "auth", message: "User context required", code: "user_required" } },
+      401,
+    );
+  }
+  const userId = auth.userId;
   const db = getDatabase();
 
   const [user] = await db
     .select({ role: users.role })
     .from(users)
-    .where(eq(users.id, auth.userId))
+    .where(eq(users.id, userId))
     .limit(1);
 
   if (user?.role !== "owner") {

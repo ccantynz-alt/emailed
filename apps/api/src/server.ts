@@ -27,7 +27,7 @@ import {
   searchRateLimit,
   closeRateLimitRedis,
 } from "./middleware/rate-limit.js";
-import { messages, unifiedSend } from "./routes/messages.js";
+import { messages } from "./routes/messages.js";
 import { domains } from "./routes/domains.js";
 import { webhooks } from "./routes/webhooks.js";
 import { analytics } from "./routes/analytics.js";
@@ -584,7 +584,6 @@ app.route("/v1/translate", translate);
 app.route("/v1/collaborate", collaborate);
 app.route("/v1/connect", connect);
 app.route("/v1/snooze", snooze);
-app.route("/v1/send", unifiedSend);
 app.route("/v1/send", scheduleSend);
 app.route("/v1/import", importRouter);
 app.route("/v1/search", aiSearch);
@@ -784,11 +783,16 @@ startWebhookWorker();
 startAutoIndexer();
 
 // Start blocklist monitoring (checks every 15 min for IP/domain listings)
-import("@alecrae/reputation").then(({ BlocklistMonitor }) => {
-  const monitor = new BlocklistMonitor();
-  monitor.startMonitoring().catch((err: unknown) => {
+import("@alecrae/reputation").then(async ({ BlocklistMonitor }) => {
+  const dns = await import("node:dns");
+  try {
+    const monitor = new BlocklistMonitor({
+      resolver: { resolve4: (hostname: string) => dns.promises.resolve4(hostname) },
+    });
+    monitor.startMonitoring();
+  } catch (err) {
     console.warn("[api] Blocklist monitor start failed:", err);
-  });
+  }
 }).catch(() => {
   console.warn("[api] Blocklist monitor unavailable");
 });
