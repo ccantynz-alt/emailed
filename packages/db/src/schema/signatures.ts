@@ -15,9 +15,9 @@ import { accounts } from "./users.js";
 // ---------------------------------------------------------------------------
 
 export interface SignatureContext {
-  accountEmails?: string[];
-  recipientDomains?: string[];
-  labels?: string[];
+  accountEmails?: string[] | undefined;
+  recipientDomains?: string[] | undefined;
+  labels?: string[] | undefined;
 }
 
 export const signatures = pgTable(

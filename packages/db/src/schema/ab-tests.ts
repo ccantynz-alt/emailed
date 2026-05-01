@@ -24,9 +24,9 @@ export const abTestStatusEnum = pgEnum("ab_test_status", [
 
 export interface ABTestVariant {
   id: string;
-  subject?: string;
-  htmlBody?: string;
-  textBody?: string;
+  subject?: string | undefined;
+  htmlBody?: string | undefined;
+  textBody?: string | undefined;
   percentage: number;
 }
 
@@ -40,8 +40,8 @@ export interface ABTestResults {
     openRate: number;
     clickRate: number;
   }>;
-  winner?: string;
-  confidence?: number;
+  winner?: string | undefined;
+  confidence?: number | undefined;
 }
 
 export const abTests = pgTable(

@@ -23,16 +23,16 @@ export const autoResponderModeEnum = pgEnum("auto_responder_mode", [
 
 export interface AutoResponderSchedule {
   startDate: string;
-  endDate?: string;
+  endDate?: string | undefined;
   timezone: string;
 }
 
 export interface AutoResponderRules {
   respondToContacts: boolean;
   respondToUnknown: boolean;
-  excludeDomains?: string[];
-  excludeLabels?: string[];
-  maxResponsesPerSender?: number;
+  excludeDomains?: string[] | undefined;
+  excludeLabels?: string[] | undefined;
+  maxResponsesPerSender?: number | undefined;
   aiSmartReply: boolean;
 }
 

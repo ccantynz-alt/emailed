@@ -15,21 +15,21 @@ import { contacts } from "./contacts.js";
 // ---------------------------------------------------------------------------
 
 export interface EnrichmentData {
-  fullName?: string;
-  title?: string;
-  company?: string;
-  companyDomain?: string;
-  companySize?: string;
-  industry?: string;
-  location?: string;
-  timezone?: string;
-  linkedinUrl?: string;
-  twitterHandle?: string;
-  githubHandle?: string;
-  avatarUrl?: string;
-  bio?: string;
-  seniorityLevel?: string;
-  department?: string;
+  fullName?: string | undefined;
+  title?: string | undefined;
+  company?: string | undefined;
+  companyDomain?: string | undefined;
+  companySize?: string | undefined;
+  industry?: string | undefined;
+  location?: string | undefined;
+  timezone?: string | undefined;
+  linkedinUrl?: string | undefined;
+  twitterHandle?: string | undefined;
+  githubHandle?: string | undefined;
+  avatarUrl?: string | undefined;
+  bio?: string | undefined;
+  seniorityLevel?: string | undefined;
+  department?: string | undefined;
 }
 
 export const contactEnrichments = pgTable(

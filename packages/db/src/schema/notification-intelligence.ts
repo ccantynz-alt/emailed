@@ -35,11 +35,11 @@ export const focusModeEnum = pgEnum("focus_mode", [
 // ---------------------------------------------------------------------------
 
 export interface NotificationRuleConditions {
-  senderVip?: boolean;
-  urgencyMin?: number;
-  keywords?: string[];
-  labels?: string[];
-  timeRange?: { start: string; end: string };
+  senderVip?: boolean | undefined;
+  urgencyMin?: number | undefined;
+  keywords?: string[] | undefined;
+  labels?: string[] | undefined;
+  timeRange?: { start: string; end: string } | undefined;
 }
 
 // ---------------------------------------------------------------------------

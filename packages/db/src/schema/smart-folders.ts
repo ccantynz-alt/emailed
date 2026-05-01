@@ -20,18 +20,18 @@ export const smartFolderTypeEnum = pgEnum("smart_folder_type", [
 ]);
 
 export interface SmartFolderFilter {
-  from?: string;
-  to?: string;
-  subject?: string;
-  hasAttachment?: boolean;
-  isRead?: boolean;
-  isStarred?: boolean;
-  labels?: string[];
-  dateAfter?: string;
-  dateBefore?: string;
-  query?: string;
-  senderDomain?: string;
-  category?: string;
+  from?: string | undefined;
+  to?: string | undefined;
+  subject?: string | undefined;
+  hasAttachment?: boolean | undefined;
+  isRead?: boolean | undefined;
+  isStarred?: boolean | undefined;
+  labels?: string[] | undefined;
+  dateAfter?: string | undefined;
+  dateBefore?: string | undefined;
+  query?: string | undefined;
+  senderDomain?: string | undefined;
+  category?: string | undefined;
 }
 
 export const smartFolders = pgTable(

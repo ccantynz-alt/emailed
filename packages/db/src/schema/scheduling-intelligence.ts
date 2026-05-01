@@ -45,10 +45,10 @@ export interface ProposedTimeSlot {
 
 /** User meeting preferences for a given day. */
 export interface MeetingPreferences {
-  maxMeetingsPerDay?: number;
-  minBreakMinutes?: number;
-  preferMorning?: boolean;
-  noMeetingDays?: number[];
+  maxMeetingsPerDay?: number | undefined;
+  minBreakMinutes?: number | undefined;
+  preferMorning?: boolean | undefined;
+  noMeetingDays?: number[] | undefined;
 }
 
 /** A recurring or one-off busy block on a user's calendar. */
