@@ -6,6 +6,7 @@ import { Box, Text } from "@alecrae/ui";
 const legalPages = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/privacy", label: "Privacy Policy" },
+  { href: "/privacy-architecture", label: "Privacy Architecture" },
   { href: "/cookies", label: "Cookie Policy" },
   { href: "/do-not-sell", label: "Do Not Sell or Share" },
   { href: "/california-notice", label: "California Notice" },
