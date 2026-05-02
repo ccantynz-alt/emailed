@@ -32,6 +32,7 @@ const navigationSections: AnimatedSidebarSection[] = [
     items: [
       { id: "templates", label: "Templates", href: "/templates" },
       { id: "contacts", label: "Contacts", href: "/contacts" },
+      { id: "recall", label: "Recall", href: "/recall" },
       { id: "local-ai", label: "Local AI", href: "/local-ai" },
     ],
   },

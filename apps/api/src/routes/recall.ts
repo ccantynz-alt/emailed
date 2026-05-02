@@ -45,6 +45,63 @@ const SelfDestructSchema = z.object({
 
 const recall = new Hono();
 
+// GET /v1/recall — List all recallable emails for the account
+recall.get(
+  "/",
+  requireScope("recall:read"),
+  async (c) => {
+    const auth = c.get("auth");
+    const db = getDatabase();
+    const limit = Math.min(parseInt(c.req.query("limit") ?? "100", 10), 500);
+
+    const rows = await db
+      .select({
+        id: recallRecords.id,
+        emailId: recallRecords.emailId,
+        token: recallRecords.token,
+        revoked: recallRecords.revoked,
+        revokedAt: recallRecords.revokedAt,
+        selfDestructAt: recallRecords.selfDestructAt,
+        viewCount: recallRecords.viewCount,
+        lastViewedAt: recallRecords.lastViewedAt,
+        createdAt: recallRecords.createdAt,
+        subject: emails.subject,
+        toAddresses: emails.toAddresses,
+      })
+      .from(recallRecords)
+      .leftJoin(emails, eq(emails.id, recallRecords.emailId))
+      .where(eq(recallRecords.accountId, auth.accountId))
+      .orderBy(sql`${recallRecords.createdAt} DESC`)
+      .limit(limit);
+
+    const now = new Date();
+    const baseUrl = process.env["API_URL"] ?? "https://api.alecrae.com";
+
+    return c.json({
+      data: {
+        records: rows.map((r) => {
+          const isExpired = r.selfDestructAt !== null && r.selfDestructAt <= now;
+          return {
+            id: r.id,
+            emailId: r.emailId,
+            subject: r.subject ?? "(no subject)",
+            recipients: r.toAddresses ?? [],
+            viewUrl: `${baseUrl}/v1/recall/view/${r.token}`,
+            status: r.revoked ? "revoked" : isExpired ? "expired" : "active",
+            viewCount: r.viewCount,
+            lastViewedAt: r.lastViewedAt?.toISOString() ?? null,
+            revokedAt: r.revokedAt?.toISOString() ?? null,
+            selfDestructAt: r.selfDestructAt?.toISOString() ?? null,
+            createdAt: r.createdAt.toISOString(),
+          };
+        }),
+        total: rows.length,
+        limit,
+      },
+    });
+  },
+);
+
 // POST /v1/recall/enable — Enable recall for a sent email
 recall.post(
   "/enable",

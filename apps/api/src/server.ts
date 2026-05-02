@@ -281,6 +281,7 @@ app.use("/v1/dictation/*", authMiddleware, writeRateLimit);
 // Smart Inbox: read/write (200 req/min)
 app.use("/v1/inbox/*", authMiddleware, writeRateLimit);
 // Recall: write-level (200 req/min)
+app.use("/v1/recall", authMiddleware, readRateLimit);
 app.use("/v1/recall/enable", authMiddleware, writeRateLimit);
 app.use("/v1/recall/revoke/*", authMiddleware, writeRateLimit);
 app.use("/v1/recall/status/*", authMiddleware, readRateLimit);

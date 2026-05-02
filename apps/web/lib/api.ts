@@ -1943,3 +1943,92 @@ export const agentApi = {
     });
   },
 };
+
+// ─── Email Recall ─────────────────────────────────────────────────────────────
+
+export type RecallStatus = "active" | "revoked" | "expired";
+
+export interface RecallRecord {
+  id: string;
+  emailId: string;
+  subject: string;
+  recipients: { name?: string; address: string }[] | string[];
+  viewUrl: string;
+  status: RecallStatus;
+  viewCount: number;
+  lastViewedAt: string | null;
+  revokedAt: string | null;
+  selfDestructAt: string | null;
+  createdAt: string;
+}
+
+export const recallApi = {
+  /** List all recallable emails for the account. */
+  list(params?: { limit?: number }): Promise<{
+    data: { records: RecallRecord[]; total: number; limit: number };
+  }> {
+    const qs = new URLSearchParams();
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return apiFetch<{
+      data: { records: RecallRecord[]; total: number; limit: number };
+    }>(`/v1/recall${query ? `?${query}` : ""}`);
+  },
+
+  /** Convert a sent email to recall-protected (link-based). */
+  enable(emailId: string): Promise<{
+    data: { emailId: string; token: string; viewUrl: string; status: RecallStatus };
+  }> {
+    return apiFetch<{
+      data: { emailId: string; token: string; viewUrl: string; status: RecallStatus };
+    }>("/v1/recall/enable", {
+      method: "POST",
+      body: JSON.stringify({ emailId }),
+    });
+  },
+
+  /** Revoke recipient access to a sent email. */
+  revoke(emailId: string): Promise<{ data: { emailId: string; status: "revoked" } }> {
+    return apiFetch<{ data: { emailId: string; status: "revoked" } }>(
+      `/v1/recall/revoke/${encodeURIComponent(emailId)}`,
+      { method: "POST" },
+    );
+  },
+
+  /** Get current recall status for an email. */
+  status(emailId: string): Promise<{
+    data: {
+      emailId: string;
+      status: RecallStatus;
+      viewCount: number;
+      lastViewedAt: string | null;
+      revokedAt: string | null;
+      selfDestructAt: string | null;
+      createdAt: string;
+    };
+  }> {
+    return apiFetch<{
+      data: {
+        emailId: string;
+        status: RecallStatus;
+        viewCount: number;
+        lastViewedAt: string | null;
+        revokedAt: string | null;
+        selfDestructAt: string | null;
+        createdAt: string;
+      };
+    }>(`/v1/recall/status/${encodeURIComponent(emailId)}`);
+  },
+
+  /** Set a self-destruct timer in minutes (auto-revokes after the deadline). */
+  selfDestruct(emailId: string, minutes: number): Promise<{
+    data: { emailId: string; selfDestructAt: string; minutesRemaining: number };
+  }> {
+    return apiFetch<{
+      data: { emailId: string; selfDestructAt: string; minutesRemaining: number };
+    }>("/v1/recall/self-destruct", {
+      method: "POST",
+      body: JSON.stringify({ emailId, minutes }),
+    });
+  },
+};
